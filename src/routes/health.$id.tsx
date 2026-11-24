@@ -10,6 +10,7 @@ import {
   SubmissionHistoryRow,
   TimestampStrip,
 } from "@/components/dcms/facility-bits";
+import { InstitutionRecord } from "@/components/dcms/institution-record";
 import { KpiTile } from "@/components/dcms/kpi-tile";
 import { PageHeader } from "@/components/dcms/page-header";
 import { Code, Panel } from "@/components/dcms/section";
@@ -18,6 +19,7 @@ import { Pill, STAFF_STATUS_TONE } from "@/components/dcms/status";
 import {
   facilityById,
   hhmm,
+  isAccepted,
   SERVICES,
   SHIFT_NAMES,
   shiftCoverage,
@@ -64,8 +66,8 @@ const STATUS_ORDER: ShiftStaffStatus[] = [
 
 function HealthDetailPage() {
   const { id } = Route.useParams();
-  const f = facilityById[id];
-  const { statusFor, reportFor, filters, role } = useApp();
+  const { statusFor, reportFor, filters, role, shiftFor, facilityFor } = useApp();
+  const f = facilityFor(id);
   const [shiftKey, setShiftKey] = useState<ShiftKey>(
     filters.shift === "Evening" ? "E" : filters.shift === "Night" ? "N" : "M",
   );
@@ -80,7 +82,9 @@ function HealthDetailPage() {
 
   const st = statusFor(f.id);
   const r = reportFor(f.id);
-  const shifts = shiftsByFacility[f.id]!;
+  const shifts = Object.fromEntries(
+    (["M", "E", "N"] as ShiftKey[]).map((key) => [key, shiftFor(f.id, key)!]),
+  ) as Record<ShiftKey, NonNullable<ReturnType<typeof shiftFor>>>;
   const shift = shifts[shiftKey];
   const cov = shiftCoverage(shift);
   const shortLines = cov.byRole.filter((x) => x.short > 0);
@@ -91,6 +95,7 @@ function HealthDetailPage() {
       a.role.localeCompare(b.role),
   );
   const upcoming = shift.phase === "upcoming";
+  const confirmed = isAccepted(st) && !upcoming;
   const avail = SERVICES.filter((s) => s in shift.services);
   const down = avail.filter((s) => shift.services[s] === false);
 
@@ -107,7 +112,19 @@ function HealthDetailPage() {
         </PageHeader>
       </div>
 
+      <InstitutionRecord facility={f} />
       <TimestampStrip report={r} status={st} />
+      {!confirmed && (
+        <div className="panel border-l-[3px] border-l-pending p-4 text-sm">
+          <p className="font-semibold">
+            {upcoming ? "This shift has not started." : "Awaiting an accepted shift report."}
+          </p>
+          <p className="mt-1 text-ink-muted">
+            The institution profile, staffing plan and capacity remain available. On-site attendance
+            and service figures are confirmed after receipt of the shift report.
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Segmented
@@ -132,7 +149,7 @@ function HealthDetailPage() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiTile
           label="On site of required"
-          value={`${cov.covered} of ${cov.required}`}
+          value={`${confirmed ? cov.covered : "—"} of ${cov.required}`}
           sub={
             cov.belowMinimum
               ? `${shortLines.length} ${shortLines.length === 1 ? "role" : "roles"} below minimum`
@@ -147,21 +164,21 @@ function HealthDetailPage() {
         />
         <KpiTile
           label="OPD"
-          value={shift.opd == null ? "—" : shift.opd.toLocaleString("en")}
+          value={!confirmed || shift.opd == null ? "—" : shift.opd.toLocaleString("en")}
           sub={shift.opd == null ? "counted in morning shift only" : "patients seen since 08:00"}
           tone="kurram"
           freshness={shift.opd == null ? "No OPD in this shift" : `Reported ${hhmm(r?.observedAt)}`}
         />
         <KpiTile
           label="Beds available"
-          value={shift.bedsAvailable}
+          value={confirmed ? shift.bedsAvailable : "—"}
           sub={`of ${shift.bedsTotal} total`}
           tone="sent"
           freshness={`${pct(shift.bedsTotal - shift.bedsAvailable, shift.bedsTotal, 0)}% occupied`}
         />
         <KpiTile
           label="Services down"
-          value={down.length}
+          value={confirmed ? down.length : "—"}
           sub={`of ${avail.length} services at this facility`}
           tone={down.length ? "problem" : "neutral"}
           freshness={down.length ? down.join(", ") : "All services up"}
@@ -203,13 +220,13 @@ function HealthDetailPage() {
                     data-label="On site"
                     className={cn("num", x.short > 0 && "font-semibold text-problem")}
                   >
-                    {x.actual}
+                    {confirmed ? x.actual : "—"}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {shortLines.length > 0 && (
+          {confirmed && shortLines.length > 0 && (
             <ul className="border-t border-line px-4 py-2.5 text-sm text-problem">
               {shortLines.map((x) => (
                 <li key={x.role}>
@@ -219,7 +236,7 @@ function HealthDetailPage() {
               ))}
             </ul>
           )}
-          {shortLines.length === 0 && (
+          {confirmed && shortLines.length === 0 && (
             <p className="border-t border-line px-4 py-2.5 text-sm text-verified">
               Every role meets its minimum.
             </p>
@@ -261,7 +278,9 @@ function HealthDetailPage() {
                       </td>
                       <td data-label="Role">{a.role}</td>
                       <td data-label="Status">
-                        <Pill tone={STAFF_STATUS_TONE[a.status] ?? "neutral"}>{a.status}</Pill>
+                        <Pill tone={STAFF_STATUS_TONE[a.status] ?? "neutral"}>
+                          {confirmed ? a.status : "Scheduled"}
+                        </Pill>
                       </td>
                       <td data-label="Note" className="text-xs text-ink-muted">
                         {a.status === "Replacement" && replaces

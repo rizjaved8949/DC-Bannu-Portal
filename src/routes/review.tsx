@@ -330,7 +330,7 @@ function ReviewDetail({
     toastTitle: string,
     status?: ReviewStatus,
   ) => {
-    onUpdate(it.id, { ...patch, ...(status ? { status } : {}) }, { text: eventText, by: "You" });
+    onUpdate(it.id, { ...patch, ...(status ? { status } : {}) }, { text: eventText });
     toast(toastTitle, { description: `${it.id}, ${f.name}` });
     reset();
   };

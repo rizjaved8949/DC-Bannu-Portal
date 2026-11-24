@@ -9,6 +9,7 @@ import {
   SubmissionHistoryRow,
   TimestampStrip,
 } from "@/components/dcms/facility-bits";
+import { InstitutionRecord } from "@/components/dcms/institution-record";
 import { KpiTile } from "@/components/dcms/kpi-tile";
 import { PageHeader } from "@/components/dcms/page-header";
 import { Code, Panel } from "@/components/dcms/section";
@@ -50,14 +51,14 @@ const STAFF_ORDER: SchoolStaffStatus[] = ["Present", "Absent", "Approved leave",
 function SchoolDetailPage() {
   const { id } = Route.useParams();
   const f = facilityById[id];
-  const { statusFor, reportFor, role } = useApp();
+  const { statusFor, reportFor, role, schoolDayFor } = useApp();
   if (!f || f.kind !== "school" || !inRoleScope(role, f))
     return <NotFoundPanel what="school in your scope" back="/schools" backLabel="All schools" />;
 
   const st = statusFor(f.id);
   const r = reportFor(f.id);
   const accepted = isAccepted(st);
-  const day = schoolDays[f.id]!;
+  const day = schoolDayFor(f.id)!;
   const staff = staffByFacility[f.id] ?? [];
   const counts = Object.fromEntries(
     STAFF_ORDER.map((s) => [s, staff.filter((x) => day.staffStatus[x.id] === s).length]),
@@ -81,6 +82,7 @@ function SchoolDetailPage() {
         </PageHeader>
       </div>
 
+      <InstitutionRecord facility={f} />
       <TimestampStrip report={r} status={st} />
 
       {!accepted && (

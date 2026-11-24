@@ -10,8 +10,20 @@ import { SortTh } from "@/components/dcms/sort-header";
 import { StatusBadge } from "@/components/dcms/status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { hhmm, REPORT_STATUS_ORDER, STATUS_LABEL, type ReportStatus, type SchoolLevel } from "@/data/mock";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  hhmm,
+  REPORT_STATUS_ORDER,
+  STATUS_LABEL,
+  type ReportStatus,
+  type SchoolLevel,
+} from "@/data/mock";
 import { downloadCsv } from "@/lib/csv";
 import { useApp, useScopedFacilities } from "@/lib/app-state";
 import { pct, schoolStaffCounts, schoolStudentCounts } from "@/lib/metrics";
@@ -21,19 +33,26 @@ export const Route = createFileRoute("/schools/")({
   head: () => ({
     meta: [
       { title: "Schools · DCMS Bannu" },
-      { name: "description", content: "Today's school reports, staff and student attendance for District Bannu." },
+      {
+        name: "description",
+        content: "Today's school reports, staff and student attendance for District Bannu.",
+      },
       { property: "og:title", content: "Schools · DCMS Bannu" },
-      { property: "og:description", content: "Today's school reports, staff and student attendance for District Bannu." },
+      {
+        property: "og:description",
+        content: "Today's school reports, staff and student attendance for District Bannu.",
+      },
     ],
   }),
   component: SchoolsPage,
 });
 
-type Col = "name" | "code" | "tehsil" | "level" | "staff" | "students" | "status" | "channel" | "received";
+type Col =
+  "name" | "code" | "tehsil" | "level" | "staff" | "students" | "status" | "channel" | "received";
 const LEVELS: ("All" | SchoolLevel)[] = ["All", "Primary", "Middle", "High", "Higher Secondary"];
 
 function SchoolsPage() {
-  const { statusFor, reportFor, resetFilters, filters } = useApp();
+  const { statusFor, reportFor, resetFilters, filters, schoolDayFor } = useApp();
   const schools = useScopedFacilities({ kind: "school" });
   const [q, setQ] = useState("");
   const [level, setLevel] = useState<"All" | SchoolLevel>("All");
@@ -45,8 +64,8 @@ function SchoolsPage() {
         .map((f) => {
           const st = statusFor(f.id);
           const r = reportFor(f.id);
-          const staff = schoolStaffCounts(f, st);
-          const students = schoolStudentCounts(f, st);
+          const staff = schoolStaffCounts(f, st, schoolDayFor(f.id));
+          const students = schoolStudentCounts(f, st, schoolDayFor(f.id));
           return { f, st, r, staff, students };
         })
         .filter((x) => (level === "All" ? true : x.f.level === level))
@@ -54,9 +73,13 @@ function SchoolsPage() {
         .filter((x) => {
           if (!q) return true;
           const s = q.toLowerCase();
-          return x.f.name.toLowerCase().includes(s) || x.f.code.toLowerCase().includes(s) || x.f.village.toLowerCase().includes(s);
+          return (
+            x.f.name.toLowerCase().includes(s) ||
+            x.f.code.toLowerCase().includes(s) ||
+            x.f.village.toLowerCase().includes(s)
+          );
         }),
-    [schools, statusFor, reportFor, level, status, q],
+    [schools, statusFor, reportFor, schoolDayFor, level, status, q],
   );
 
   const { sorted, key, dir, toggle } = useSort<(typeof rows)[number], Col>(
@@ -67,7 +90,8 @@ function SchoolsPage() {
       tehsil: (x) => x.f.tehsil,
       level: (x) => LEVELS.indexOf(x.f.level!),
       staff: (x) => (x.staff.present == null ? -1 : x.staff.present / Math.max(1, x.staff.total)),
-      students: (x) => (x.students.present == null ? -1 : x.students.present / Math.max(1, x.students.enrolled)),
+      students: (x) =>
+        x.students.present == null ? -1 : x.students.present / Math.max(1, x.students.enrolled),
       status: (x) => REPORT_STATUS_ORDER.indexOf(x.st),
       channel: (x) => x.r?.channel ?? x.f.channel,
       received: (x) => x.r?.receivedAt ?? 9999,
@@ -75,7 +99,9 @@ function SchoolsPage() {
     "tehsil",
   );
 
-  const reported = rows.filter((x) => x.st === "received" || x.st === "pending" || x.st === "verified").length;
+  const reported = rows.filter(
+    (x) => x.st === "received" || x.st === "pending" || x.st === "verified",
+  ).length;
   const staffP = rows.reduce((a, x) => a + (x.staff.present ?? 0), 0);
   const staffT = rows.reduce((a, x) => a + (x.staff.present == null ? 0 : x.staff.total), 0);
   const stuP = rows.reduce((a, x) => a + (x.students.present ?? 0), 0);
@@ -104,7 +130,11 @@ function SchoolsPage() {
 
   return (
     <div>
-      <PageHeader title="Schools" urdu="اسکول" description="Today's school day reports: who has reported, staff present and students present, by school." />
+      <PageHeader
+        title="Schools"
+        urdu="اسکول"
+        description="Today's school day reports: who has reported, staff present and students present, by school."
+      />
       <div className="mt-4">
         <FilterBar
           showDepartment={false}
@@ -142,24 +172,58 @@ function SchoolsPage() {
                   </SelectContent>
                 </Select>
               </label>
-              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, code or village" aria-label="Search schools" className="h-8 w-[220px]" />
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search name, code or village"
+                aria-label="Search schools"
+                className="h-8 w-[220px]"
+              />
             </>
           }
         />
       </div>
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiTile label="Reported today" value={reported} sub={`of ${rows.length} schools`} tone={reported / Math.max(1, rows.length) > 0.7 ? "verified" : "pending"} freshness="Accepted by the district server" />
-        <KpiTile label="Staff present" value={staffT ? `${pct(staffP, staffT)}%` : "No data"} sub={`${staffP} of ${staffT} in reporting schools`} tone="verified" freshness={`${reported} of ${rows.length} schools counted`} />
-        <KpiTile label="Students present" value={stuT ? `${pct(stuP, stuT)}%` : "No data"} sub={`${stuP.toLocaleString("en")} of ${stuT.toLocaleString("en")} enrolled`} tone="verified" freshness={`Enrolment on record: ${stuEnrolledAll.toLocaleString("en")}`} />
-        <KpiTile label="No report yet" value={rows.filter((x) => x.st === "none").length} sub="schools without a report" tone={rows.some((x) => x.st === "none") ? "problem" : "neutral"} freshness="Each creates a review task at 10:00" />
+        <KpiTile
+          label="Reported today"
+          value={reported}
+          sub={`of ${rows.length} schools`}
+          tone={reported / Math.max(1, rows.length) > 0.7 ? "verified" : "pending"}
+          freshness="Accepted by the district server"
+        />
+        <KpiTile
+          label="Staff present"
+          value={staffT ? `${pct(staffP, staffT)}%` : "No data"}
+          sub={`${staffP} of ${staffT} in reporting schools`}
+          tone="verified"
+          freshness={`${reported} of ${rows.length} schools counted`}
+        />
+        <KpiTile
+          label="Students present"
+          value={stuT ? `${pct(stuP, stuT)}%` : "No data"}
+          sub={`${stuP.toLocaleString("en")} of ${stuT.toLocaleString("en")} enrolled`}
+          tone="verified"
+          freshness={`Enrolment on record: ${stuEnrolledAll.toLocaleString("en")}`}
+        />
+        <KpiTile
+          label="No report yet"
+          value={rows.filter((x) => x.st === "none").length}
+          sub="schools without a report"
+          tone={rows.some((x) => x.st === "none") ? "problem" : "neutral"}
+          freshness="Each creates a review task at 10:00"
+        />
       </div>
 
       <Panel title="Schools" aside={`${sorted.length} of ${schools.length} shown`}>
         {sorted.length === 0 ? (
           <EmptyState
             title="No schools match these filters."
-            hint={filters.tehsil !== "All" ? "Clear the tehsil filter or widen the status filter." : "Try another level, status or search term."}
+            hint={
+              filters.tehsil !== "All"
+                ? "Clear the tehsil filter or widen the status filter."
+                : "Try another level, status or search term."
+            }
             action={
               <Button
                 variant="outline"
@@ -213,7 +277,11 @@ function SchoolsPage() {
                 {sorted.map(({ f, st, r, staff, students }) => (
                   <tr key={f.id}>
                     <td data-label="School">
-                      <Link to="/schools/$id" params={{ id: f.id }} className="font-semibold text-ink hover:text-kurram hover:underline">
+                      <Link
+                        to="/schools/$id"
+                        params={{ id: f.id }}
+                        className="font-semibold text-ink hover:text-kurram hover:underline"
+                      >
                         {f.name}
                       </Link>
                       <span className="block text-xs text-ink-muted">{f.typeLabel}</span>
@@ -224,7 +292,11 @@ function SchoolsPage() {
                     <td data-label="Tehsil">{f.tehsil}</td>
                     <td data-label="Level">{f.level}</td>
                     <td data-label="Staff present" className="num">
-                      {staff.present == null ? <span className="text-ink-muted">— of {staff.total}</span> : `${staff.present} of ${staff.total}`}
+                      {staff.present == null ? (
+                        <span className="text-ink-muted">— of {staff.total}</span>
+                      ) : (
+                        `${staff.present} of ${staff.total}`
+                      )}
                     </td>
                     <td data-label="Students present" className="num">
                       {students.present == null ? (
@@ -232,7 +304,9 @@ function SchoolsPage() {
                       ) : (
                         <>
                           {students.present} of {students.enrolled}
-                          <span className="ml-1.5 text-xs text-ink-muted">{pct(students.present, students.enrolled)}%</span>
+                          <span className="ml-1.5 text-xs text-ink-muted">
+                            {pct(students.present, students.enrolled)}%
+                          </span>
                         </>
                       )}
                     </td>
@@ -243,7 +317,11 @@ function SchoolsPage() {
                       <ChannelLabel channel={r?.channel ?? f.channel} />
                     </td>
                     <td data-label="Last received" className="num">
-                      {r?.receivedAt != null ? hhmm(r.receivedAt) : <span className="text-ink-muted">Not yet</span>}
+                      {r?.receivedAt != null ? (
+                        hhmm(r.receivedAt)
+                      ) : (
+                        <span className="text-ink-muted">Not yet</span>
+                      )}
                     </td>
                   </tr>
                 ))}

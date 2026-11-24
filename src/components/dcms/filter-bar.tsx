@@ -1,4 +1,4 @@
-import { Download, Printer, SlidersHorizontal, RotateCcw } from "lucide-react";
+import { Download, Printer, SlidersHorizontal, RotateCcw, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -7,8 +7,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DATE_RANGE_LABEL, useApp, type DateRange, type Filters } from "@/lib/app-state";
-import { TEHSILS } from "@/data/mock";
+import { useApp, type Filters } from "@/lib/app-state";
+import { TEHSILS, formatDate, TODAY } from "@/data/mock";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -81,23 +81,14 @@ export function FilterBar({
             </SelectContent>
           </Select>
         </Field>
-        <Field label="Date">
-          <Select
-            value={filters.dateRange}
-            onValueChange={(v) => setFilter("dateRange", v as DateRange)}
-          >
-            <SelectTrigger className="h-8 w-[160px]" aria-label="Date range">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {(Object.keys(DATE_RANGE_LABEL) as DateRange[]).map((d) => (
-                <SelectItem key={d} value={d}>
-                  {DATE_RANGE_LABEL[d]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
+        <div
+          className="inline-flex h-8 items-center gap-2 rounded-sm border border-line bg-subtle px-3 text-xs text-ink-muted"
+          title="Current reporting day"
+        >
+          <CalendarDays className="size-3.5" />
+          <span>Reporting day</span>
+          <span className="font-semibold text-ink">{formatDate(TODAY)}</span>
+        </div>
         {showShift && (
           <Field label="Shift">
             <Select
@@ -137,12 +128,6 @@ export function FilterBar({
           </Button>
         </div>
       </div>
-      {filters.dateRange !== "today" && (
-        <p className="mt-1.5 text-2xs text-ink-muted">
-          This prototype holds one day of reports. Tables show the latest report for each facility,
-          received on 23 Nov 2026.
-        </p>
-      )}
     </div>
   );
 }

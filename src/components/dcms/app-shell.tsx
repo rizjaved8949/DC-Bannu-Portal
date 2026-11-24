@@ -13,6 +13,7 @@ import {
   Smartphone,
   ShieldCheck,
   MapPin,
+  MessageSquareWarning,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -30,6 +31,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { facilityById } from "@/data/mock";
 import { inRoleScope, ROLES, useApp, type RoleId } from "@/lib/app-state";
 import { cn } from "@/lib/utils";
+import { WorkspaceControls } from "./workspace-controls";
 import { GlobalSearch } from "./global-search";
 
 const TABS = [
@@ -40,6 +42,7 @@ const TABS = [
   { to: "/map", label: "Facilities & map", icon: MapPinned },
   { to: "/inbox", label: "Reports inbox", icon: Inbox },
   { to: "/review", label: "Review queue", icon: ClipboardCheck },
+  { to: "/complaints", label: "Complaints", icon: MessageSquareWarning },
   { to: "/field-app", label: "Field app", icon: Smartphone },
 ] as const;
 
@@ -88,15 +91,16 @@ function TopBar() {
         </Link>
         <div className="ml-auto flex items-center gap-1 sm:gap-3">
           <GlobalSearch />
+          <WorkspaceControls />
           <span
             className="hidden items-center gap-1.5 text-xs text-topbar-muted md:inline-flex"
-            title="Last successful sync with the district server"
+            title="Latest update to the reporting register"
           >
             <span
               className="size-2 rounded-full bg-verified-tint ring-2 ring-verified"
               aria-hidden
             />
-            Last sync <span className="tabular-nums text-topbar-foreground">{lastSync}</span>
+            Updated <span className="tabular-nums text-topbar-foreground">{lastSync}</span>
           </span>
           <span className="hidden items-center gap-1.5 rounded-sm border border-topbar-muted/30 px-2.5 py-1.5 text-xs text-topbar-foreground md:inline-flex">
             <MapPin className="size-3.5" />
@@ -245,7 +249,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-canvas">
+    <div className="dcms-app-shell flex min-h-screen flex-col bg-canvas">
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
@@ -265,7 +269,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="text-line">/</span> Khyber Pakhtunkhwa
           </p>
           <p>
-            Prototype with illustrative data.{" "}
+            Education & health monitoring.{" "}
             <span className="ml-2">
               English /{" "}
               <span lang="ur" dir="rtl" className="font-urdu">

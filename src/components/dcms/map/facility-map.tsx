@@ -23,8 +23,17 @@ function FlyTo({ facilities, selectedId }: { facilities: Facility[]; selectedId:
 /** Leaflet map: small circles in report-status colour with a white ring; hollow when coordinates are unverified. */
 export default function FacilityMap({ facilities, statusFor, selectedId, onSelect }: MapProps) {
   return (
-    <MapContainer center={[32.99, 70.6]} zoom={10} scrollWheelZoom={false} className="h-[520px] w-full rounded-[5px]" aria-label="Map of facilities in District Bannu">
-      <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
+    <MapContainer
+      center={[32.99, 70.6]}
+      zoom={10}
+      scrollWheelZoom={false}
+      className="h-[520px] w-full rounded-[5px]"
+      aria-label="Map of facilities in District Bannu"
+    >
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
       <FlyTo facilities={facilities} selectedId={selectedId} />
       {facilities.map((f) => {
         const status = statusFor(f.id);
@@ -41,7 +50,9 @@ export default function FacilityMap({ facilities, statusFor, selectedId, onSelec
               fillColor: colour,
               fillOpacity: f.coordsVerified ? 1 : 0,
               opacity: 1,
-              ...(f.coordsVerified ? {} : { color: colour, weight: selected ? 3 : 2, dashArray: "2 2" }),
+              ...(f.coordsVerified
+                ? {}
+                : { color: colour, weight: selected ? 3 : 2, dashArray: "2 2" }),
             }}
             eventHandlers={{ click: () => onSelect(f.id) }}
           >
@@ -57,9 +68,12 @@ export default function FacilityMap({ facilities, statusFor, selectedId, onSelec
                     {STATUS_LABEL[status]}
                   </dd>
                   <dt className="text-ink-muted">Coordinates</dt>
-                  <dd>{f.coordsVerified ? "Verified" : "Illustrative, not verified"}</dd>
+                  <dd>{f.coordsVerified ? "Verified" : "Awaiting field verification"}</dd>
                 </dl>
-                <a href={f.kind === "school" ? `/schools/${f.id}` : `/health/${f.id}`} className="mt-1.5 inline-block text-xs font-semibold text-kurram hover:underline">
+                <a
+                  href={f.kind === "school" ? `/schools/${f.id}` : `/health/${f.id}`}
+                  className="mt-1.5 inline-block text-xs font-semibold text-kurram hover:underline"
+                >
                   Open facility page
                 </a>
               </div>

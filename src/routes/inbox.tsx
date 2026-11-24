@@ -23,6 +23,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import {
   facilityById,
+  codedSmsBudget,
   formatDate,
   hhmm,
   REPORT_STATUS_ORDER,
@@ -61,7 +62,7 @@ export const Route = createFileRoute("/inbox")({
 type Col = "received" | "facility" | "channel" | "id" | "roster" | "segments" | "status";
 
 function InboxPage() {
-  const { reports, role, filters, setReportStatus, resetFilters } = useApp();
+  const { reports, role, filters, setReportStatus, resetFilters, reportFor } = useApp();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const [channel, setChannel] = useState<"All" | Channel>("All");
@@ -109,8 +110,12 @@ function InboxPage() {
   const open = (id: string | null) => navigate({ search: id ? { report: id } : {}, replace: true });
 
   const sms = rows.filter((x) => x.r.channel === "sms").length;
-  const awaiting = rows.filter((x) => x.r.status === "sent").length;
-  const rejected = rows.filter((x) => x.r.status === "rejected").length;
+  const awaiting = rows.filter(
+    (x) => x.r.status === "sent" && reportFor(x.r.facilityId)?.id === x.r.id,
+  ).length;
+  const rejected = rows.filter(
+    (x) => x.r.status === "rejected" && reportFor(x.r.facilityId)?.id === x.r.id,
+  ).length;
   const pending = rows.filter((x) => x.r.status === "received" || x.r.status === "pending").length;
 
   const exportCsv = () =>
@@ -177,7 +182,7 @@ function InboxPage() {
           value={rows.length}
           sub={`${sms} by SMS, ${rows.length - sms} by app`}
           tone="sent"
-          freshness="Including simulated arrivals"
+          freshness="App and SMS reporting register"
         />
         <KpiTile
           label="Awaiting acknowledgement"
@@ -318,7 +323,12 @@ function InboxPage() {
         )}
       </Panel>
 
-      <ReportDrawer report={selected} onClose={() => open(null)} onStatus={setReportStatus} />
+      <ReportDrawer
+        key={selected?.id ?? "closed"}
+        report={selected}
+        onClose={() => open(null)}
+        onStatus={setReportStatus}
+      />
     </div>
   );
 }
@@ -384,6 +394,63 @@ function parsePayload(
     } else if (p.startsWith("L:")) {
       const codes = p.slice(2).split(",").filter(Boolean);
       out.push({ field: "Leave codes", value: p.slice(2), meaning: codes.map(nameOf).join(", ") });
+    } else if (p.startsWith("D:")) {
+      out.push({
+        field: "Official duty codes",
+        value: p.slice(2),
+        meaning: p.slice(2).split(",").map(nameOf).join(", "),
+      });
+    } else if (p.startsWith("S:")) {
+      out.push({
+        field: "Class attendance",
+        value: p.slice(2),
+        meaning: p
+          .slice(2)
+          .split(",")
+          .map((entry) => {
+            const [grade, totals] = entry.split("=");
+            return `${grade === "K" ? "Katchi" : "Class " + grade}: ${totals?.replace("/", " boys / ")} girls`;
+          })
+          .join("; "),
+      });
+    } else if (p.startsWith("B:")) {
+      out.push({
+        field: "Bed availability",
+        value: p.slice(2),
+        meaning: `${p.slice(2).replace("/", " available of ")} total beds`,
+      });
+    } else if (p.startsWith("P:")) {
+      out.push({
+        field: "OPD count",
+        value: p.slice(2),
+        meaning: "Outpatient visits recorded for this shift",
+      });
+    } else if (p.startsWith("V:")) {
+      out.push({
+        field: "Service availability",
+        value: p.slice(2),
+        meaning: p
+          .slice(2)
+          .split(",")
+          .map((entry) => {
+            const [index, value] = entry.split("=");
+            return `${["Lab", "X-ray", "Ultrasound", "Ambulance", "Oxygen", "Delivery room"][Number(index)] ?? "Service"}: ${value === "1" ? "available" : "unavailable"}`;
+          })
+          .join("; "),
+      });
+    } else if (p.startsWith("X:")) {
+      out.push({
+        field: "Shift attendance exceptions",
+        value: p.slice(2),
+        meaning: p
+          .slice(2)
+          .split(",")
+          .map((entry) => {
+            const [code, mark] = entry.split("=");
+            return `${nameOf(code ?? "")}: ${{ T: "Late", R: "Replacement", C: "On-call", O: "Off-duty" }[mark ?? ""] ?? mark}`;
+          })
+          .join("; "),
+      });
     } else if (p.startsWith("C:"))
       out.push({
         field: "Full-roster confirmation",
@@ -405,6 +472,7 @@ function ReportDrawer({
   onClose: () => void;
   onStatus: (id: string, s: ReportStatus, reason?: string) => void;
 }) {
+  const { requestResend } = useApp();
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const f = r ? facilityById[r.facilityId] : undefined;
@@ -504,7 +572,7 @@ function ReportDrawer({
                 )}
                 {r.smsPayload && (
                   <p className="mt-1 text-2xs text-ink-muted tabular-nums">
-                    {r.smsPayload.length} of 160 characters, {r.segments.total} SMS
+                    {codedSmsBudget(r.smsPayload).units} SMS units · {r.segments.total} message(s)
                   </p>
                 )}
               </section>
@@ -662,11 +730,12 @@ function ReportDrawer({
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() =>
+                      onClick={() => {
+                        requestResend(r.id);
                         toast("Resend requested", {
                           description: `${f.name} asked to resend ${r.type === "A1" ? "today's report" : "the shift report"} with roster ${f.rosterVersion}.`,
-                        })
-                      }
+                        });
+                      }}
                     >
                       Ask facility to resend
                     </Button>

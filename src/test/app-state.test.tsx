@@ -8,7 +8,10 @@ function useWorkspace() {
 }
 
 describe("District workspace", () => {
-  beforeEach(() => vi.useFakeTimers());
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.useFakeTimers();
+  });
   afterEach(() => {
     cleanup();
     vi.useRealTimers();

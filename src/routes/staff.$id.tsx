@@ -73,16 +73,16 @@ const MARK_TONE: Record<DayMark, Tone | "off"> = {
 function StaffDetailPage() {
   const { id } = Route.useParams();
   const s = staffById[id];
-  const { role, statusFor } = useApp();
+  const { role, statusFor, staffStatusFor } = useApp();
   const [period, setPeriod] = useState<Period>("thisMonth");
   if (!s || !facilityById[s.facilityId] || !inRoleScope(role, facilityById[s.facilityId]!))
     return (
       <NotFoundPanel what="staff member in your scope" back="/staff" backLabel="Staff directory" />
     );
   const f = facilityById[s.facilityId]!;
-  const today = todayStatus(s, statusFor(f.id));
+  const today = staffStatusFor(s);
   const p = PERIODS.find((x) => x.value === period)!;
-  const history = staffHistory(s.id, 62, statusFor(f.id)).filter(
+  const history = staffHistory(s.id, 62, statusFor(f.id), staffStatusFor(s)).filter(
     (d) => d.date >= p.from && d.date <= p.to,
   );
   const working = history.filter(
@@ -192,7 +192,7 @@ function StaffDetailPage() {
         <KpiTile
           label="Absent"
           value={n("Absent")}
-          sub="working days with no mark or absent"
+          sub="days marked absent by the administrator"
           tone={n("Absent") ? "problem" : "neutral"}
           freshness="Without leave or duty"
         />

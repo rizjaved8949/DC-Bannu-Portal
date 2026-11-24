@@ -119,8 +119,11 @@ export function AttendanceTrend({
   showSchools?: boolean;
   showHealth?: boolean;
 }) {
-  const { statusFor } = useApp();
-  const data = useMemo(() => attendanceTrendFor(facilities, statusFor), [facilities, statusFor]);
+  const { statusFor, staffStatusFor } = useApp();
+  const data = useMemo(
+    () => attendanceTrendFor(facilities, statusFor, staffStatusFor),
+    [facilities, statusFor, staffStatusFor],
+  );
   return (
     <ResponsiveContainer width="100%" height={220}>
       <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: -12 }}>
@@ -162,9 +165,12 @@ export function AttendanceTrend({
 
 /** Horizontal bars: health shifts below minimum, by shift. */
 export function ShiftsBelowMinimum({ facilities }: { facilities: Facility[] }) {
+  const { shiftFor } = useApp();
   const ids = new Set(facilities.filter((f) => f.kind === "health").map((f) => f.id));
   const data = (["N", "M", "E"] as const).map((k) => {
-    const list = shifts.filter((s) => s.key === k && ids.has(s.facilityId));
+    const list = shifts
+      .filter((s) => s.key === k && ids.has(s.facilityId))
+      .map((s) => shiftFor(s.facilityId, k) ?? s);
     const below = list.filter(
       (s) => s.phase !== "upcoming" && shiftCoverage(s).belowMinimum,
     ).length;

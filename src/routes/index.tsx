@@ -10,6 +10,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 
+import { DistrictRegister } from "@/components/dcms/district-register";
 import { ChannelIcon } from "@/components/dcms/channel";
 import { KpiTile } from "@/components/dcms/kpi-tile";
 import {
@@ -50,9 +51,10 @@ export const Route = createFileRoute("/")({
 });
 
 function OverviewPage() {
-  const { statusFor, reviewItems, role, lastSync, clockMin, reports } = useApp();
+  const { statusFor, reviewItems, role, lastSync, clockMin, reports, schoolDayFor, shiftFor } =
+    useApp();
   const facilities = useScopedFacilities();
-  const s = districtSummary(facilities, statusFor);
+  const s = districtSummary(facilities, statusFor, { schoolDayFor, shiftFor });
   const ids = new Set(facilities.map((f) => f.id));
   const critical = reviewItems.filter(
     (r) => r.severity === "Critical" && r.status !== "Closed" && ids.has(r.facilityId),
@@ -99,6 +101,7 @@ function OverviewPage() {
         description={`A clear view of today's reporting, people and public services across ${role.scopeLabel === "Whole district" ? "District Bannu" : role.scopeLabel.toLowerCase()}.`}
       />
 
+      <DistrictRegister facilities={facilities} />
       <FilterBar onExportCsv={exportCsv} />
 
       {critical.length > 0 && (

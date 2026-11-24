@@ -27,7 +27,7 @@ export function IncomingFeed() {
           <h2 className="flex items-center gap-2 text-md font-semibold text-ink">
             Incoming reports
             <span className="rounded-sm bg-verified-tint px-1.5 py-0.5 text-2xs font-normal text-verified">
-              {feedPaused ? "Paused" : "Live"}
+              {feedPaused ? "Latest" : "Live"}
             </span>
           </h2>
           <p className="mt-0.5 text-2xs text-ink-muted">Latest district acknowledgements</p>

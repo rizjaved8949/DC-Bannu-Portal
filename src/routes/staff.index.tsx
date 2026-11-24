@@ -66,17 +66,17 @@ function StaffPage() {
   const setTab = (t: Tab) =>
     navigate({ search: t === "directory" ? {} : { tab: t }, replace: true });
   const facilities = useScopedFacilities();
-  const { statusFor } = useApp();
+  const { statusFor, staffStatusFor } = useApp();
   const all = useMemo(
     () =>
       facilities.flatMap((f) =>
         (staffByFacility[f.id] ?? []).map((s) => ({
           s,
           f,
-          today: todayStatus(s, statusFor(f.id)),
+          today: staffStatusFor(s),
         })),
       ),
-    [facilities, statusFor],
+    [facilities, staffStatusFor],
   );
 
   const present = all.filter(
@@ -552,7 +552,7 @@ function Exceptions({ rows }: { rows: Row[] }) {
   const items = useMemo(() => {
     return rows
       .map((x) => {
-        const h = staffHistory(x.s.id, 30);
+        const h = staffHistory(x.s.id, 30, undefined, x.today);
         const working = h.filter(
           (d) => d.mark !== "Off" && d.mark !== "Holiday" && d.mark !== "Not reported",
         );

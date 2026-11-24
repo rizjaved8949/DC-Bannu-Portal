@@ -20,9 +20,15 @@ export const Route = createFileRoute("/map")({
   head: () => ({
     meta: [
       { title: "Facilities & map · DCMS Bannu" },
-      { name: "description", content: "Facility registry, map and infrastructure checklist for District Bannu." },
+      {
+        name: "description",
+        content: "Facility registry, map and infrastructure checklist for District Bannu.",
+      },
       { property: "og:title", content: "Facilities & map · DCMS Bannu" },
-      { property: "og:description", content: "Facility registry, map and infrastructure checklist for District Bannu." },
+      {
+        property: "og:description",
+        content: "Facility registry, map and infrastructure checklist for District Bannu.",
+      },
     ],
   }),
   component: MapPage,
@@ -47,13 +53,19 @@ function MapPage() {
       facilities.filter((f) => {
         if (!q) return true;
         const s = q.toLowerCase();
-        return f.name.toLowerCase().includes(s) || f.code.toLowerCase().includes(s) || f.village.toLowerCase().includes(s) || f.tehsil.toLowerCase().includes(s);
+        return (
+          f.name.toLowerCase().includes(s) ||
+          f.code.toLowerCase().includes(s) ||
+          f.village.toLowerCase().includes(s) ||
+          f.tehsil.toLowerCase().includes(s)
+        );
       }),
     [facilities, q],
   );
 
   useEffect(() => {
-    if (selected) rowRefs.current[selected]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (selected)
+      rowRefs.current[selected]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [selected]);
 
   const unverified = facilities.filter((f) => !f.coordsVerified).length;
@@ -75,16 +87,30 @@ function MapPage() {
 
   return (
     <div>
-      <PageHeader title="Facilities & map" urdu="مراکز اور نقشہ" description="Where every school and health facility is, what state it reported today, and which infrastructure items need maintenance." />
+      <PageHeader
+        title="Facilities & map"
+        urdu="مراکز اور نقشہ"
+        description="Where every school and health facility is, what state it reported today, and which infrastructure items need maintenance."
+      />
       <div className="mt-4">
         <FilterBar onExportCsv={exportCsv} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-5">
-        <Panel className="xl:col-span-3" title="Map" aside={`${facilities.length} facilities, ${unverified} with unverified coordinates`} bodyClassName="p-1">
+        <Panel
+          className="xl:col-span-3"
+          title="Map"
+          aside={`${facilities.length} facilities, ${unverified} with unverified coordinates`}
+          bodyClassName="p-1"
+        >
           {mounted ? (
             <Suspense fallback={<Skeleton className="h-[520px] w-full rounded-[5px] bg-line/40" />}>
-              <FacilityMap facilities={list} statusFor={statusFor} selectedId={selected} onSelect={setSelected} />
+              <FacilityMap
+                facilities={list}
+                statusFor={statusFor}
+                selectedId={selected}
+                onSelect={setSelected}
+              />
             </Suspense>
           ) : (
             <Skeleton className="h-[520px] w-full rounded-[5px] bg-line/40" />
@@ -92,21 +118,42 @@ function MapPage() {
           <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
             <StatusLegend />
             <span className="inline-flex items-center gap-1.5 text-xs text-ink-muted">
-              <span aria-hidden className="inline-block size-3 rounded-full border-2 border-dashed border-ink-muted" /> Hollow marker: coordinates not verified
+              <span
+                aria-hidden
+                className="inline-block size-3 rounded-full border-2 border-dashed border-ink-muted"
+              />{" "}
+              Hollow marker: coordinates not verified
             </span>
           </div>
-          <p className="border-t border-line px-3 py-2 text-xs text-ink-muted">Locations are illustrative until verified coordinates are loaded.</p>
+          <p className="border-t border-line px-3 py-2 text-xs text-ink-muted">
+            Location verification is tracked for each institution. Hollow markers need a field
+            coordinate check.
+          </p>
         </Panel>
 
         <Panel
           className="xl:col-span-2"
           title="Registry"
-          aside={<Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, code or village" aria-label="Search facilities" className="h-8 w-[220px]" />}
+          aside={
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search name, code or village"
+              aria-label="Search facilities"
+              className="h-8 w-[220px]"
+            />
+          }
         >
           {list.length === 0 ? (
-            <EmptyState title="No facilities match." hint="Try a shorter search or clear the tehsil filter." />
+            <EmptyState
+              title="No facilities match."
+              hint="Try a shorter search or clear the tehsil filter."
+            />
           ) : (
-            <ul className="max-h-[560px] divide-y divide-line overflow-y-auto" aria-label="Facility registry">
+            <ul
+              className="max-h-[560px] divide-y divide-line overflow-y-auto"
+              aria-label="Facility registry"
+            >
               {list.map((f) => {
                 const st = statusFor(f.id);
                 const active = f.id === selected;
@@ -118,18 +165,32 @@ function MapPage() {
                     }}
                     className={cn("flex items-center gap-3 px-4 py-2", active && "bg-kurram-soft")}
                   >
-                    <button type="button" onClick={() => setSelected(f.id)} aria-pressed={active} aria-label={`Show ${f.name} on the map`} className="flex min-w-0 flex-1 items-center gap-3 rounded-sm text-left">
+                    <button
+                      type="button"
+                      onClick={() => setSelected(f.id)}
+                      aria-pressed={active}
+                      aria-label={`Show ${f.name} on the map`}
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-sm text-left"
+                    >
                       <StatusGlyph status={st} size={14} />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-ink">{f.name}</span>
+                        <span className="block truncate text-sm font-semibold text-ink">
+                          {f.name}
+                        </span>
                         <span className="flex items-center gap-2 text-xs text-ink-muted">
                           <Code className="text-xs">{f.code}</Code>
                           {f.tehsil}
-                          {!f.coordsVerified && <span className="text-pending">Unverified location</span>}
+                          {!f.coordsVerified && (
+                            <span className="text-pending">Unverified location</span>
+                          )}
                         </span>
                       </span>
                     </button>
-                    <Link to={f.kind === "school" ? "/schools/$id" : "/health/$id"} params={{ id: f.id }} className="shrink-0 text-xs text-kurram hover:underline">
+                    <Link
+                      to={f.kind === "school" ? "/schools/$id" : "/health/$id"}
+                      params={{ id: f.id }}
+                      className="shrink-0 text-xs text-kurram hover:underline"
+                    >
                       Open
                     </Link>
                   </li>
@@ -141,7 +202,11 @@ function MapPage() {
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-4">
-        <Panel className="xl:col-span-3" title="Infrastructure" aside="OK, Problem or Stale (older than 3 days)">
+        <Panel
+          className="xl:col-span-3"
+          title="Infrastructure"
+          aside="OK, Problem or Stale (older than 3 days)"
+        >
           <div className="max-h-[620px] overflow-auto">
             <table className="ledger">
               <thead className="sticky top-0">
@@ -160,7 +225,11 @@ function MapPage() {
                 {list.map((f) => (
                   <tr key={f.id} className={cn(f.id === selected && "bg-kurram-soft")}>
                     <td data-label="Facility">
-                      <Link to={f.kind === "school" ? "/schools/$id" : "/health/$id"} params={{ id: f.id }} className="font-semibold text-ink hover:text-kurram hover:underline">
+                      <Link
+                        to={f.kind === "school" ? "/schools/$id" : "/health/$id"}
+                        params={{ id: f.id }}
+                        className="font-semibold text-ink hover:text-kurram hover:underline"
+                      >
                         {f.name}
                       </Link>
                       <span className="block text-xs text-ink-muted">{f.tehsil}</span>
@@ -202,7 +271,10 @@ function MapPage() {
             <tbody>
               {TEHSILS.filter((t) => facilities.some((f) => f.tehsil === t)).map((t) => {
                 const fs = facilities.filter((f) => f.tehsil === t);
-                const flags = fs.flatMap((f) => [...INFRA_KEYS.map((k) => f.infra[k]), f.equipment]);
+                const flags = fs.flatMap((f) => [
+                  ...INFRA_KEYS.map((k) => f.infra[k]),
+                  f.equipment,
+                ]);
                 const problems = flags.filter((x) => !isStale(x.updated) && !x.ok).length;
                 const stale = flags.filter((x) => isStale(x.updated)).length;
                 return (
@@ -210,7 +282,10 @@ function MapPage() {
                     <td data-label="Tehsil" className="font-semibold">
                       {t}
                     </td>
-                    <td data-label="Problems" className={cn("num", problems && "font-semibold text-problem")}>
+                    <td
+                      data-label="Problems"
+                      className={cn("num", problems && "font-semibold text-problem")}
+                    >
                       {problems}
                     </td>
                     <td data-label="Stale" className={cn("num", stale && "text-pending")}>
@@ -224,7 +299,10 @@ function MapPage() {
               })}
             </tbody>
           </table>
-          <p className="border-t border-line px-4 py-2 text-xs text-ink-muted">A problem is a checklist item reported not working in the last 3 days. A stale item has not been checked for more than 3 days.</p>
+          <p className="border-t border-line px-4 py-2 text-xs text-ink-muted">
+            A problem is a checklist item reported not working in the last 3 days. A stale item has
+            not been checked for more than 3 days.
+          </p>
         </Panel>
       </div>
     </div>
@@ -242,4 +320,3 @@ function InfraCell({ flag, label }: { flag: InfraFlag; label?: string }) {
     </span>
   );
 }
-

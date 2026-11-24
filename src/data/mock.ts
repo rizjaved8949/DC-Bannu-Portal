@@ -1394,6 +1394,7 @@ export function staffHistory(
   staffId: string,
   days = 62,
   reportStatus?: ReportStatus,
+  currentStatus?: TodayStaffStatus,
 ): { date: string; mark: DayMark }[] {
   const s = staffById[staffId];
   const r = mulberry32(hashString(staffId) ^ 0x2311);
@@ -1408,7 +1409,7 @@ export function staffHistory(
       continue;
     }
     if (d === 0 && s) {
-      const t = todayStatus(s, reportStatus);
+      const t = currentStatus ?? todayStatus(s, reportStatus);
       const mark: DayMark =
         t === "Present" || t === "Replacement"
           ? "Present"
@@ -1469,7 +1470,11 @@ export const attendanceTrend: {
 
 // ---------- Scoped attendance trend ----------
 /** Attendance history rolled up from the same employee records used by detail pages. */
-export function attendanceTrendFor(scope: Facility[], reportStatus?: (id: string) => ReportStatus) {
+export function attendanceTrendFor(
+  scope: Facility[],
+  reportStatus?: (id: string) => ReportStatus,
+  staffStatus?: (staff: Staff) => TodayStaffStatus,
+) {
   const dates = attendanceTrend.map(({ date, label }) => ({
     date,
     label,
@@ -1481,7 +1486,12 @@ export function attendanceTrendFor(scope: Facility[], reportStatus?: (id: string
   const byDate = new Map(dates.map((day) => [day.date, day]));
   for (const facility of scope) {
     for (const employee of staffByFacility[facility.id] ?? []) {
-      for (const day of staffHistory(employee.id, 62, reportStatus?.(facility.id))) {
+      for (const day of staffHistory(
+        employee.id,
+        62,
+        reportStatus?.(facility.id),
+        staffStatus?.(employee),
+      )) {
         const total = byDate.get(day.date);
         if (!total || day.mark === "Off" || day.mark === "Holiday" || day.mark === "Not reported")
           continue;
@@ -1765,3 +1775,284 @@ export const STATUS_LABEL: Record<ReportStatus, string> = {
 export const SIMULATION_POOL: string[] = facilities
   .filter((f) => ["none", "sent", "draft"].includes(statusOf(f.id)))
   .map((f) => f.id);
+
+// ---------- Institutional register ----------
+// The reporting contact and roster must refer to the same institution head.
+for (const facility of facilities) {
+  const head = (staffByFacility[facility.id] ?? []).find((s) =>
+    facility.kind === "school"
+      ? s.designation === "Headmaster" || s.designation === "Headmistress"
+      : s.designation === "Medical Officer" || s.designation === "Women Medical Officer",
+  );
+  if (head) facility.headName = head.name;
+  if (facility.level === "Higher Secondary") {
+    const r = mulberry32(2311 + Number(facility.code.slice(3)));
+    for (const grade of [11, 12]) {
+      const enrolled = 24 + Math.floor(r() * 19);
+      const boys = facility.gender === "Boys" ? enrolled : 0;
+      const girls = facility.gender === "Girls" ? enrolled : 0;
+      schoolDays[facility.id]!.classes.push({
+        className: `Class ${grade}`,
+        enrolledBoys: boys,
+        enrolledGirls: girls,
+        presentBoys: Math.round(boys * (0.84 + r() * 0.09)),
+        presentGirls: Math.round(girls * (0.84 + r() * 0.09)),
+      });
+    }
+  }
+}
+export interface RegisterAsset {
+  id: string;
+  name: string;
+  quantity: number;
+  working: number;
+  checkedOn: string;
+  custodian: string;
+}
+export interface InstitutionProfile {
+  reference: string;
+  established: number;
+  address: string;
+  hours: string;
+  area: string;
+  ownership: string;
+  rooms: number;
+  usableRooms: number;
+  catchment: number;
+  inspectionDate: string;
+  nextInspection: string;
+  officer: string;
+  assets: RegisterAsset[];
+}
+
+/** Complete coded data accompanies attendance; personal names never enter an SMS. */
+export function reportPayloadFor(input: {
+  facilityId: string;
+  sequence: number;
+  schoolDay?: SchoolDay;
+  shift?: Shift;
+}) {
+  const f = facilityById[input.facilityId]!;
+  const roster = staffByFacility[f.id] ?? [];
+  const statuses =
+    input.schoolDay?.staffStatus ??
+    Object.fromEntries((input.shift?.assignments ?? []).map((a) => [a.staffId, a.status]));
+  const codesFor = (status: string) =>
+    roster.filter((s) => statuses[s.id] === status).map((s) => s.code);
+  let payload = smsPayloadFor({
+    type: f.kind === "school" ? "A1" : "H1",
+    code: f.code,
+    session: input.shift?.key ?? "M",
+    roster: f.rosterVersion,
+    seq: input.sequence,
+    absent: codesFor("Absent"),
+    leave: [...codesFor("Approved leave"), ...codesFor("Leave")],
+    full: true,
+  });
+  payload = payload.replace(
+    `|${TODAY_COMPACT}|`,
+    `|${(input.shift?.date ?? TODAY).replaceAll("-", "")}|`,
+  );
+  if (codesFor("Official duty").length) payload += `|D:${codesFor("Official duty").join(",")}`;
+  if (input.schoolDay)
+    payload += `|S:${input.schoolDay.classes.map((c) => `${c.className === "Katchi" ? "K" : c.className.replace(/\D/g, "")}=${c.presentBoys}/${c.presentGirls}`).join(",")}`;
+  if (input.shift) {
+    const shift = input.shift;
+    const exceptionCodes: Record<string, string> = {
+      Late: "T",
+      Replacement: "R",
+      "On-call": "C",
+      "Off-duty": "O",
+    };
+    const extra = shift.assignments
+      .filter((a) => exceptionCodes[a.status])
+      .map(
+        (a) =>
+          `${roster.find((s) => s.id === a.staffId)?.code ?? a.staffId}=${exceptionCodes[a.status]}`,
+      );
+    if (extra.length) payload += `|X:${extra.join(",")}`;
+    payload += `|B:${shift.bedsAvailable}/${shift.bedsTotal}`;
+    if (shift.opd != null) payload += `|P:${shift.opd}`;
+    payload += `|V:${SERVICES.filter((s) => s in shift.services)
+      .map((s) => `${SERVICES.indexOf(s)}=${shift.services[s] ? 1 : 0}`)
+      .join(",")}`;
+  }
+  return payload;
+}
+export function codedSmsBudget(payload: string) {
+  // Protocol payloads are ASCII. GSM extension characters, including |, cost two units.
+  const unicode = Array.from(payload).some((char) => char.charCodeAt(0) > 127);
+  const units = unicode
+    ? payload.length
+    : Array.from(payload).reduce((sum, char) => sum + ("^{}\\[~]|".includes(char) ? 2 : 1), 0);
+  const single = unicode ? 70 : 160;
+  const multipart = unicode ? 67 : 153;
+  const segments = units <= single ? 1 : Math.ceil(units / multipart);
+  return { units, segments, capacity: segments === 1 ? single : segments * multipart };
+}
+export const COMPLAINT_CATEGORIES = [
+  "Infrastructure",
+  "Staff attendance",
+  "Service availability",
+  "Sanitation",
+  "Equipment",
+  "Other",
+] as const;
+export const COMPLAINT_STATUSES = ["Open", "In progress", "Resolved"] as const;
+export interface Complaint {
+  id: string;
+  facilityIds: string[];
+  title: string;
+  description: string;
+  category: (typeof COMPLAINT_CATEGORIES)[number];
+  priority: Severity;
+  status: (typeof COMPLAINT_STATUSES)[number];
+  owner: string;
+  createdBy: string;
+  createdDate: string;
+  createdMin: number;
+  timeline: { at: string; by: string; text: string }[];
+}
+export const complaints: Complaint[] = [
+  {
+    id: "CMP-1001",
+    facilityIds: ["SCH103", "SCH108", "HF207"],
+    title: "Joint inspection of water and sanitation facilities",
+    description:
+      "Arrange a coordinated inspection of drinking water and sanitation at the listed institutions. Each institution head should confirm availability, record repair needs and provide an action update to the district coordination cell.",
+    category: "Sanitation",
+    priority: "High",
+    status: "In progress",
+    owner: "District coordination cell",
+    createdBy: "Shah Saud Marwat",
+    createdDate: TODAY,
+    createdMin: 570,
+    timeline: [
+      {
+        at: "23 Nov 09:30",
+        by: "Shah Saud Marwat",
+        text: "Complaint registered for 3 institutions and assigned to District coordination cell.",
+      },
+      {
+        at: "23 Nov 10:15",
+        by: "District coordination cell",
+        text: "Status changed to In progress. Institution heads contacted; joint site inspection being arranged.",
+      },
+    ],
+  },
+  {
+    id: "CMP-1002",
+    facilityIds: ["HF204"],
+    title: "Restore oxygen availability at RHC Kakki",
+    description:
+      "Oxygen availability requires urgent follow-up. Coordinate refill delivery, check backup equipment and record confirmation from the facility in-charge before closing the complaint.",
+    category: "Service availability",
+    priority: "Critical",
+    status: "Open",
+    owner: "DHO office",
+    createdBy: "Shah Saud Marwat",
+    createdDate: TODAY,
+    createdMin: 620,
+    timeline: [
+      {
+        at: "23 Nov 10:20",
+        by: "Shah Saud Marwat",
+        text: "Complaint registered for 1 institution and assigned to DHO office.",
+      },
+    ],
+  },
+  {
+    id: "CMP-1003",
+    facilityIds: ["SCH112"],
+    title: "Clear access to the school entrance",
+    description:
+      "Remove material obstructing the main entrance and confirm safe access with the school head.",
+    category: "Infrastructure",
+    priority: "Medium",
+    status: "Resolved",
+    owner: "DEO office",
+    createdBy: "Fazal Rahim Khattak",
+    createdDate: "2026-11-22",
+    createdMin: 645,
+    timeline: [
+      {
+        at: "22 Nov 10:45",
+        by: "Fazal Rahim Khattak",
+        text: "Complaint registered and assigned to DEO office.",
+      },
+      {
+        at: "23 Nov 09:10",
+        by: "DEO office",
+        text: "Status changed to Resolved. Entrance cleared; school head confirmed safe access.",
+      },
+    ],
+  },
+];
+
+export const institutionProfiles: Record<string, InstitutionProfile> = Object.fromEntries(
+  facilities.map((f, index) => {
+    const r = mulberry32(2311 + index * 503);
+    const integer = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
+    const school = f.kind === "school";
+    const rooms = school ? integer(6, 19) : f.healthType === "DHQ" ? 74 : integer(9, 28);
+    const names = school
+      ? [
+          "Student desks",
+          "Teaching boards",
+          "Library books",
+          "Science learning kits",
+          "Computer workstations",
+          "Fire extinguishers",
+        ]
+      : [
+          "Examination couches",
+          "Patient monitors",
+          "Oxygen cylinders",
+          "Vaccine cold boxes",
+          "Wheelchairs",
+          "Fire extinguishers",
+        ];
+    const quantities = school
+      ? [integer(58, 182), rooms, integer(184, 726), integer(3, 12), integer(4, 18), integer(2, 6)]
+      : [
+          integer(3, 14),
+          integer(2, 8),
+          integer(4, 16),
+          integer(2, 7),
+          integer(2, 8),
+          integer(3, 9),
+        ];
+    return [
+      f.id,
+      {
+        reference: `REG-BNU-${f.code}`,
+        established: integer(1968, 2015),
+        address: `${f.village}, ${f.tehsil} tehsil, District Bannu`,
+        hours: school
+          ? "Monday–Friday · 08:00–14:00"
+          : f.healthType === "BHU"
+            ? "OPD 08:00–14:00 · rostered duty thereafter"
+            : "24-hour duty roster · OPD 08:00–14:00",
+        area: `${integer(school ? 4 : 7, school ? 18 : 42)} kanal`,
+        ownership: "Government / departmental use",
+        rooms,
+        usableRooms: rooms - integer(0, 2),
+        catchment: integer(school ? 720 : 5600, school ? 4200 : 28500),
+        inspectionDate: addDays(TODAY, -integer(4, 18)),
+        nextInspection: addDays(TODAY, integer(5, 18)),
+        officer: school ? "DEO monitoring cell" : "DHO monitoring cell",
+        assets: names.map((name, i) => {
+          const quantity = quantities[i]!;
+          return {
+            id: `${f.code}-AS${String(i + 1).padStart(2, "0")}`,
+            name,
+            quantity,
+            working: quantity - integer(0, Math.min(quantity, i === 0 ? 5 : 2)),
+            checkedOn: addDays(TODAY, -integer(0, 3)),
+            custodian: f.headName,
+          };
+        }),
+      } satisfies InstitutionProfile,
+    ];
+  }),
+);

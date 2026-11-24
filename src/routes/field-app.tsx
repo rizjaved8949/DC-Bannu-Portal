@@ -1,45 +1,60 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, ChevronRight, Signal, SignalLow, SignalZero, Wifi, WifiOff } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/dcms/page-header";
-import { Code, Panel } from "@/components/dcms/section";
+import { Code } from "@/components/dcms/section";
+import { FieldWorkspace, useFieldNavigation } from "@/components/dcms/field-workspace";
 import { Segmented } from "@/components/dcms/segmented";
-import { Pill, STAFF_STATUS_TONE } from "@/components/dcms/status";
+import { Pill, STAFF_STATUS_TONE, StatusBadge } from "@/components/dcms/status";
 import {
   formatDate,
   hhmm,
-  schoolDays,
-  schools,
   SERVICES,
   SHIFT_NAMES,
   shiftCoverage,
-  shiftsByFacility,
-  smsPayloadFor,
   staffByFacility,
   staffById,
   TODAY,
   type Facility,
   type ShiftKey,
+  type ShiftStaffStatus,
+  type SchoolStaffStatus,
+  isAccepted,
+  reportPayloadFor,
+  codedSmsBudget,
 } from "@/data/mock";
 import { cn } from "@/lib/utils";
 import { useApp, useScopedFacilities } from "@/lib/app-state";
 
 export const Route = createFileRoute("/field-app")({
+  validateSearch: (value: Record<string, unknown>): { facility?: string; view?: "app" } => ({
+    ...(typeof value["facility"] === "string" ? { facility: value["facility"] } : {}),
+    ...(value["view"] === "app" ? { view: "app" as const } : {}),
+  }),
   head: () => ({
     meta: [
       { title: "Field app · DCMS Bannu" },
       {
         name: "description",
         content:
-          "How school heads and hospital administrators report from the offline-capable Android app.",
+          "Use institution reporting, saved reports, shift handover, complaints and the administrator guide.",
       },
       { property: "og:title", content: "Field app · DCMS Bannu" },
       {
         property: "og:description",
         content:
-          "How school heads and hospital administrators report from the offline-capable Android app.",
+          "Use institution reporting, saved reports, shift handover, complaints and the administrator guide.",
       },
     ],
   }),
@@ -59,52 +74,77 @@ const CONNECTION_META: Record<
   none: { label: "No signal", urdu: "سگنل نہیں", icon: <SignalZero />, tone: "problem" },
 };
 
-const REPORTING_SCHOOLS = schools.filter(
-  (s) =>
-    schoolDays[s.id]?.classes.some((c) => c.className === "Katchi") &&
-    schoolDays[s.id]!.classes.every(
-      (c) => c.presentBoys <= c.enrolledBoys && c.presentGirls <= c.enrolledGirls,
-    ),
-);
-function goToScreen(screen: number) {
-  const target = document.getElementById(`field-screen-${screen}`);
-  target?.scrollIntoView({ block: "nearest", inline: "center", behavior: "instant" });
-  target?.focus({ preventScroll: true });
-}
-
 function FieldAppPage() {
   const [persona, setPersona] = useState<Persona>("school");
   const [conn, setConn] = useState<Connection>("sms");
-  const { role } = useApp();
+  const { role, pendingOutbox, deliverReport, storageReady, statusFor } = useApp();
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   const scope = useScopedFacilities({ applyFilters: false });
-  const ids = new Set(scope.map((f) => f.id));
-  const schoolOptions = REPORTING_SCHOOLS.filter((f) => ids.has(f.id));
+  const schoolOptions = scope.filter((f) => f.kind === "school");
+  const selected = scope.find((f) => f.id === search.facility);
   const school =
+    (selected?.kind === "school" ? selected : undefined) ??
+    schoolOptions.find((f) => statusFor(f.id) === "none") ??
     schoolOptions.find(
       (f) => (staffByFacility[f.id]?.length ?? 0) >= 12 && f.rosterVersion === "RV04",
     ) ??
     schoolOptions.find((f) => (staffByFacility[f.id]?.length ?? 0) >= 12) ??
     schoolOptions[0];
-  const hospital = scope.find((f) => f.id === "HF203") ?? scope.find((f) => f.kind === "health");
+  const hospital =
+    (selected?.kind === "health" ? selected : undefined) ??
+    scope.find((f) => f.id === "HF203") ??
+    scope.find((f) => f.kind === "health");
   const activePersona =
     role.department === "Education"
       ? "school"
       : role.department === "Health"
         ? "hospital"
-        : persona;
+        : selected
+          ? selected.kind === "school"
+            ? "school"
+            : "hospital"
+          : persona;
+  const currentFacility = activePersona === "school" ? school : hospital;
+  const currentFacilityId = currentFacility?.id;
+  useEffect(() => {
+    if (storageReady && currentFacilityId && search.facility !== currentFacilityId)
+      navigate({ search: { ...search, facility: currentFacilityId }, replace: true });
+  }, [storageReady, currentFacilityId, search, navigate]);
+  const changeConnection = (value: Connection) => {
+    setConn(value);
+    if (value !== "none")
+      pendingOutbox
+        .filter((r) => r.facilityId === currentFacility?.id)
+        .forEach((r) => deliverReport(r.id, value));
+  };
 
   return (
-    <div className="space-y-5">
+    <div className={cn("space-y-5", search.view === "app" && "field-focused")}>
       <PageHeader
         title="Field app"
         urdu="فیلڈ ایپ"
-        description="The Android app facility administrators use. It works offline, and where there is no mobile internet it sends a compact coded SMS instead."
+        description="Submit institution attendance and shift reports, keep work safe without a signal, and track receipt by the district."
       >
         <div className="flex flex-wrap items-center gap-3">
+          <Button variant="outline" size="sm" asChild>
+            <Link
+              to="/field-app"
+              search={{
+                ...(search.facility ? { facility: search.facility } : {}),
+                ...(search.view === "app" ? {} : { view: "app" }),
+              }}
+            >
+              {search.view === "app" ? "Back to portal view" : "Open app view"}
+            </Link>
+          </Button>
           <Segmented
             label="Administrator type"
             value={activePersona}
-            onChange={setPersona}
+            onChange={(value) => {
+              setPersona(value);
+              navigate({ search: search.view ? { view: search.view } : {} });
+            }}
             options={(
               [
                 { value: "school", label: "School administrator" },
@@ -113,9 +153,9 @@ function FieldAppPage() {
             ).filter((option) => (option.value === "school" ? !!school : !!hospital))}
           />
           <Segmented
-            label="Connection simulator"
+            label="Connection"
             value={conn}
-            onChange={setConn}
+            onChange={changeConnection}
             options={(Object.keys(CONNECTION_META) as Connection[]).map((c) => ({
               value: c,
               label: (
@@ -127,87 +167,51 @@ function FieldAppPage() {
             }))}
           />
           <span className="text-xs text-ink-muted">
-            Switch the connection to see how the fourth screen changes.
+            Reports remain in the outbox until a connection and acknowledgement are available.
           </span>
         </div>
       </PageHeader>
 
-      {activePersona === "school" && school ? (
-        <SchoolFlow key={school.id} conn={conn} f={school} />
-      ) : hospital ? (
-        <HospitalFlow key={hospital.id} conn={conn} f={hospital} />
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface p-4">
+        <span className="text-sm font-semibold">Reporting institution</span>
+        <Select
+          value={currentFacility?.id ?? ""}
+          onValueChange={(facility) => navigate({ search: { ...search, facility } })}
+        >
+          <SelectTrigger className="w-full sm:w-[440px]" aria-label="Reporting institution">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {scope
+              .filter((f) => f.kind === (activePersona === "school" ? "school" : "health"))
+              .map((f) => (
+                <SelectItem key={f.id} value={f.id}>
+                  {f.name} · {f.code}
+                </SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
+        <span className="ml-auto text-xs text-ink-muted">
+          {currentFacility?.tehsil} tehsil · {currentFacility?.rosterVersion}
+        </span>
+      </div>
+      {!storageReady ? (
+        <div className="panel px-5 py-8 text-ink-muted" role="status">
+          Opening the saved reporting workspace…
+        </div>
+      ) : currentFacility ? (
+        <FieldWorkspace key={currentFacility.id} facility={currentFacility} conn={conn}>
+          {currentFacility.kind === "school" ? (
+            <SchoolFlow key={currentFacility.id} conn={conn} f={currentFacility} />
+          ) : (
+            <HospitalFlow key={currentFacility.id} conn={conn} f={currentFacility} />
+          )}
+        </FieldWorkspace>
       ) : (
-        <p className="panel p-5 text-ink-muted">No facility is available in this role's scope.</p>
+        <p className="panel p-5 text-ink-muted">
+          No institution is available in this role's scope.
+        </p>
       )}
-
-      <Panel
-        title="What the app does in each connectivity condition"
-        aside="Same report, different path"
-      >
-        <table className="ledger">
-          <thead>
-            <tr>
-              <th scope="col">Condition</th>
-              <th scope="col">What the app does</th>
-              <th scope="col">What the district sees</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td data-label="Condition" className="font-semibold">
-                Reliable internet
-              </td>
-              <td data-label="What the app does">
-                Uploads the full report with class totals and notes over mobile data. Receives the
-                acknowledgement within seconds.
-              </td>
-              <td data-label="What the district sees">
-                Report appears as Received with the app channel icon. Verification can begin at
-                once.
-              </td>
-            </tr>
-            <tr>
-              <td data-label="Condition" className="font-semibold">
-                No internet but SMS works
-              </td>
-              <td data-label="What the app does">
-                Compresses the report into a coded SMS of 160 characters or fewer, usually one
-                segment. Waits for the acknowledgement SMS carrying the report sequence.
-              </td>
-              <td data-label="What the district sees">
-                The SMS gateway parses the code against the current roster. Received only after the
-                server acknowledges; delivery alone is not enough.
-              </td>
-            </tr>
-            <tr>
-              <td data-label="Condition" className="font-semibold">
-                Weak SMS
-              </td>
-              <td data-label="What the app does">
-                Retries each segment up to 3 times over 20 minutes. Shows Sent, awaiting
-                acknowledgement until the server replies.
-              </td>
-              <td data-label="What the district sees">
-                Status stays Sent. An incomplete multipart message is rejected and the facility is
-                asked to resend.
-              </td>
-            </tr>
-            <tr>
-              <td data-label="Condition" className="font-semibold">
-                No signal
-              </td>
-              <td data-label="What the app does">
-                Saves the report on the phone with the observed time. Sends automatically when any
-                signal returns, keeping the original observed time.
-              </td>
-              <td data-label="What the district sees">
-                No report yet. At 10:00 a review task is opened so someone follows up, with no
-                assumption about the staff.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </Panel>
     </div>
   );
 }
@@ -229,15 +233,23 @@ function Phone({
   footer?: ReactNode;
 }) {
   const meta = CONNECTION_META[conn];
+  const { step, journey, goToScreen } = useFieldNavigation();
+  const { clockMin } = useApp();
   return (
-    <figure className="flex flex-col items-center gap-2">
+    <figure
+      hidden={!journey && step !== n}
+      className="field-report-screen flex flex-col items-center gap-2"
+    >
       <div
         id={`field-screen-${n}`}
         tabIndex={-1}
-        className="phone-device relative flex h-[740px] w-[360px] shrink-0 flex-col overflow-hidden rounded-phone border-[6px] border-topbar bg-surface"
+        className={cn(
+          "phone-device relative flex h-[740px] w-[360px] shrink-0 flex-col overflow-hidden rounded-phone border-[6px] border-topbar bg-surface",
+          !journey && "field-report-device",
+        )}
       >
         <div className="flex h-7 items-center justify-between bg-topbar px-5 text-[11px] text-topbar-foreground">
-          <span className="tabular-nums">11:40</span>
+          <span className="tabular-nums">{hhmm(clockMin)}</span>
           <span className="inline-flex items-center gap-1 [&_svg]:size-3">
             {conn === "online" ? <Wifi /> : conn === "sms" ? <Signal /> : <WifiOff />}
             <span>{conn === "online" ? "4G" : conn === "sms" ? "2G" : "No service"}</span>
@@ -268,18 +280,31 @@ function Phone({
             {meta.label}
           </span>
         </div>
-        <div className="flex-1 overflow-y-auto px-4 py-3 text-sm text-ink">{children}</div>
+        {!journey && n > 1 && (
+          <button
+            type="button"
+            className="border-b border-line bg-subtle px-4 py-2 text-left text-xs font-semibold text-kurram"
+            onClick={() => goToScreen(n - 1)}
+          >
+            Previous step
+          </button>
+        )}
+        <div className="field-report-body flex-1 overflow-y-auto px-4 py-3 text-sm text-ink">
+          {children}
+        </div>
         {footer && <div className="border-t border-line bg-surface px-4 py-3">{footer}</div>}
       </div>
-      <figcaption className="inline-flex items-center gap-2 text-xs text-ink-muted">
-        <span
-          aria-hidden
-          className="flex size-5 items-center justify-center rounded-full bg-kurram text-[11px] font-bold text-white"
-        >
-          {n}
-        </span>
-        Screen {n} of 4
-      </figcaption>
+      {journey && (
+        <figcaption className="inline-flex items-center gap-2 text-xs text-ink-muted">
+          <span
+            aria-hidden
+            className="flex size-5 items-center justify-center rounded-full bg-kurram text-[11px] font-bold text-white"
+          >
+            {n}
+          </span>
+          Screen {n} of 4
+        </figcaption>
+      )}
     </figure>
   );
 }
@@ -368,8 +393,17 @@ function Steps({
 
 // ---------- School flow ----------
 function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
-  const staff = (staffByFacility[f.id] ?? []).slice(0, 12);
-  const day = schoolDays[f.id]!;
+  const { goToScreen, journey } = useFieldNavigation();
+  const { submitReport, reports, schoolDayFor, submissionFor, clockMin } = useApp();
+  const previous = reports
+    .filter((r) => r.facilityId === f.id && !!submissionFor(r.id))
+    .sort((a, b) => b.sequence - a.sequence)[0];
+  const staff = staffByFacility[f.id] ?? [];
+  const day = (previous ? submissionFor(previous.id)?.schoolDay : undefined) ?? schoolDayFor(f.id)!;
+  const [submissionId, setSubmissionId] = useState<string | null>(previous?.id ?? null);
+  const currentReport = reports.find((r) => r.id === submissionId);
+  const nextSequence =
+    Math.max(0, ...reports.filter((r) => r.facilityId === f.id).map((r) => r.sequence)) + 1;
   const [marks, setMarks] = useState<Record<string, Mark>>(() =>
     Object.fromEntries(
       staff.map((s) => [
@@ -384,52 +418,99 @@ function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
       ]),
     ),
   );
-  const classes = day.classes.filter((c) =>
-    ["Katchi", "Class 1", "Class 2", "Class 3", "Class 4", "Class 5"].includes(c.className),
-  );
+  const classes = day.classes;
   const [present, setPresent] = useState<Record<string, string>>(() =>
-    Object.fromEntries(classes.map((c) => [c.className, String(c.presentBoys + c.presentGirls)])),
+    Object.fromEntries(
+      classes.map((c) => [
+        c.className,
+        String(Math.min(c.enrolledBoys + c.enrolledGirls, c.presentBoys + c.presentGirls)),
+      ]),
+    ),
   );
   const [sent, setSent] = useState(false);
   const [saved, setSaved] = useState(false);
   const submit = () => {
-    if (conn === "none") {
-      setSaved(true);
-      toast.success("Saved on phone", {
-        description: "This demo keeps the draft in this session. It is waiting for a connection.",
+    try {
+      const statusMap: Record<Mark, SchoolStaffStatus> = {
+        P: "Present",
+        A: "Absent",
+        L: "Approved leave",
+        OD: "Official duty",
+      };
+      const report = submitReport({
+        facilityId: f.id,
+        connection: conn,
+        schoolDay: {
+          facilityId: f.id,
+          staffStatus: Object.fromEntries(staff.map((s) => [s.id, statusMap[marks[s.id] ?? "P"]])),
+          classes: classes.map((c) => {
+            const total = Number(present[c.className]);
+            const enrolled = c.enrolledBoys + c.enrolledGirls;
+            let boys = Math.min(
+              c.enrolledBoys,
+              Math.round((total * c.enrolledBoys) / Math.max(1, enrolled)),
+            );
+            let girls = total - boys;
+            if (girls > c.enrolledGirls) {
+              girls = c.enrolledGirls;
+              boys = total - girls;
+            }
+            return { ...c, presentBoys: boys, presentGirls: girls };
+          }),
+        },
       });
-    } else {
-      setSent(true);
-      toast.success(conn === "sms" ? "Sent by SMS" : "Sent report", {
-        description: "Simulated district acknowledgement: R018.",
-      });
+      setSubmissionId(report.id);
+      setSaved(conn === "none");
+      setSent(conn !== "none");
+      toast.success(
+        conn === "none" ? "Report saved" : conn === "sms" ? "SMS queued" : "Report received",
+        {
+          description: `${report.id}${conn === "sms" ? " · awaiting district acknowledgement" : conn === "none" ? " · ready to sync when a connection returns" : " · ready for district verification"}`,
+        },
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Check the report details.");
     }
   };
 
-  const payload = useMemo(
-    () =>
-      smsPayloadFor({
-        type: "A1",
-        code: f.code,
-        session: "M",
-        roster: f.rosterVersion,
-        seq: 18,
-        absent: staff.filter((s) => marks[s.id] === "A").map((s) => s.code),
-        leave: staff.filter((s) => marks[s.id] === "L").map((s) => s.code),
-        full: true,
-      }),
-    [f, staff, marks],
-  );
-  const segments = Math.max(1, Math.ceil(payload.length / 160));
+  const previewDay = {
+    ...day,
+    staffStatus: Object.fromEntries(
+      staff.map((s) => [
+        s.id,
+        ({ P: "Present", A: "Absent", L: "Approved leave", OD: "Official duty" } as const)[
+          marks[s.id] ?? "P"
+        ],
+      ]),
+    ),
+    classes: classes.map((c) => {
+      const count = Number(present[c.className] ?? 0);
+      const boys = Math.min(
+        c.enrolledBoys,
+        Math.round((count * c.enrolledBoys) / Math.max(1, c.enrolledBoys + c.enrolledGirls)),
+      );
+      return { ...c, presentBoys: boys, presentGirls: count - boys };
+    }),
+  };
+  const payload =
+    currentReport?.smsPayload ??
+    reportPayloadFor({
+      facilityId: f.id,
+      sequence: currentReport?.sequence ?? nextSequence,
+      schoolDay: previewDay,
+    });
+  const budget = codedSmsBudget(payload);
   const invalid = classes.filter(
-    (c) => Number(present[c.className] ?? 0) > c.enrolledBoys + c.enrolledGirls,
+    (c) =>
+      present[c.className] === "" ||
+      Number(present[c.className] ?? 0) > c.enrolledBoys + c.enrolledGirls,
   );
   const counts = { P: 0, A: 0, L: 0, OD: 0 } as Record<Mark, number>;
   for (const m of Object.values(marks)) counts[m]++;
 
   return (
-    <div className="phone-sequence overflow-x-auto pb-4">
-      <div className="flex min-w-max gap-5 2xl:justify-center">
+    <div className={cn("phone-sequence pb-4", journey && "overflow-x-auto")}>
+      <div className={journey ? "flex min-w-max gap-5" : "w-full"}>
         <Phone
           n={1}
           title="Today"
@@ -469,7 +550,11 @@ function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
               </div>
               <div className="flex justify-between px-3 py-2">
                 <dt className="text-ink-muted">Last report</dt>
-                <dd className="tabular-nums">Fri 20 Nov, acknowledged R017</dd>
+                <dd className="tabular-nums">
+                  {reports.some((r) => r.facilityId === f.id && r.status !== "draft")
+                    ? "Latest submission on register"
+                    : "Awaiting today’s submission"}
+                </dd>
               </div>
             </dl>
             {conn !== "online" && (
@@ -480,7 +565,7 @@ function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
               </p>
             )}
             <p className="text-xs text-ink-muted">
-              Reports are due by 10:00. Marking takes about two minutes.
+              Reports are due by 10:00. Record every staff member and class before sending.
             </p>
           </div>
         </Phone>
@@ -501,6 +586,7 @@ function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
                   onClick={() => {
                     setMarks(Object.fromEntries(staff.map((s) => [s.id, "P" as Mark])));
                     setSent(false);
+                    setSubmissionId(null);
                     setSaved(false);
                   }}
                   className="rounded-md border border-line px-2.5 py-1.5 text-xs font-semibold text-kurram hover:bg-subtle"
@@ -542,6 +628,7 @@ function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
                         onClick={() => {
                           setMarks((x) => ({ ...x, [s.id]: m }));
                           setSent(false);
+                          setSubmissionId(null);
                           setSaved(false);
                         }}
                         aria-label={`${{ P: "Present", A: "Absent", L: "Approved leave", OD: "Official duty" }[m]} for ${s.name}`}
@@ -586,7 +673,7 @@ function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
             {classes.map((c) => {
               const enrolled = c.enrolledBoys + c.enrolledGirls;
               const v = present[c.className] ?? "";
-              const bad = Number(v) > enrolled;
+              const bad = v === "" || Number(v) > enrolled;
               const id = `fa-${c.className.replace(/\s/g, "-")}`;
               return (
                 <li key={c.className} className="py-2">
@@ -607,6 +694,7 @@ function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
                           [c.className]: e.target.value.replace(/\D/g, "").slice(0, 3),
                         }));
                         setSent(false);
+                        setSubmissionId(null);
                         setSaved(false);
                       }}
                       aria-invalid={bad}
@@ -627,8 +715,8 @@ function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
             })}
           </ul>
           <p className="mt-2 text-2xs text-ink-muted">
-            Enrolled figures are prefilled from the last approved register. Try typing a number
-            above the enrolment to see the check.
+            Enrolment comes from the institution register. Report totals cannot exceed approved
+            enrolment.
           </p>
         </Phone>
 
@@ -650,9 +738,19 @@ function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
               <PrimaryButton
                 urdu={conn === "sms" ? "ایس ایم ایس سے بھیجیں" : "رپورٹ بھیجیں"}
                 onClick={submit}
-                disabled={sent || invalid.length > 0}
+                disabled={
+                  sent ||
+                  !!(currentReport && isAccepted(currentReport.status)) ||
+                  invalid.length > 0
+                }
               >
-                {sent ? "Sent" : conn === "sms" ? "Send by SMS" : "Send report"}
+                {currentReport && isAccepted(currentReport.status)
+                  ? "Received by district"
+                  : sent
+                    ? "Sent"
+                    : conn === "sms"
+                      ? "Send by SMS"
+                      : "Send report"}
               </PrimaryButton>
             )
           }
@@ -676,7 +774,8 @@ function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
                     {payload}
                   </pre>
                   <div className="mt-1 text-2xs tabular-nums text-ink-muted">
-                    {payload.length} of 160 characters, {segments} SMS
+                    {budget.units} of {budget.capacity} SMS units · {budget.segments}{" "}
+                    {budget.segments === 1 ? "message" : "messages"}
                   </div>
                 </div>
               </>
@@ -686,61 +785,23 @@ function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
                 <div className="font-semibold">Ready to upload</div>
                 <div className="text-xs text-ink-muted">
                   {staff.length} staff marks, {classes.length} class totals, roster{" "}
-                  {f.rosterVersion}. About 2 KB over mobile data.
+                  {f.rosterVersion}. Includes the complete institution roster.
                 </div>
               </div>
             )}
             {conn === "none" && (
               <div className="rounded-md border border-problem/30 bg-problem-tint px-3 py-2 text-sm text-problem">
-                <div className="font-semibold">No signal. Saved on phone.</div>
+                <div className="font-semibold">
+                  {saved ? "No signal. Report saved." : "No signal. Continue working offline."}
+                </div>
                 <div className="text-xs">
-                  The report keeps its observed time of 08:15 and will send on its own when any
-                  signal returns.
+                  The observed time is {hhmm(currentReport?.observedAt ?? clockMin)}. Save this
+                  report to keep it in the outbox until the connection returns.
                 </div>
               </div>
             )}
-            <Steps
-              steps={
-                conn === "none"
-                  ? [
-                      {
-                        label: "Saved on phone",
-                        urdu: "فون پر محفوظ",
-                        state: "done",
-                        time: "08:17",
-                      },
-                      { label: "Sent", state: "blocked" },
-                      { label: "Waiting for district acknowledgement", state: "waiting" },
-                      { label: "Acknowledged", state: "waiting" },
-                    ]
-                  : [
-                      {
-                        label: "Saved on phone",
-                        urdu: "فون پر محفوظ",
-                        state: "done",
-                        time: "08:17",
-                      },
-                      {
-                        label: "Sent",
-                        urdu: "بھیج دیا گیا",
-                        state: sent ? "done" : "active",
-                        ...(sent ? { time: "08:21" } : {}),
-                      },
-                      {
-                        label: "Waiting for district acknowledgement",
-                        urdu: "ضلعی تصدیق کا انتظار",
-                        state: sent ? "done" : "waiting",
-                        ...(sent ? { time: conn === "sms" ? "08:24" : "08:21" } : {}),
-                      },
-                      {
-                        label: sent ? "Acknowledged (R018)" : "Acknowledged",
-                        urdu: "تصدیق ہو گئی",
-                        state: sent ? "done" : "waiting",
-                        ...(sent ? { time: conn === "sms" ? "08:24" : "08:21" } : {}),
-                      },
-                    ]
-              }
-            />
+            <SubmissionReceipt reportId={submissionId} />
+            <SubmissionProgress reportId={submissionId} />
             {conn === "sms" && (
               <p className="text-2xs text-ink-muted">
                 An SMS is counted as received only when the district server replies with its
@@ -756,10 +817,25 @@ function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
 
 // ---------- Hospital flow ----------
 function HospitalFlow({ conn, f }: { conn: Connection; f: Facility }) {
-  const all = shiftsByFacility[f.id]!;
-  const [key, setKey] = useState<ShiftKey>("N");
-  const shift = all[key];
-  const cov = shiftCoverage(shift);
+  const { goToScreen, journey } = useFieldNavigation();
+  const { submitReport, reports, shiftFor, submissionFor, clockMin, role } = useApp();
+  const all = Object.fromEntries(
+    (["M", "E", "N"] as ShiftKey[]).map((key) => [key, shiftFor(f.id, key)!]),
+  ) as Record<ShiftKey, NonNullable<ReturnType<typeof shiftFor>>>;
+  const previous = reports
+    .filter((r) => r.facilityId === f.id && !!submissionFor(r.id))
+    .sort((a, b) => b.sequence - a.sequence)[0];
+  const [key, setKey] = useState<ShiftKey>(previous?.session ?? "M");
+  const shift =
+    (previous?.session === key ? submissionFor(previous.id)?.shift : undefined) ?? all[key];
+  const [submissionId, setSubmissionId] = useState<string | null>(previous?.id ?? null);
+  const currentReport = reports.find((r) => r.id === submissionId);
+  const [assignmentEdits, setAssignmentEdits] = useState<Record<string, ShiftStaffStatus>>({});
+  const assignments = shift.assignments.map((a) => ({
+    ...a,
+    status: assignmentEdits[`${key}-${a.staffId}`] ?? a.status,
+  }));
+  const cov = shiftCoverage({ ...shift, assignments });
   const [acked, setAcked] = useState(shift.handover.acknowledgedAt != null);
   const [sent, setSent] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -773,25 +849,63 @@ function HospitalFlow({ conn, f }: { conn: Connection; f: Facility }) {
   const resetSubmission = () => {
     setSent(false);
     setSaved(false);
+    setSubmissionId(null);
   };
+  const [handoverEdits, setHandoverEdits] = useState<Record<string, string>>({});
+  const handoverLines = (name: "faults" | "stockOuts" | "interruptions") =>
+    (handoverEdits[`${key}-${name}`] ?? shift.handover[name].join("\n"))
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
   const submit = () => {
-    if (conn === "none") {
-      setSaved(true);
-      toast.success("Saved on phone", {
-        description: "Shift draft is kept in this demo session until a connection is available.",
+    try {
+      const report = submitReport({
+        facilityId: f.id,
+        connection: conn,
+        equipmentOk: equipmentEdits[key] ?? f.equipment.ok,
+        shift: {
+          ...shift,
+          assignments,
+          opd: shift.opd == null ? null : Number(opdEdits[key] ?? shift.opd),
+          bedsAvailable: Number(beds),
+          services: Object.fromEntries(
+            Object.entries(shift.services).map(([name, value]) => [
+              name,
+              serviceEdits[`${key}-${name}`] ?? value,
+            ]),
+          ),
+          handover: {
+            faults: handoverLines("faults"),
+            stockOuts: handoverLines("stockOuts"),
+            interruptions: handoverLines("interruptions"),
+            acknowledgedAt: acked ? (shift.handover.acknowledgedAt ?? clockMin) : null,
+            acknowledgedBy: acked ? (shift.handover.acknowledgedBy ?? role.person) : null,
+          },
+        },
       });
-    } else {
-      setSent(true);
-      toast.success("Sent shift report", {
-        description: "Simulated district acknowledgement: R021.",
-      });
+      setSubmissionId(report.id);
+      setSaved(conn === "none");
+      setSent(conn !== "none");
+      toast.success(
+        conn === "none"
+          ? "Shift report saved"
+          : conn === "sms"
+            ? "SMS queued"
+            : "Shift report received",
+        {
+          description: `${report.id}${conn === "sms" ? " · awaiting acknowledgement" : conn === "none" ? " · waiting for a connection" : " · staffing and service status updated"}`,
+        },
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Check the shift report.");
     }
   };
+
   const avail = SERVICES.filter((s) => s in shift.services);
 
   return (
-    <div className="phone-sequence overflow-x-auto pb-4">
-      <div className="flex min-w-max gap-5 2xl:justify-center">
+    <div className={cn("phone-sequence pb-4", journey && "overflow-x-auto")}>
+      <div className={journey ? "flex min-w-max gap-5" : "w-full"}>
         <Phone
           n={1}
           title="Select shift"
@@ -822,6 +936,7 @@ function HospitalFlow({ conn, f }: { conn: Connection; f: Facility }) {
                     aria-pressed={active}
                     onClick={() => {
                       setKey(k);
+                      setSubmissionId(null);
                       setAcked(s.handover.acknowledgedAt != null);
                       setSent(false);
                       setSaved(false);
@@ -893,7 +1008,7 @@ function HospitalFlow({ conn, f }: { conn: Connection; f: Facility }) {
           }
         >
           <ul className="divide-y divide-line">
-            {shift.assignments.map((a) => {
+            {assignments.map((a) => {
               const s = staffById[a.staffId]!;
               const rep = a.replacesStaffId ? staffById[a.replacesStaffId] : undefined;
               return (
@@ -906,7 +1021,34 @@ function HospitalFlow({ conn, f }: { conn: Connection; f: Facility }) {
                       {a.note && ` · ${a.note}`}
                     </span>
                   </span>
-                  <Pill tone={STAFF_STATUS_TONE[a.status] ?? "neutral"}>{a.status}</Pill>
+                  <select
+                    className="duty-select"
+                    aria-label={`Duty status for ${s.name}`}
+                    value={a.status}
+                    onChange={(e) => {
+                      setAssignmentEdits((v) => ({
+                        ...v,
+                        [`${key}-${a.staffId}`]: e.target.value as ShiftStaffStatus,
+                      }));
+                      resetSubmission();
+                    }}
+                  >
+                    {(
+                      [
+                        "Present",
+                        "Absent",
+                        "Leave",
+                        "Late",
+                        "Replacement",
+                        "On-call",
+                        "Off-duty",
+                      ] as ShiftStaffStatus[]
+                    ).map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
                 </li>
               );
             })}
@@ -1081,36 +1223,68 @@ function HospitalFlow({ conn, f }: { conn: Connection; f: Facility }) {
             <PrimaryButton
               urdu={conn === "none" ? "فون پر محفوظ کریں" : "شفٹ رپورٹ بھیجیں"}
               onClick={submit}
-              disabled={invalidBeds || invalidOpd || (conn === "none" ? saved : sent)}
+              disabled={
+                shift.phase === "upcoming" ||
+                invalidBeds ||
+                invalidOpd ||
+                (conn === "none"
+                  ? saved
+                  : sent || !!(currentReport && isAccepted(currentReport.status)))
+              }
             >
-              {conn === "none"
-                ? saved
-                  ? "Saved on phone"
-                  : "Save on phone"
-                : sent
-                  ? "Sent"
-                  : "Send shift report"}
+              {currentReport && isAccepted(currentReport.status)
+                ? "Received by district"
+                : conn === "none"
+                  ? saved
+                    ? "Saved on phone"
+                    : "Save on phone"
+                  : sent
+                    ? "Sent"
+                    : "Send shift report"}
             </PrimaryButton>
           }
         >
           <div className="space-y-3">
-            <HandoverBlock title="Unresolved faults" items={shift.handover.faults} />
-            <HandoverBlock title="Stock-outs" items={shift.handover.stockOuts} />
-            <HandoverBlock title="Service interruptions" items={shift.handover.interruptions} />
+            {(
+              [
+                ["faults", "Unresolved faults"],
+                ["stockOuts", "Stock-outs"],
+                ["interruptions", "Service interruptions"],
+              ] as const
+            ).map(([name, label]) => (
+              <div key={name} className="space-y-1">
+                <label htmlFor={`handover-${name}`} className="text-xs text-ink-muted">
+                  {label}
+                </label>
+                <Textarea
+                  id={`handover-${name}`}
+                  rows={2}
+                  value={handoverEdits[`${key}-${name}`] ?? shift.handover[name].join("\n")}
+                  onChange={(e) => {
+                    setHandoverEdits((v) => ({ ...v, [`${key}-${name}`]: e.target.value }));
+                    resetSubmission();
+                  }}
+                  placeholder="None reported. Add one item per line."
+                />
+              </div>
+            ))}
             <div className="rounded-md border border-line p-3">
               <div className="text-xs text-ink-muted">Incoming shift acknowledgement</div>
               {acked ? (
                 <p className="mt-1 text-sm text-verified">
                   <Check className="mr-1 inline size-4" aria-hidden />
                   Acknowledged by incoming shift at{" "}
-                  {hhmm(shift.handover.acknowledgedAt ?? shift.startMin + 12 * 60 + 5)}
+                  {hhmm(shift.handover.acknowledgedAt ?? clockMin)}
                 </p>
               ) : (
                 <>
                   <p className="mt-1 text-sm text-ink-muted">Not yet acknowledged.</p>
                   <button
                     type="button"
-                    onClick={() => setAcked(true)}
+                    onClick={() => {
+                      setAcked(true);
+                      resetSubmission();
+                    }}
                     className="mt-2 rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-kurram hover:bg-subtle"
                   >
                     Incoming in-charge acknowledges
@@ -1118,31 +1292,8 @@ function HospitalFlow({ conn, f }: { conn: Connection; f: Facility }) {
                 </>
               )}
             </div>
-            <Steps
-              steps={
-                conn === "none"
-                  ? [
-                      { label: "Saved on phone", state: "done", time: hhmm(shift.endMin + 4) },
-                      { label: "Sent", state: "blocked" },
-                      { label: "Waiting for district acknowledgement", state: "waiting" },
-                    ]
-                  : [
-                      { label: "Saved on phone", state: "done", time: hhmm(shift.endMin + 4) },
-                      {
-                        label: conn === "sms" ? "Sent by SMS" : "Uploaded",
-                        state: sent ? "done" : "active",
-                        ...(sent ? { time: hhmm(shift.endMin + 6) } : {}),
-                      },
-                      {
-                        label: sent
-                          ? "Acknowledged (R021)"
-                          : "Waiting for district acknowledgement",
-                        state: sent ? "done" : "waiting",
-                        ...(sent ? { time: hhmm(shift.endMin + (conn === "sms" ? 9 : 6)) } : {}),
-                      },
-                    ]
-              }
-            />
+            <SubmissionReceipt reportId={submissionId} />
+            <SubmissionProgress reportId={submissionId} />
           </div>
         </Phone>
       </div>
@@ -1150,21 +1301,70 @@ function HospitalFlow({ conn, f }: { conn: Connection; f: Facility }) {
   );
 }
 
-function HandoverBlock({ title, items }: { title: string; items: string[] }) {
+function SubmissionReceipt({ reportId }: { reportId: string | null }) {
+  const { reports, deliverReport } = useApp();
+  const r = reports.find((r) => r.id === reportId);
+  if (!r) return null;
   return (
-    <div>
-      <div className="text-xs text-ink-muted">{title}</div>
-      {items.length === 0 ? (
-        <p className="text-sm text-ink-muted">None recorded</p>
-      ) : (
-        <ul className="mt-0.5 space-y-1">
-          {items.map((i) => (
-            <li key={i} className="rounded-sm border border-line px-2.5 py-1.5 text-sm">
-              {i}
-            </li>
-          ))}
-        </ul>
+    <div className="report-receipt space-y-2" data-testid="report-receipt">
+      <StatusBadge status={r.status} />
+      <p className="code break-all text-xs">{r.id}</p>
+      <p className="text-xs text-ink-muted">
+        {r.status === "draft"
+          ? "Saved in the outbox. Change the connection to send this report."
+          : r.status === "sent"
+            ? "Message sent. District acknowledgement is still pending."
+            : r.status === "rejected"
+              ? "Check the correction note and submit a revised report."
+              : "This report is available in the district reporting register."}
+      </p>
+      {r.status === "sent" && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full"
+          onClick={() => {
+            deliverReport(r.id);
+            toast.success("Acknowledgement received", { description: r.id });
+          }}
+        >
+          Receive acknowledgement
+        </Button>
       )}
+      <Link
+        to="/inbox"
+        search={{ report: r.id }}
+        className="block text-xs font-semibold text-kurram"
+      >
+        Track in reports inbox
+      </Link>
     </div>
+  );
+}
+function SubmissionProgress({ reportId }: { reportId: string | null }) {
+  const { reports } = useApp();
+  const r = reports.find((r) => r.id === reportId);
+  if (!r)
+    return (
+      <p className="rounded-sm border border-line bg-subtle p-3 text-xs text-ink-muted">
+        Review the full report before sending. Receipt and acknowledgement will be tracked here.
+      </p>
+    );
+  const waiting = r.lifecycle.findIndex((step) => step.at == null);
+  return (
+    <Steps
+      steps={r.lifecycle.map((step, index) => ({
+        label: step.label,
+        state:
+          step.at != null
+            ? "done"
+            : index === waiting
+              ? r.status === "draft"
+                ? "blocked"
+                : "active"
+              : "waiting",
+        ...(step.at != null ? { time: hhmm(step.at) } : {}),
+      }))}
+    />
   );
 }

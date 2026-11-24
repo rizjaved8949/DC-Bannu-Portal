@@ -47,8 +47,12 @@ const pages = [
   ["/inbox", "Reports inbox"],
   ["/inbox?report=RPT-SCH102-20261123-012", "Reports inbox"],
   ["/review", "Review queue"],
+  ["/complaints", "Complaints"],
+  ["/complaints?facility=HF204&complaint=CMP-1002", "Complaints"],
   ["/review?item=RV-1022", "Review queue"],
   ["/field-app", "Field app"],
+  ["/field-app?facility=SCH108&view=app", "Field app"],
+  ["/field-app?facility=HF204&view=app", "Field app"],
 ];
 
 for (const [path, title] of pages) {

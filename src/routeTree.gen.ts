@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ComplaintsRouteImport } from './routes/complaints'
 import { Route as FieldAppRouteImport } from './routes/field-app'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as MapRouteImport } from './routes/map'
@@ -24,6 +25,11 @@ import { Route as StaffIdRouteImport } from './routes/staff.$id'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComplaintsRoute = ComplaintsRouteImport.update({
+  id: '/complaints',
+  path: '/complaints',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FieldAppRoute = FieldAppRouteImport.update({
@@ -79,6 +85,7 @@ const StaffIdRoute = StaffIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/complaints': typeof ComplaintsRoute
   '/field-app': typeof FieldAppRoute
   '/inbox': typeof InboxRoute
   '/map': typeof MapRoute
@@ -92,6 +99,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/complaints': typeof ComplaintsRoute
   '/field-app': typeof FieldAppRoute
   '/inbox': typeof InboxRoute
   '/map': typeof MapRoute
@@ -106,6 +114,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/complaints': typeof ComplaintsRoute
   '/field-app': typeof FieldAppRoute
   '/inbox': typeof InboxRoute
   '/map': typeof MapRoute
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/complaints'
     | '/field-app'
     | '/inbox'
     | '/map'
@@ -134,6 +144,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/complaints'
     | '/field-app'
     | '/inbox'
     | '/map'
@@ -147,6 +158,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/complaints'
     | '/field-app'
     | '/inbox'
     | '/map'
@@ -161,6 +173,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ComplaintsRoute: typeof ComplaintsRoute
   FieldAppRoute: typeof FieldAppRoute
   InboxRoute: typeof InboxRoute
   MapRoute: typeof MapRoute
@@ -180,6 +193,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/complaints': {
+      id: '/complaints'
+      path: '/complaints'
+      fullPath: '/complaints'
+      preLoaderRoute: typeof ComplaintsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/field-app': {
@@ -257,6 +277,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ComplaintsRoute: ComplaintsRoute,
   FieldAppRoute: FieldAppRoute,
   InboxRoute: InboxRoute,
   MapRoute: MapRoute,

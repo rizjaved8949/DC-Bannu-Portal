@@ -8,7 +8,17 @@ import { Code, EmptyState, Panel } from "@/components/dcms/section";
 import { SortTh } from "@/components/dcms/sort-header";
 import { Pill, StatusBadge } from "@/components/dcms/status";
 import { Button } from "@/components/ui/button";
-import { hhmm, REPORT_STATUS_ORDER, SERVICES, SHIFT_NAMES, shiftCoverage, shiftsByFacility, STATUS_LABEL, type ShiftKey } from "@/data/mock";
+import {
+  isAccepted,
+  hhmm,
+  REPORT_STATUS_ORDER,
+  SERVICES,
+  SHIFT_NAMES,
+  shiftCoverage,
+  shiftsByFacility,
+  STATUS_LABEL,
+  type ShiftKey,
+} from "@/data/mock";
 import { downloadCsv } from "@/lib/csv";
 import { useApp, useScopedFacilities } from "@/lib/app-state";
 import { pct } from "@/lib/metrics";
@@ -19,9 +29,17 @@ export const Route = createFileRoute("/health/")({
   head: () => ({
     meta: [
       { title: "Health facilities · DCMS Bannu" },
-      { name: "description", content: "Shift coverage, OPD, beds and services for public health facilities in District Bannu." },
+      {
+        name: "description",
+        content:
+          "Shift coverage, OPD, beds and services for public health facilities in District Bannu.",
+      },
       { property: "og:title", content: "Health facilities · DCMS Bannu" },
-      { property: "og:description", content: "Shift coverage, OPD, beds and services for public health facilities in District Bannu." },
+      {
+        property: "og:description",
+        content:
+          "Shift coverage, OPD, beds and services for public health facilities in District Bannu.",
+      },
     ],
   }),
   component: HealthPage,
@@ -30,19 +48,20 @@ export const Route = createFileRoute("/health/")({
 type Col = "name" | "type" | "tehsil" | "coverage" | "opd" | "beds" | "down" | "status";
 
 function HealthPage() {
-  const { statusFor, reportFor, filters, resetFilters } = useApp();
+  const { statusFor, reportFor, filters, resetFilters, shiftFor } = useApp();
   const list = useScopedFacilities({ kind: "health" });
-  const shiftKey: ShiftKey = filters.shift === "Evening" ? "E" : filters.shift === "Night" ? "N" : "M";
+  const shiftKey: ShiftKey =
+    filters.shift === "Evening" ? "E" : filters.shift === "Night" ? "N" : "M";
 
   const rows = useMemo(
     () =>
       list.map((f) => {
-        const shift = shiftsByFacility[f.id]![shiftKey];
+        const shift = shiftFor(f.id, shiftKey)!;
         const cov = shiftCoverage(shift);
         const down = SERVICES.filter((s) => shift.services[s] === false);
         return { f, st: statusFor(f.id), r: reportFor(f.id), shift, cov, down };
       }),
-    [list, shiftKey, statusFor, reportFor],
+    [list, shiftKey, statusFor, reportFor, shiftFor],
   );
 
   const { sorted, key, dir, toggle } = useSort<(typeof rows)[number], Col>(
@@ -60,12 +79,22 @@ function HealthPage() {
     "type",
   );
 
-  const reported = rows.filter((x) => x.st === "received" || x.st === "pending" || x.st === "verified").length;
-  const covered = rows.reduce((a, x) => a + x.cov.covered, 0);
+  const reported = rows.filter(
+    (x) => x.st === "received" || x.st === "pending" || x.st === "verified",
+  ).length;
+  const covered = rows.reduce(
+    (a, x) => a + (isAccepted(x.st) && x.shift.phase !== "upcoming" ? x.cov.covered : 0),
+    0,
+  );
   const required = rows.reduce((a, x) => a + x.cov.required, 0);
-  const below = rows.filter((x) => x.cov.belowMinimum).length;
-  const opd = rows.reduce((a, x) => a + (x.shift.opd ?? 0), 0);
-  const servicesDown = rows.reduce((a, x) => a + x.down.length, 0);
+  const below = rows.filter(
+    (x) => isAccepted(x.st) && x.shift.phase !== "upcoming" && x.cov.belowMinimum,
+  ).length;
+  const opd = rows.reduce((a, x) => a + (isAccepted(x.st) ? (x.shift.opd ?? 0) : 0), 0);
+  const servicesDown = rows.reduce(
+    (a, x) => a + (isAccepted(x.st) && x.shift.phase !== "upcoming" ? x.down.length : 0),
+    0,
+  );
   const shiftName = SHIFT_NAMES[shiftKey];
 
   const exportCsv = () =>
@@ -90,19 +119,56 @@ function HealthPage() {
 
   return (
     <div>
-      <PageHeader title="Health facilities" urdu="صحت کے مراکز" description="Shift coverage against minimum staffing, OPD, beds and services, by facility. No patient information is collected." />
+      <PageHeader
+        title="Health facilities"
+        urdu="صحت کے مراکز"
+        description="Shift coverage against minimum staffing, OPD, beds and services, by facility. No patient information is collected."
+      />
       <div className="mt-4">
         <FilterBar showDepartment={false} showShift onExportCsv={exportCsv} />
       </div>
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiTile label="Reported today" value={reported} sub={`of ${rows.length} facilities`} tone={reported / Math.max(1, rows.length) > 0.7 ? "verified" : "pending"} freshness="Morning shift report, accepted by server" />
-        <KpiTile label={`${shiftName} shift coverage`} value={required ? `${pct(covered, required, 0)}%` : "—"} sub={`${covered} of ${required} required posts on site`} tone={below ? "pending" : "verified"} freshness={`${below} ${below === 1 ? "facility" : "facilities"} below minimum`} />
-        <KpiTile label="OPD so far" value={opd.toLocaleString("en")} sub={shiftKey === "M" ? "patients seen since 08:00" : "OPD counted in the morning shift only"} tone="kurram" freshness={shiftKey === "M" ? "Reported by facility administrators" : "Evening and night shifts have no OPD"} />
-        <KpiTile label="Services down" value={servicesDown} sub={`across ${rows.filter((x) => x.down.length).length} facilities`} tone={servicesDown ? "problem" : "neutral"} freshness={`${shiftName} shift handover`} />
+        <KpiTile
+          label="Reported today"
+          value={reported}
+          sub={`of ${rows.length} facilities`}
+          tone={reported / Math.max(1, rows.length) > 0.7 ? "verified" : "pending"}
+          freshness="Morning shift report, accepted by server"
+        />
+        <KpiTile
+          label={`${shiftName} shift coverage`}
+          value={required ? `${pct(covered, required, 0)}%` : "—"}
+          sub={`${covered} of ${required} required posts on site`}
+          tone={below ? "pending" : "verified"}
+          freshness={`${below} ${below === 1 ? "facility" : "facilities"} below minimum`}
+        />
+        <KpiTile
+          label="OPD so far"
+          value={opd.toLocaleString("en")}
+          sub={
+            shiftKey === "M" ? "patients seen since 08:00" : "OPD counted in the morning shift only"
+          }
+          tone="kurram"
+          freshness={
+            shiftKey === "M"
+              ? "Reported by facility administrators"
+              : "Evening and night shifts have no OPD"
+          }
+        />
+        <KpiTile
+          label="Services down"
+          value={servicesDown}
+          sub={`across ${rows.filter((x) => x.down.length).length} facilities`}
+          tone={servicesDown ? "problem" : "neutral"}
+          freshness={`${shiftName} shift handover`}
+        />
       </div>
 
-      <Panel title={`Facilities, ${shiftName.toLowerCase()} shift`} aside={rows[0]?.shift.rangeLabel}>
+      <Panel
+        title={`Facilities, ${shiftName.toLowerCase()} shift`}
+        aside={rows[0]?.shift.rangeLabel}
+      >
         {sorted.length === 0 ? (
           <EmptyState
             title="No health facilities match these filters."
@@ -148,7 +214,11 @@ function HealthPage() {
                 {sorted.map(({ f, st, shift, cov, down }) => (
                   <tr key={f.id}>
                     <td data-label="Facility">
-                      <Link to="/health/$id" params={{ id: f.id }} className="font-semibold text-ink hover:text-kurram hover:underline">
+                      <Link
+                        to="/health/$id"
+                        params={{ id: f.id }}
+                        className="font-semibold text-ink hover:text-kurram hover:underline"
+                      >
                         {f.name}
                       </Link>
                       <span className="block">
@@ -157,18 +227,38 @@ function HealthPage() {
                     </td>
                     <td data-label="Type">{f.healthType}</td>
                     <td data-label="Tehsil">{f.tehsil}</td>
-                    <td data-label="Shift coverage" className={cn("num", cov.belowMinimum && "font-semibold text-problem")}>
-                      {cov.covered} of {cov.required} required
-                      {cov.belowMinimum && <span className="block text-xs font-normal text-problem">Below minimum</span>}
+                    <td
+                      data-label="Shift coverage"
+                      className={cn(
+                        "num",
+                        isAccepted(st) &&
+                          shift.phase !== "upcoming" &&
+                          cov.belowMinimum &&
+                          "font-semibold text-problem",
+                      )}
+                    >
+                      {isAccepted(st) && shift.phase !== "upcoming" ? cov.covered : "—"} of{" "}
+                      {cov.required} required
+                      {isAccepted(st) && shift.phase !== "upcoming" && cov.belowMinimum && (
+                        <span className="block text-xs font-normal text-problem">
+                          Below minimum
+                        </span>
+                      )}
                     </td>
                     <td data-label="OPD today" className="num">
-                      {shift.opd == null ? <span className="text-ink-muted">—</span> : shift.opd.toLocaleString("en")}
+                      {!isAccepted(st) || shift.opd == null ? (
+                        <span className="text-ink-muted">—</span>
+                      ) : (
+                        shift.opd.toLocaleString("en")
+                      )}
                     </td>
                     <td data-label="Beds available" className="num">
-                      {shift.bedsAvailable} of {shift.bedsTotal}
+                      {isAccepted(st) ? shift.bedsAvailable : "—"} of {shift.bedsTotal}
                     </td>
                     <td data-label="Services down">
-                      {down.length === 0 ? (
+                      {!isAccepted(st) || shift.phase === "upcoming" ? (
+                        <span className="text-xs text-ink-muted">Awaiting report</span>
+                      ) : down.length === 0 ? (
                         <span className="text-xs text-ink-muted">All up</span>
                       ) : (
                         <span className="flex flex-wrap gap-1">
