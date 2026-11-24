@@ -20,6 +20,8 @@ import {
   daybookByFacility,
   doctorsByFacility,
   facilityById,
+  facilityBillingToday,
+  formatDate,
   hhmm,
   isAccepted,
   patientStatsById,
@@ -30,9 +32,13 @@ import {
   staffByFacility,
   staffById,
   biometricByFacility,
+  treatmentLogsByDoctor,
+  treatmentLogsByFacility,
+  weeklyBilling,
   type ShiftKey,
   type ShiftStaffStatus,
 } from "@/data/mock";
+import { formatPkr } from "@/lib/metrics";
 import { inRoleScope, useApp } from "@/lib/app-state";
 import { pct } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
@@ -388,6 +394,12 @@ function HealthDetailPage() {
       {/* ── Doctor profiles ── */}
       <DoctorProfiles facilityId={f.id} />
 
+      {/* ── Doctor treatment logs ── */}
+      <DoctorTreatmentLogs facilityId={f.id} />
+
+      {/* ── Billing & revenue ── */}
+      <BillingSection facilityId={f.id} />
+
       {/* ── Biometric attendance ── */}
       <BiometricAttendance facilityId={f.id} />
 
@@ -561,6 +573,190 @@ function BiometricAttendance({ facilityId }: { facilityId: string }) {
         </table>
       </div>
     </Panel>
+  );
+}
+
+function DoctorTreatmentLogs({ facilityId }: { facilityId: string }) {
+  const allLogs = treatmentLogsByFacility[facilityId] ?? [];
+  const doctors = doctorsByFacility[facilityId] ?? [];
+  const [selectedDoc, setSelectedDoc] = useState<string>("all");
+  const [expanded, setExpanded] = useState(false);
+
+  const logs = selectedDoc === "all" ? allLogs : allLogs.filter((l) => l.doctorStaffId === selectedDoc);
+  const shown = expanded ? logs : logs.slice(0, 8);
+  const totalBilled = logs.reduce((a, l) => a + l.billingPkr, 0);
+  const waivedCount = logs.filter((l) => l.waived).length;
+
+  if (allLogs.length === 0) return null;
+
+  return (
+    <Panel
+      title="Doctor treatment log — today"
+      aside={`${allLogs.length} treatments · PKR ${formatPkr(totalBilled)} billed`}
+    >
+      <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-2">
+        <span className="text-xs font-semibold text-ink-muted">Filter by doctor:</span>
+        <select
+          value={selectedDoc}
+          onChange={(e) => { setSelectedDoc(e.target.value); setExpanded(false); }}
+          className="rounded-sm border border-line bg-surface px-2 py-1 text-xs"
+        >
+          <option value="all">All doctors ({allLogs.length})</option>
+          {doctors.map((d) => (
+            <option key={d.staffId} value={d.staffId}>
+              {d.name} ({(treatmentLogsByDoctor[d.staffId] ?? []).length})
+            </option>
+          ))}
+        </select>
+        <span className="ml-auto text-xs text-ink-muted">
+          {waivedCount} waived · {logs.length - waivedCount} charged
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="ledger">
+          <thead>
+            <tr>
+              <th scope="col">Time</th>
+              <th scope="col">Patient</th>
+              <th scope="col" className="num">Age</th>
+              <th scope="col">Complaint</th>
+              <th scope="col">Examination</th>
+              <th scope="col">Diagnosis</th>
+              <th scope="col">Treatment</th>
+              <th scope="col">Medicine</th>
+              <th scope="col">Lab tests</th>
+              <th scope="col">Outcome</th>
+              <th scope="col" className="num">Billing</th>
+              <th scope="col">Follow-up</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((t) => (
+              <tr key={t.id}>
+                <td data-label="Time" className="num whitespace-nowrap">{hhmm(t.timeMin)}</td>
+                <td data-label="Patient">
+                  <span className="font-semibold">{t.patientName}</span>
+                  <span className="block text-2xs text-ink-muted">{t.gender === "M" ? "M" : "F"}</span>
+                </td>
+                <td data-label="Age" className="num">{t.age}</td>
+                <td data-label="Complaint" className="max-w-[130px] text-xs">{t.complaint}</td>
+                <td data-label="Examination" className="max-w-[150px] text-xs">{t.examination}</td>
+                <td data-label="Diagnosis" className="max-w-[130px] text-xs">{t.diagnosis}</td>
+                <td data-label="Treatment" className="max-w-[140px] text-xs">{t.treatment}</td>
+                <td data-label="Medicine" className="max-w-[160px] text-xs">{t.medicine}</td>
+                <td data-label="Lab tests" className="text-xs">{t.labTests ?? "—"}</td>
+                <td data-label="Outcome">
+                  <Pill tone={
+                    t.outcome === "Discharged" ? "verified"
+                    : t.outcome === "Follow-up advised" ? "sent"
+                    : t.outcome === "Referred" ? "pending"
+                    : "neutral"
+                  }>
+                    {t.outcome}
+                  </Pill>
+                </td>
+                <td data-label="Billing" className="num">
+                  {t.waived ? (
+                    <span className="text-ink-muted">Waived</span>
+                  ) : (
+                    <span className="font-semibold">₨{t.billingPkr}</span>
+                  )}
+                </td>
+                <td data-label="Follow-up" className="text-xs">{t.followUpDate ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {logs.length > 8 && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="w-full border-t border-line px-4 py-2 text-xs font-semibold text-kurram hover:bg-subtle"
+        >
+          {expanded ? "Show fewer" : `Show all ${logs.length} treatments`}
+        </button>
+      )}
+    </Panel>
+  );
+}
+
+function BillingSection({ facilityId }: { facilityId: string }) {
+  const billing = facilityBillingToday[facilityId];
+  const weekly = weeklyBilling[facilityId] ?? [];
+  if (!billing) return null;
+
+  const weekTotal = weekly.reduce((a, r) => a + r.total, 0);
+  const weekWaived = weekly.reduce((a, r) => a + r.waivedAmount, 0);
+
+  return (
+    <div className="grid gap-4 xl:grid-cols-2">
+      <Panel title="Today's billing summary" aside={`${billing.patientsCharged + billing.patientsWaived} patients`}>
+        <div className="space-y-3 px-4 py-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <BillItem label="OPD fees" amount={billing.opdFees} />
+            <BillItem label="Lab charges" amount={billing.labCharges} />
+            <BillItem label="Bed charges" amount={billing.bedCharges} />
+            <BillItem label="Surgery fees" amount={billing.surgeryFees} />
+            <BillItem label="Medicine" amount={billing.medicineCharges} />
+            <BillItem label="Waived" amount={billing.totalWaived} muted />
+          </div>
+          <div className="flex items-center justify-between rounded-md border border-line bg-subtle px-3 py-2">
+            <span className="text-sm font-semibold text-ink">Total collected</span>
+            <span className="text-lg font-bold tabular-nums text-kurram">₨{billing.totalCollected.toLocaleString("en")}</span>
+          </div>
+          <div className="flex gap-4 text-xs text-ink-muted">
+            <span>{billing.patientsCharged} patients charged</span>
+            <span>{billing.patientsWaived} patients waived (free treatment)</span>
+          </div>
+        </div>
+      </Panel>
+
+      <Panel title="Weekly billing trend" aside={`Total: ₨${formatPkr(weekTotal)} · Waived: ₨${formatPkr(weekWaived)}`}>
+        <div className="overflow-x-auto">
+          <table className="ledger">
+            <thead>
+              <tr>
+                <th scope="col">Day</th>
+                <th scope="col" className="num">OPD</th>
+                <th scope="col" className="num">Lab</th>
+                <th scope="col" className="num">Bed</th>
+                <th scope="col" className="num">Surgery</th>
+                <th scope="col" className="num">Medicine</th>
+                <th scope="col" className="num">Total</th>
+                <th scope="col" className="num">Waived</th>
+                <th scope="col" className="num">Patients</th>
+              </tr>
+            </thead>
+            <tbody>
+              {weekly.map((row) => (
+                <tr key={row.date}>
+                  <td data-label="Day" className="whitespace-nowrap">{row.day} {formatDate(row.date).split(" ").slice(0, 2).join(" ")}</td>
+                  <td data-label="OPD" className="num">₨{formatPkr(row.opdFees)}</td>
+                  <td data-label="Lab" className="num">₨{formatPkr(row.labCharges)}</td>
+                  <td data-label="Bed" className="num">₨{formatPkr(row.bedCharges)}</td>
+                  <td data-label="Surgery" className="num">₨{formatPkr(row.surgeryFees)}</td>
+                  <td data-label="Medicine" className="num">₨{formatPkr(row.medicineCharges)}</td>
+                  <td data-label="Total" className="num font-semibold">₨{formatPkr(row.total)}</td>
+                  <td data-label="Waived" className="num text-ink-muted">₨{formatPkr(row.waivedAmount)}</td>
+                  <td data-label="Patients" className="num">{row.patientsTotal}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+function BillItem({ label, amount, muted }: { label: string; amount: number; muted?: boolean }) {
+  return (
+    <div className="rounded-md border border-line px-3 py-2">
+      <div className="text-2xs text-ink-muted">{label}</div>
+      <div className={cn("mt-0.5 text-sm font-bold tabular-nums", muted ? "text-ink-muted" : "text-ink")}>
+        ₨{amount.toLocaleString("en")}
+      </div>
+    </div>
   );
 }
 

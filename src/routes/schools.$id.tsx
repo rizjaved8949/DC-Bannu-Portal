@@ -16,13 +16,16 @@ import { PageHeader } from "@/components/dcms/page-header";
 import { Code, Panel } from "@/components/dcms/section";
 import { Pill, STAFF_STATUS_TONE } from "@/components/dcms/status";
 import {
+  classDailyAttendance,
   facilityById,
+  formatDate,
   hhmm,
   isAccepted,
   schoolDays,
   staffByFacility,
   studentsByFacility,
   biometricByFacility,
+  weeklyAttendance,
   type SchoolStaffStatus,
 } from "@/data/mock";
 import { inRoleScope, useApp } from "@/lib/app-state";
@@ -311,6 +314,12 @@ function SchoolDetailPage() {
         <SubmissionHistoryRow facilityId={f.id} />
       </Panel>
 
+      {/* ── Weekly attendance register ── */}
+      <WeeklyAttendanceRegister facilityId={f.id} />
+
+      {/* ── Class daily attendance ── */}
+      <ClassDailyBreakdown facilityId={f.id} />
+
       {/* ── Student directory ── */}
       <StudentDirectory facilityId={f.id} />
 
@@ -398,6 +407,156 @@ function StudentDirectory({ facilityId }: { facilityId: string }) {
           {expanded ? "Show fewer" : `Show all ${filtered.length} students`}
         </button>
       )}
+    </Panel>
+  );
+}
+
+function WeeklyAttendanceRegister({ facilityId }: { facilityId: string }) {
+  const rows = weeklyAttendance[facilityId] ?? [];
+  if (rows.length === 0) return null;
+
+  const avgAttendance = rows.length > 0 ? (rows.reduce((a, r) => a + r.percentage, 0) / rows.length).toFixed(1) : "0";
+  const totalLate = rows.reduce((a, r) => a + r.lateArrivals, 0);
+
+  return (
+    <Panel
+      title="Weekly attendance register"
+      aside={`Last ${rows.length} working days · Avg ${avgAttendance}% student attendance`}
+    >
+      <div className="overflow-x-auto">
+        <table className="ledger">
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Day</th>
+              <th scope="col" className="num">Enrolled</th>
+              <th scope="col" className="num">Present</th>
+              <th scope="col" className="num">Absent</th>
+              <th scope="col" className="num">Attendance %</th>
+              <th scope="col" className="num">Staff present</th>
+              <th scope="col" className="num">Staff absent</th>
+              <th scope="col" className="num">Late arrivals</th>
+              <th scope="col">Remarks</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.date}>
+                <td data-label="Date" className="whitespace-nowrap">{formatDate(r.date).split(" ").slice(0, 2).join(" ")}</td>
+                <td data-label="Day">{r.day}</td>
+                <td data-label="Enrolled" className="num">{r.enrolled}</td>
+                <td data-label="Present" className="num font-semibold">{r.present}</td>
+                <td data-label="Absent" className="num">{r.absent}</td>
+                <td data-label="Attendance %" className="num">
+                  <span className={cn("font-semibold", r.percentage < 78 ? "text-problem" : r.percentage < 85 ? "text-pending" : "text-verified")}>
+                    {r.percentage}%
+                  </span>
+                </td>
+                <td data-label="Staff present" className="num">{r.staffPresent}/{r.staffTotal}</td>
+                <td data-label="Staff absent" className="num">{r.staffAbsent}</td>
+                <td data-label="Late arrivals" className="num">
+                  <span className={cn(r.lateArrivals > 2 && "font-semibold text-pending")}>{r.lateArrivals}</span>
+                </td>
+                <td data-label="Remarks" className="max-w-[180px] text-xs text-ink-muted">{r.remarks}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="font-semibold">
+              <td colSpan={2}>Week summary</td>
+              <td className="num">{rows[0]?.enrolled ?? 0}</td>
+              <td className="num">{Math.round(rows.reduce((a, r) => a + r.present, 0) / rows.length)}</td>
+              <td className="num">{Math.round(rows.reduce((a, r) => a + r.absent, 0) / rows.length)}</td>
+              <td className="num">{avgAttendance}%</td>
+              <td className="num" colSpan={2}>—</td>
+              <td className="num">{totalLate} total</td>
+              <td />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </Panel>
+  );
+}
+
+function ClassDailyBreakdown({ facilityId }: { facilityId: string }) {
+  const allRows = classDailyAttendance[facilityId] ?? [];
+  if (allRows.length === 0) return null;
+
+  const dates = [...new Set(allRows.map((r) => r.date))].sort();
+  const classes = [...new Set(allRows.map((r) => r.className))];
+  const [selectedDate, setSelectedDate] = useState(dates[dates.length - 1] ?? "");
+  const rows = allRows.filter((r) => r.date === selectedDate);
+
+  const totalE = rows.reduce((a, r) => a + r.enrolledBoys + r.enrolledGirls, 0);
+  const totalP = rows.reduce((a, r) => a + r.presentBoys + r.presentGirls, 0);
+
+  return (
+    <Panel
+      title="Class-wise daily attendance"
+      aside={`${classes.length} classes · ${dates.length} days`}
+    >
+      <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2">
+        <span className="text-xs font-semibold text-ink-muted">Select date:</span>
+        <select
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          className="rounded-sm border border-line bg-surface px-2 py-1 text-xs"
+        >
+          {dates.map((d) => (
+            <option key={d} value={d}>{formatDate(d, true)}</option>
+          ))}
+        </select>
+        <span className="ml-auto text-xs text-ink-muted">
+          Overall: {totalP}/{totalE} ({totalE > 0 ? pct(totalP, totalE, 0) : 0}%)
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="ledger">
+          <thead>
+            <tr>
+              <th scope="col">Class</th>
+              <th scope="col" className="num">Boys enrolled</th>
+              <th scope="col" className="num">Boys present</th>
+              <th scope="col" className="num">Boys absent</th>
+              <th scope="col" className="num">Girls enrolled</th>
+              <th scope="col" className="num">Girls present</th>
+              <th scope="col" className="num">Girls absent</th>
+              <th scope="col" className="num">Attendance %</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.className}>
+                <td data-label="Class">{r.className}</td>
+                <td data-label="Boys enrolled" className="num">{r.enrolledBoys}</td>
+                <td data-label="Boys present" className="num font-semibold">{r.presentBoys}</td>
+                <td data-label="Boys absent" className="num">{r.absentBoys}</td>
+                <td data-label="Girls enrolled" className="num">{r.enrolledGirls}</td>
+                <td data-label="Girls present" className="num font-semibold">{r.presentGirls}</td>
+                <td data-label="Girls absent" className="num">{r.absentGirls}</td>
+                <td data-label="Attendance %" className="num">
+                  <span className={cn("font-semibold", r.percentage < 75 ? "text-problem" : r.percentage < 85 ? "text-pending" : "text-verified")}>
+                    {r.percentage}%
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="font-semibold">
+              <td>Total</td>
+              <td className="num">{rows.reduce((a, r) => a + r.enrolledBoys, 0)}</td>
+              <td className="num">{rows.reduce((a, r) => a + r.presentBoys, 0)}</td>
+              <td className="num">{rows.reduce((a, r) => a + r.absentBoys, 0)}</td>
+              <td className="num">{rows.reduce((a, r) => a + r.enrolledGirls, 0)}</td>
+              <td className="num">{rows.reduce((a, r) => a + r.presentGirls, 0)}</td>
+              <td className="num">{rows.reduce((a, r) => a + r.absentGirls, 0)}</td>
+              <td className="num">{totalE > 0 ? pct(totalP, totalE, 0) : 0}%</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </Panel>
   );
 }

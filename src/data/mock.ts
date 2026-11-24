@@ -2431,3 +2431,293 @@ export const biometricByFacility: Record<string, BiometricLog[]> = (() => {
   for (const l of biometricLogs) (map[l.facilityId] ??= []).push(l);
   return map;
 })();
+
+// ---------- Weekly attendance register (last 7 working days per school) ----------
+export interface DailyAttendanceRow {
+  date: string;
+  day: string;
+  enrolled: number;
+  present: number;
+  absent: number;
+  percentage: number;
+  staffTotal: number;
+  staffPresent: number;
+  staffAbsent: number;
+  lateArrivals: number;
+  remarks: string;
+}
+
+export const weeklyAttendance: Record<string, DailyAttendanceRow[]> = (() => {
+  const r = mulberry32(2311 * 37);
+  const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
+  const map: Record<string, DailyAttendanceRow[]> = {};
+  const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  for (const f of facilities.filter((f) => f.kind === "school")) {
+    const day = schoolDays[f.id];
+    if (!day) continue;
+    const enrolled = day.classes.reduce((a, c) => a + c.enrolledBoys + c.enrolledGirls, 0);
+    const staffCount = (staffByFacility[f.id] ?? []).length;
+    const rows: DailyAttendanceRow[] = [];
+    for (let d = 6; d >= 0; d--) {
+      const date = addDays(TODAY, -d);
+      const wd = weekday(date);
+      if (wd === 0 || wd === 5) continue; // skip Sunday & Friday
+      const present = int(Math.floor(enrolled * 0.72), Math.min(enrolled, Math.floor(enrolled * 0.95)));
+      const staffP = int(Math.floor(staffCount * 0.78), staffCount);
+      const lateArr = int(0, Math.floor(staffCount * 0.15));
+      const remarks = d === 0 ? "Today — in progress" : lateArr > 2 ? "Multiple late arrivals noted" : present / enrolled < 0.78 ? "Low attendance — weather/event" : "Normal day";
+      rows.push({
+        date,
+        day: dayNames[wd]!,
+        enrolled,
+        present,
+        absent: enrolled - present,
+        percentage: +((present / enrolled) * 100).toFixed(1),
+        staffTotal: staffCount,
+        staffPresent: staffP,
+        staffAbsent: staffCount - staffP,
+        lateArrivals: lateArr,
+        remarks,
+      });
+    }
+    map[f.id] = rows;
+  }
+  return map;
+})();
+
+// ---------- Doctor daily treatment log (per doctor, today's cases) ----------
+export interface TreatmentLogEntry {
+  id: string;
+  doctorStaffId: string;
+  facilityId: string;
+  timeMin: number;
+  patientName: string;
+  age: number;
+  gender: "M" | "F";
+  complaint: string;
+  examination: string;
+  diagnosis: string;
+  treatment: string;
+  medicine: string;
+  labTests: string | null;
+  outcome: "Discharged" | "Admitted" | "Referred" | "Under observation" | "Follow-up advised";
+  billingPkr: number;
+  waived: boolean;
+  followUpDate: string | null;
+}
+
+const EXAMINATIONS = [
+  "BP 130/85, Temp 101°F, Pulse 92", "BP 160/100, Temp 98.6°F, Pulse 78",
+  "BP 110/70, Temp 103°F, Pulse 110", "BP 120/80, Temp 98°F, Pulse 72",
+  "Tenderness RIF, guarding +", "Chest clear, SpO2 94%",
+  "Swelling R ankle, crepitus +", "Throat congested, tonsils enlarged",
+  "BP 90/60, dehydrated, weak pulse", "Wound 4cm, bleeding controlled",
+  "Abdomen soft, mild tenderness", "Rash on arms bilateral, no fever",
+  "Eye redness bilateral, discharge +", "Ear drum intact, fluid behind TM",
+  "Foetal heart sound normal, 140 bpm", "Pupils equal reactive, GCS 15",
+];
+const LAB_TESTS = [
+  "CBC, ESR", "Blood sugar (R), HbA1c", "Urine R/E", "X-Ray chest PA",
+  "X-Ray limb AP/Lat", "LFTs", "RFTs, Electrolytes", "Ultrasound abdomen",
+  "Blood C/S", "ECG 12-lead", null, null, null, null,
+];
+const TREATMENTS = [
+  "IV fluids + antipyretics", "Oral medication + rest advised",
+  "Wound dressing + tetanus booster", "Nebulisation × 3 + steroids",
+  "Plaster application + analgesics", "IV antibiotics + monitoring",
+  "Blood transfusion arranged", "Surgical referral made",
+  "Observation for 6 hours", "Counselling + medication",
+  "Normal delivery conducted", "Minor surgery under LA",
+  "Incision & drainage", "Catheterisation + fluids",
+  "Eye wash + topical drops", "Oral rehydration + zinc",
+];
+
+export const treatmentLogs: TreatmentLogEntry[] = (() => {
+  const r = mulberry32(2311 * 41);
+  const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
+  const entries: TreatmentLogEntry[] = [];
+  for (const dp of doctorProfiles) {
+    const count = int(5, dp.patientsSeenToday);
+    for (let i = 0; i < count; i++) {
+      const isMale = r() > 0.45;
+      const idx = int(0, COMPLAINTS.length - 1);
+      const outcomes: TreatmentLogEntry["outcome"][] = ["Discharged", "Discharged", "Discharged", "Follow-up advised", "Admitted", "Referred", "Under observation"];
+      const waived = r() < 0.35;
+      entries.push({
+        id: `TL-${dp.staffId}-${String(i + 1).padStart(3, "0")}`,
+        doctorStaffId: dp.staffId,
+        facilityId: dp.facilityId,
+        timeMin: int(8 * 60, 11 * 60 + 30),
+        patientName: isMale
+          ? `${PATIENT_FIRST_M[int(0, PATIENT_FIRST_M.length - 1)]} ${PATIENT_LAST[int(0, PATIENT_LAST.length - 1)]}`
+          : `${PATIENT_FIRST_F[int(0, PATIENT_FIRST_F.length - 1)]} ${PATIENT_LAST[int(0, PATIENT_LAST.length - 1)]}`,
+        age: int(1, 80),
+        gender: isMale ? "M" : "F",
+        complaint: COMPLAINTS[idx]!,
+        examination: EXAMINATIONS[int(0, EXAMINATIONS.length - 1)]!,
+        diagnosis: DIAGNOSES[idx]!,
+        treatment: TREATMENTS[int(0, TREATMENTS.length - 1)]!,
+        medicine: MEDICINES[idx]!,
+        labTests: LAB_TESTS[int(0, LAB_TESTS.length - 1)] ?? null,
+        outcome: outcomes[int(0, outcomes.length - 1)]!,
+        billingPkr: waived ? 0 : int(1, 8) * 100,
+        waived,
+        followUpDate: r() > 0.5 ? addDays(TODAY, int(3, 21)) : null,
+      });
+    }
+  }
+  return entries;
+})();
+
+export const treatmentLogsByDoctor: Record<string, TreatmentLogEntry[]> = (() => {
+  const map: Record<string, TreatmentLogEntry[]> = {};
+  for (const t of treatmentLogs) (map[t.doctorStaffId] ??= []).push(t);
+  return map;
+})();
+
+export const treatmentLogsByFacility: Record<string, TreatmentLogEntry[]> = (() => {
+  const map: Record<string, TreatmentLogEntry[]> = {};
+  for (const t of treatmentLogs) (map[t.facilityId] ??= []).push(t);
+  return map;
+})();
+
+// ---------- Facility billing / revenue (health) ----------
+export interface FacilityBilling {
+  facilityId: string;
+  date: string;
+  opdFees: number;
+  labCharges: number;
+  bedCharges: number;
+  surgeryFees: number;
+  medicineCharges: number;
+  totalCollected: number;
+  totalWaived: number;
+  patientsCharged: number;
+  patientsWaived: number;
+}
+
+export const facilityBillingToday: Record<string, FacilityBilling> = (() => {
+  const r = mulberry32(2311 * 43);
+  const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
+  const map: Record<string, FacilityBilling> = {};
+  for (const f of healthFacilities) {
+    const logs = treatmentLogsByFacility[f.id] ?? [];
+    const charged = logs.filter((l) => !l.waived);
+    const waived = logs.filter((l) => l.waived);
+    const opd = f.healthType === "DHQ" ? int(15000, 35000) : f.healthType === "WCH" ? int(6000, 15000) : int(1000, 5000);
+    const lab = f.healthType === "DHQ" ? int(8000, 20000) : f.healthType === "WCH" ? int(3000, 10000) : int(500, 3000);
+    const bed = f.healthType === "DHQ" ? int(5000, 15000) : f.healthType === "WCH" ? int(2000, 8000) : int(0, 2000);
+    const surg = f.healthType === "DHQ" ? int(10000, 40000) : f.healthType === "WCH" ? int(2000, 15000) : 0;
+    const med = f.healthType === "DHQ" ? int(12000, 30000) : f.healthType === "WCH" ? int(5000, 15000) : int(1000, 5000);
+    map[f.id] = {
+      facilityId: f.id,
+      date: TODAY,
+      opdFees: opd,
+      labCharges: lab,
+      bedCharges: bed,
+      surgeryFees: surg,
+      medicineCharges: med,
+      totalCollected: opd + lab + bed + surg + med,
+      totalWaived: int(2000, 15000),
+      patientsCharged: charged.length,
+      patientsWaived: waived.length,
+    };
+  }
+  return map;
+})();
+
+// ---------- Weekly billing trend (last 7 days per health facility) ----------
+export interface DailyBillingRow {
+  date: string;
+  day: string;
+  opdFees: number;
+  labCharges: number;
+  bedCharges: number;
+  surgeryFees: number;
+  medicineCharges: number;
+  total: number;
+  waivedAmount: number;
+  patientsTotal: number;
+}
+
+export const weeklyBilling: Record<string, DailyBillingRow[]> = (() => {
+  const r = mulberry32(2311 * 47);
+  const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const map: Record<string, DailyBillingRow[]> = {};
+  for (const f of healthFacilities) {
+    const base = facilityBillingToday[f.id]!;
+    const rows: DailyBillingRow[] = [];
+    for (let d = 6; d >= 0; d--) {
+      const date = addDays(TODAY, -d);
+      const wd = weekday(date);
+      const scale = wd === 5 ? 0.3 : wd === 0 ? 0.5 : 0.75 + r() * 0.5;
+      const opd = Math.round(base.opdFees * scale);
+      const lab = Math.round(base.labCharges * scale);
+      const bed = Math.round(base.bedCharges * scale);
+      const surg = Math.round(base.surgeryFees * scale * (r() > 0.3 ? 1 : 0));
+      const med = Math.round(base.medicineCharges * scale);
+      rows.push({
+        date,
+        day: dayNames[wd]!,
+        opdFees: opd, labCharges: lab, bedCharges: bed,
+        surgeryFees: surg, medicineCharges: med,
+        total: opd + lab + bed + surg + med,
+        waivedAmount: Math.round(base.totalWaived * scale),
+        patientsTotal: int(Math.floor(base.patientsCharged * scale * 0.8), Math.ceil(base.patientsCharged * scale * 1.2)),
+      });
+    }
+    map[f.id] = rows;
+  }
+  return map;
+})();
+
+// ---------- Daily student attendance week view (per class per school) ----------
+export interface ClassDailyAttendance {
+  className: string;
+  date: string;
+  day: string;
+  enrolledBoys: number;
+  enrolledGirls: number;
+  presentBoys: number;
+  presentGirls: number;
+  absentBoys: number;
+  absentGirls: number;
+  percentage: number;
+}
+
+export const classDailyAttendance: Record<string, ClassDailyAttendance[]> = (() => {
+  const r = mulberry32(2311 * 53);
+  const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const map: Record<string, ClassDailyAttendance[]> = {};
+  for (const f of facilities.filter((f) => f.kind === "school")) {
+    const day = schoolDays[f.id];
+    if (!day) continue;
+    const rows: ClassDailyAttendance[] = [];
+    for (let d = 6; d >= 0; d--) {
+      const date = addDays(TODAY, -d);
+      const wd = weekday(date);
+      if (wd === 0 || wd === 5) continue;
+      for (const cls of day.classes) {
+        const pBoys = int(Math.floor(cls.enrolledBoys * 0.7), cls.enrolledBoys);
+        const pGirls = int(Math.floor(cls.enrolledGirls * 0.7), cls.enrolledGirls);
+        const total = cls.enrolledBoys + cls.enrolledGirls;
+        rows.push({
+          className: cls.className,
+          date,
+          day: dayNames[wd]!,
+          enrolledBoys: cls.enrolledBoys,
+          enrolledGirls: cls.enrolledGirls,
+          presentBoys: pBoys,
+          presentGirls: pGirls,
+          absentBoys: cls.enrolledBoys - pBoys,
+          absentGirls: cls.enrolledGirls - pGirls,
+          percentage: total > 0 ? +((pBoys + pGirls) / total * 100).toFixed(1) : 0,
+        });
+      }
+    }
+    map[f.id] = rows;
+  }
+  return map;
+})();
