@@ -16,15 +16,19 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   addDays,
+  biometricLogs,
+  doctorProfiles,
   facilityById,
   formatDate,
+  hhmm,
   staffById,
   staffHistory,
   TODAY,
   todayStatus,
+  treatmentLogsByDoctor,
   type DayMark,
 } from "@/data/mock";
-import { pct } from "@/lib/metrics";
+import { pct, formatPkr } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 import { inRoleScope, useApp } from "@/lib/app-state";
 import { CalendarDays, Download, ShieldCheck } from "lucide-react";
@@ -355,6 +359,117 @@ function StaffDetailPage() {
           </table>
         </div>
       </Panel>
+
+      {/* ── Biometric record ── */}
+      {(() => {
+        const bio = biometricLogs.find((l) => l.staffId === s.id);
+        if (!bio) return null;
+        return (
+          <Panel title="Today's biometric record" aside={bio.method}>
+            <div className="grid grid-cols-2 gap-3 px-4 py-3 sm:grid-cols-4">
+              <div>
+                <div className="text-2xs text-ink-muted">Check-in</div>
+                <div className="text-sm font-bold tabular-nums">{hhmm(bio.checkIn)}</div>
+              </div>
+              <div>
+                <div className="text-2xs text-ink-muted">Check-out</div>
+                <div className="text-sm font-bold tabular-nums">{bio.checkOut ? hhmm(bio.checkOut) : "Still on site"}</div>
+              </div>
+              <div>
+                <div className="text-2xs text-ink-muted">Method</div>
+                <div className="text-sm font-semibold">{bio.method}</div>
+              </div>
+              <div>
+                <div className="text-2xs text-ink-muted">Punctuality</div>
+                <Pill tone={bio.status === "On time" ? "verified" : bio.status === "Late" ? "pending" : "problem"}>
+                  {bio.status}
+                </Pill>
+              </div>
+            </div>
+          </Panel>
+        );
+      })()}
+
+      {/* ── Doctor profile (if medical officer) ── */}
+      {(() => {
+        const doc = doctorProfiles.find((d) => d.staffId === s.id);
+        if (!doc) return null;
+        const logs = treatmentLogsByDoctor[s.id] ?? [];
+        const totalBilled = logs.reduce((a, l) => a + l.billingPkr, 0);
+        const waivedCount = logs.filter((l) => l.waived).length;
+        return (
+          <>
+            <Panel title="Doctor profile" aside={doc.qualification}>
+              <div className="grid grid-cols-2 gap-3 px-4 py-3 sm:grid-cols-3 lg:grid-cols-6">
+                <div>
+                  <div className="text-2xs text-ink-muted">Qualification</div>
+                  <div className="text-sm font-semibold">{doc.qualification}</div>
+                </div>
+                <div>
+                  <div className="text-2xs text-ink-muted">Specialisation</div>
+                  <div className="text-sm font-semibold">{doc.specialisation}</div>
+                </div>
+                <div>
+                  <div className="text-2xs text-ink-muted">Department</div>
+                  <div className="text-sm font-semibold">{doc.department}</div>
+                </div>
+                <div>
+                  <div className="text-2xs text-ink-muted">Years of service</div>
+                  <div className="text-sm font-bold tabular-nums">{doc.yearsOfService}</div>
+                </div>
+                <div>
+                  <div className="text-2xs text-ink-muted">Patients today</div>
+                  <div className="text-sm font-bold tabular-nums">{doc.patientsSeenToday}</div>
+                </div>
+                <div>
+                  <div className="text-2xs text-ink-muted">This month</div>
+                  <div className="text-sm font-bold tabular-nums">{doc.patientsThisMonth}</div>
+                </div>
+              </div>
+            </Panel>
+            {logs.length > 0 && (
+              <Panel title="Today's treatment log" aside={`${logs.length} patients · ₨${formatPkr(totalBilled)} billed · ${waivedCount} waived`}>
+                <div className="max-h-[400px] overflow-auto">
+                  <table className="ledger">
+                    <thead>
+                      <tr>
+                        <th scope="col">Time</th>
+                        <th scope="col">Patient</th>
+                        <th scope="col" className="num">Age</th>
+                        <th scope="col">Complaint</th>
+                        <th scope="col">Diagnosis</th>
+                        <th scope="col">Treatment</th>
+                        <th scope="col">Outcome</th>
+                        <th scope="col" className="num">Billing</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {logs.map((t) => (
+                        <tr key={t.id}>
+                          <td data-label="Time" className="num whitespace-nowrap">{hhmm(t.timeMin)}</td>
+                          <td data-label="Patient" className="font-semibold">{t.patientName}</td>
+                          <td data-label="Age" className="num">{t.age}</td>
+                          <td data-label="Complaint" className="max-w-[140px] text-xs">{t.complaint}</td>
+                          <td data-label="Diagnosis" className="max-w-[140px] text-xs">{t.diagnosis}</td>
+                          <td data-label="Treatment" className="max-w-[140px] text-xs">{t.treatment}</td>
+                          <td data-label="Outcome">
+                            <Pill tone={t.outcome === "Discharged" ? "verified" : t.outcome === "Follow-up advised" ? "sent" : t.outcome === "Referred" ? "pending" : "neutral"}>
+                              {t.outcome}
+                            </Pill>
+                          </td>
+                          <td data-label="Billing" className="num">
+                            {t.waived ? <span className="text-ink-muted">Waived</span> : <span className="font-semibold">₨{t.billingPkr}</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Panel>
+            )}
+          </>
+        );
+      })()}
 
       <p className="inline-flex items-center gap-2 text-xs text-ink-muted">
         <ShieldCheck className="size-4 shrink-0 text-kurram" />

@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import {
   isAccepted,
   hhmm,
+  patientStatsById,
+  facilityBillingToday,
   REPORT_STATUS_ORDER,
   SERVICES,
   SHIFT_NAMES,
@@ -21,7 +23,7 @@ import {
 } from "@/data/mock";
 import { downloadCsv } from "@/lib/csv";
 import { useApp, useScopedFacilities } from "@/lib/app-state";
-import { pct } from "@/lib/metrics";
+import { formatPkr, pct, patientSummary } from "@/lib/metrics";
 import { useSort } from "@/lib/use-sort";
 import { cn } from "@/lib/utils";
 
@@ -45,7 +47,7 @@ export const Route = createFileRoute("/health/")({
   component: HealthPage,
 });
 
-type Col = "name" | "type" | "tehsil" | "coverage" | "opd" | "beds" | "down" | "status";
+type Col = "name" | "type" | "tehsil" | "coverage" | "opd" | "beds" | "down" | "status" | "emergency" | "admissions" | "billing";
 
 function HealthPage() {
   const { statusFor, reportFor, filters, resetFilters, shiftFor } = useApp();
@@ -59,7 +61,9 @@ function HealthPage() {
         const shift = shiftFor(f.id, shiftKey)!;
         const cov = shiftCoverage(shift);
         const down = SERVICES.filter((s) => shift.services[s] === false);
-        return { f, st: statusFor(f.id), r: reportFor(f.id), shift, cov, down };
+        const ps = patientStatsById[f.id];
+        const bill = facilityBillingToday[f.id];
+        return { f, st: statusFor(f.id), r: reportFor(f.id), shift, cov, down, ps, bill };
       }),
     [list, shiftKey, statusFor, reportFor, shiftFor],
   );
@@ -75,6 +79,9 @@ function HealthPage() {
       beds: (x) => x.shift.bedsAvailable,
       down: (x) => x.down.length,
       status: (x) => REPORT_STATUS_ORDER.indexOf(x.st),
+      emergency: (x) => x.ps?.emergencyToday ?? -1,
+      admissions: (x) => x.ps?.admissionsToday ?? -1,
+      billing: (x) => x.bill?.totalCollected ?? -1,
     },
     "type",
   );
@@ -128,42 +135,71 @@ function HealthPage() {
         <FilterBar showDepartment={false} showShift onExportCsv={exportCsv} />
       </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiTile
-          label="Reported today"
-          value={reported}
-          sub={`of ${rows.length} facilities`}
-          tone={reported / Math.max(1, rows.length) > 0.7 ? "verified" : "pending"}
-          freshness="Morning shift report, accepted by server"
-        />
-        <KpiTile
-          label={`${shiftName} shift coverage`}
-          value={required ? `${pct(covered, required, 0)}%` : "—"}
-          sub={`${covered} of ${required} required posts on site`}
-          tone={below ? "pending" : "verified"}
-          freshness={`${below} ${below === 1 ? "facility" : "facilities"} below minimum`}
-        />
-        <KpiTile
-          label="OPD so far"
-          value={opd.toLocaleString("en")}
-          sub={
-            shiftKey === "M" ? "patients seen since 08:00" : "OPD counted in the morning shift only"
-          }
-          tone="kurram"
-          freshness={
-            shiftKey === "M"
-              ? "Reported by facility administrators"
-              : "Evening and night shifts have no OPD"
-          }
-        />
-        <KpiTile
-          label="Services down"
-          value={servicesDown}
-          sub={`across ${rows.filter((x) => x.down.length).length} facilities`}
-          tone={servicesDown ? "problem" : "neutral"}
-          freshness={`${shiftName} shift handover`}
-        />
-      </div>
+      {(() => {
+        const ps = patientSummary(rows.map((x) => x.f.id));
+        const totalBilling = rows.reduce((a, x) => a + (x.bill?.totalCollected ?? 0), 0);
+        const totalWaived = rows.reduce((a, x) => a + (x.bill?.totalWaived ?? 0), 0);
+        return (
+          <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+            <KpiTile
+              label="Reported today"
+              value={reported}
+              sub={`of ${rows.length} facilities`}
+              tone={reported / Math.max(1, rows.length) > 0.7 ? "verified" : "pending"}
+              freshness="Morning shift report, accepted by server"
+            />
+            <KpiTile
+              label={`${shiftName} shift coverage`}
+              value={required ? `${pct(covered, required, 0)}%` : "—"}
+              sub={`${covered} of ${required} required posts on site`}
+              tone={below ? "pending" : "verified"}
+              freshness={`${below} ${below === 1 ? "facility" : "facilities"} below minimum`}
+            />
+            <KpiTile
+              label="OPD patients"
+              value={ps.opdTotal.toLocaleString("en")}
+              sub="patients seen since 08:00"
+              tone="kurram"
+              freshness="Across all reporting facilities"
+            />
+            <KpiTile
+              label="Emergency cases"
+              value={ps.emergencyTotal.toString()}
+              sub="today across all facilities"
+              tone={ps.emergencyTotal > 50 ? "pending" : "neutral"}
+              freshness="From facility daybooks"
+            />
+            <KpiTile
+              label="Beds occupied"
+              value={ps.bedsTotal ? `${pct(ps.bedsOccupied, ps.bedsTotal, 0)}%` : "—"}
+              sub={`${ps.bedsOccupied} of ${ps.bedsTotal} beds`}
+              tone={ps.bedsOccupied / Math.max(1, ps.bedsTotal) > 0.85 ? "problem" : "verified"}
+              freshness="Current occupancy rate"
+            />
+            <KpiTile
+              label="Admissions today"
+              value={ps.admissionsTotal.toString()}
+              sub={`${ps.dischargesToday} discharged · ${ps.referralsTotal} referred`}
+              tone="sent"
+              freshness="From patient daybook"
+            />
+            <KpiTile
+              label="Revenue collected"
+              value={`₨${formatPkr(totalBilling)}`}
+              sub={`₨${formatPkr(totalWaived)} waived (free treatment)`}
+              tone="verified"
+              freshness="OPD + lab + bed + surgery + medicine"
+            />
+            <KpiTile
+              label="Services down"
+              value={servicesDown}
+              sub={`across ${rows.filter((x) => x.down.length).length} facilities`}
+              tone={servicesDown ? "problem" : "neutral"}
+              freshness={`${shiftName} shift handover`}
+            />
+          </div>
+        );
+      })()}
 
       <Panel
         title={`Facilities, ${shiftName.toLowerCase()} shift`}
@@ -205,13 +241,22 @@ function HealthPage() {
                   <SortTh id="down" active={key} dir={dir} onSort={toggle}>
                     Services down
                   </SortTh>
+                  <SortTh id="emergency" active={key} dir={dir} onSort={toggle} num>
+                    Emergency
+                  </SortTh>
+                  <SortTh id="admissions" active={key} dir={dir} onSort={toggle} num>
+                    Admissions
+                  </SortTh>
+                  <SortTh id="billing" active={key} dir={dir} onSort={toggle} num>
+                    Revenue
+                  </SortTh>
                   <SortTh id="status" active={key} dir={dir} onSort={toggle}>
                     Report status
                   </SortTh>
                 </tr>
               </thead>
               <tbody>
-                {sorted.map(({ f, st, shift, cov, down }) => (
+                {sorted.map(({ f, st, shift, cov, down, ps, bill }) => (
                   <tr key={f.id}>
                     <td data-label="Facility">
                       <Link
@@ -269,6 +314,22 @@ function HealthPage() {
                           ))}
                         </span>
                       )}
+                    </td>
+                    <td data-label="Emergency" className="num">
+                      {ps ? ps.emergencyToday : "—"}
+                    </td>
+                    <td data-label="Admissions" className="num">
+                      {ps ? (
+                        <>
+                          {ps.admissionsToday}
+                          <span className="ml-1 text-xs text-ink-muted">
+                            ({ps.dischargesToday} disch.)
+                          </span>
+                        </>
+                      ) : "—"}
+                    </td>
+                    <td data-label="Revenue" className="num">
+                      {bill ? `₨${formatPkr(bill.totalCollected)}` : "—"}
                     </td>
                     <td data-label="Report status">
                       <StatusBadge status={st} short />

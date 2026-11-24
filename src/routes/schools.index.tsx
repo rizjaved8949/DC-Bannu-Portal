@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  biometricByFacility,
   hhmm,
   REPORT_STATUS_ORDER,
   STATUS_LABEL,
@@ -184,36 +185,75 @@ function SchoolsPage() {
         />
       </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiTile
-          label="Reported today"
-          value={reported}
-          sub={`of ${rows.length} schools`}
-          tone={reported / Math.max(1, rows.length) > 0.7 ? "verified" : "pending"}
-          freshness="Accepted by the district server"
-        />
-        <KpiTile
-          label="Staff present"
-          value={staffT ? `${pct(staffP, staffT)}%` : "No data"}
-          sub={`${staffP} of ${staffT} in reporting schools`}
-          tone="verified"
-          freshness={`${reported} of ${rows.length} schools counted`}
-        />
-        <KpiTile
-          label="Students present"
-          value={stuT ? `${pct(stuP, stuT)}%` : "No data"}
-          sub={`${stuP.toLocaleString("en")} of ${stuT.toLocaleString("en")} enrolled`}
-          tone="verified"
-          freshness={`Enrolment on record: ${stuEnrolledAll.toLocaleString("en")}`}
-        />
-        <KpiTile
-          label="No report yet"
-          value={rows.filter((x) => x.st === "none").length}
-          sub="schools without a report"
-          tone={rows.some((x) => x.st === "none") ? "problem" : "neutral"}
-          freshness="Each creates a review task at 10:00"
-        />
-      </div>
+      {(() => {
+        const bioLogs = rows.flatMap((x) => biometricByFacility[x.f.id] ?? []);
+        const bioOnTime = bioLogs.filter((l) => l.status === "On time").length;
+        const bioLate = bioLogs.filter((l) => l.status === "Late" || l.status === "Very late").length;
+        const absentStaff = rows.reduce((a, x) => {
+          if (x.staff.present == null) return a;
+          return a + (x.staff.total - x.staff.present);
+        }, 0);
+        return (
+          <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+            <KpiTile
+              label="Reported today"
+              value={reported}
+              sub={`of ${rows.length} schools`}
+              tone={reported / Math.max(1, rows.length) > 0.7 ? "verified" : "pending"}
+              freshness="Accepted by the district server"
+            />
+            <KpiTile
+              label="Staff present"
+              value={staffT ? `${pct(staffP, staffT)}%` : "No data"}
+              sub={`${staffP} of ${staffT} in reporting schools`}
+              tone="verified"
+              freshness={`${reported} of ${rows.length} schools counted`}
+            />
+            <KpiTile
+              label="Staff absent"
+              value={absentStaff.toString()}
+              sub="absent without leave or on duty"
+              tone={absentStaff > 10 ? "problem" : "neutral"}
+              freshness="From accepted school reports"
+            />
+            <KpiTile
+              label="Students present"
+              value={stuT ? `${pct(stuP, stuT)}%` : "No data"}
+              sub={`${stuP.toLocaleString("en")} of ${stuT.toLocaleString("en")} enrolled`}
+              tone="verified"
+              freshness={`Enrolment on record: ${stuEnrolledAll.toLocaleString("en")}`}
+            />
+            <KpiTile
+              label="Students absent"
+              value={stuT ? (stuT - stuP).toLocaleString("en") : "—"}
+              sub="across reporting schools"
+              tone={(stuT - stuP) / Math.max(1, stuT) > 0.2 ? "pending" : "neutral"}
+              freshness="Present = enrolled − absent"
+            />
+            <KpiTile
+              label="Biometric on time"
+              value={bioLogs.length ? `${pct(bioOnTime, bioLogs.length, 0)}%` : "—"}
+              sub={`${bioOnTime} on time · ${bioLate} late`}
+              tone={bioLate / Math.max(1, bioLogs.length) > 0.2 ? "pending" : "verified"}
+              freshness="Fingerprint / NFC check-in records"
+            />
+            <KpiTile
+              label="No report yet"
+              value={rows.filter((x) => x.st === "none").length}
+              sub="schools without a report"
+              tone={rows.some((x) => x.st === "none") ? "problem" : "neutral"}
+              freshness="Each creates a review task at 10:00"
+            />
+            <KpiTile
+              label="Total enrolment"
+              value={stuEnrolledAll.toLocaleString("en")}
+              sub={`across ${rows.length} schools`}
+              tone="neutral"
+              freshness="Boys and girls combined"
+            />
+          </div>
+        );
+      })()}
 
       <Panel title="Schools" aside={`${sorted.length} of ${schools.length} shown`}>
         {sorted.length === 0 ? (
