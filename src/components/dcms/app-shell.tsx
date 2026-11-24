@@ -34,10 +34,11 @@ import { cn } from "@/lib/utils";
 import { WorkspaceControls } from "./workspace-controls";
 import { GlobalSearch } from "./global-search";
 
+/** `department` marks a tab that only applies to officers holding that portfolio. */
 const TABS = [
   { to: "/", label: "Overview", icon: LayoutDashboard, exact: true },
-  { to: "/schools", label: "Schools", icon: GraduationCap },
-  { to: "/health", label: "Health facilities", icon: HeartPulse },
+  { to: "/schools", label: "Schools", icon: GraduationCap, department: "Education" },
+  { to: "/health", label: "Health facilities", icon: HeartPulse, department: "Health" },
   { to: "/staff", label: "Staff", icon: UsersRound },
   { to: "/map", label: "Facilities & map", icon: MapPinned },
   { to: "/inbox", label: "Reports inbox", icon: Inbox },
@@ -194,10 +195,16 @@ function TopBar() {
 
 function TabRow() {
   const { open } = useOpenReviewCount();
+  const { role } = useApp();
+  // An officer with one portfolio has no facilities on the other department's
+  // page, so the tab would only lead to an empty list.
+  const tabs = TABS.filter(
+    (t) => !("department" in t) || !role.department || t.department === role.department,
+  );
   return (
     <nav aria-label="Main" className="no-print border-b border-line bg-surface">
       <div className="mx-auto flex h-[54px] max-w-[1600px] items-stretch gap-1 overflow-x-auto px-2 lg:px-6 [scrollbar-width:none]">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <Link
             key={t.to}
             to={t.to}

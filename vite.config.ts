@@ -13,6 +13,15 @@ export default defineConfig({
   // Standalone builds emit Vercel's Build Output API. The Lovable wrapper
   // still selects its own managed preset when running in the Lovable editor.
   nitro: { preset: "vercel" },
+  vite: {
+    optimizeDeps: {
+      // use-sync-external-store's shim picks its implementation with a
+      // conditional require(), so Vite cannot detect its named exports and
+      // @tanstack/react-store fails to import useSyncExternalStoreWithSelector
+      // at runtime, which breaks hydration in dev. Pre-bundling both resolves it.
+      include: ["use-sync-external-store/shim/with-selector", "@tanstack/react-store"],
+    },
+  },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this

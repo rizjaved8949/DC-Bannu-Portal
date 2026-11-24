@@ -129,7 +129,7 @@ function HealthPage() {
       <PageHeader
         title="Health facilities"
         urdu="صحت کے مراکز"
-        description="Shift coverage against minimum staffing, OPD, beds and services, by facility. No patient information is collected."
+        description="Patients seen, emergency load, beds, shift coverage and revenue collected, by facility. Open any facility for its daybook, doctors and billing."
       />
       <div className="mt-4">
         <FilterBar showDepartment={false} showShift onExportCsv={exportCsv} />

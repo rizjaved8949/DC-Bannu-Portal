@@ -1,6 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, X } from "lucide-react";
+import {
+  Check,
+  FileText,
+  Fingerprint,
+  Stethoscope,
+  UserRound,
+  Users,
+  Wallet,
+  X,
+} from "lucide-react";
 import { useState } from "react";
+
+import { SectionTabs } from "@/components/dcms/section-tabs";
 
 import {
   BackLink,
@@ -81,6 +92,9 @@ function HealthDetailPage() {
   const [shiftKey, setShiftKey] = useState<ShiftKey>(
     filters.shift === "Evening" ? "E" : filters.shift === "Night" ? "N" : "M",
   );
+  const [section, setSection] = useState<
+    "shift" | "patients" | "doctors" | "billing" | "attendance" | "record"
+  >("shift");
   if (!f || f.kind !== "health" || !inRoleScope(role, f))
     return (
       <NotFoundPanel
@@ -116,13 +130,12 @@ function HealthDetailPage() {
         <PageHeader
           title={f.name}
           urdu="صحت کے مراکز"
-          description={`${f.typeLabel}, ${f.village}. ${staffList.length} staff on roster ${f.rosterVersion}. No patient information is collected.`}
+          description={`${f.typeLabel}, ${f.village}. ${staffList.length} staff on roster ${f.rosterVersion}. Use the tabs below for patients, doctors, billing and attendance.`}
         >
           <FacilityHeaderMeta f={f} report={r} />
         </PageHeader>
       </div>
 
-      <InstitutionRecord facility={f} />
       <TimestampStrip report={r} status={st} />
       {!confirmed && (
         <div className="panel border-l-[3px] border-l-pending p-4 text-sm">
@@ -195,6 +208,22 @@ function HealthDetailPage() {
         />
       </div>
 
+      <SectionTabs
+        label="Facility record sections"
+        value={section}
+        onChange={setSection}
+        options={[
+          { value: "shift", label: "Shift & staffing", icon: Users, count: shift.assignments.length },
+          { value: "patients", label: "Patients", icon: Stethoscope, count: (daybookByFacility[f.id] ?? []).length },
+          { value: "doctors", label: "Doctors", icon: UserRound, count: (doctorsByFacility[f.id] ?? []).length },
+          { value: "billing", label: "Billing", icon: Wallet },
+          { value: "attendance", label: "Attendance", icon: Fingerprint, count: (biometricByFacility[f.id] ?? []).length },
+          { value: "record", label: "Institution record", icon: FileText },
+        ]}
+      />
+
+      {section === "shift" && (
+      <>
       <div className="grid gap-4 xl:grid-cols-5">
         <Panel
           className="xl:col-span-2"
@@ -388,29 +417,37 @@ function HealthDetailPage() {
         </Panel>
       </div>
 
-      {/* ── Patient daybook ── */}
-      <PatientDaybook facilityId={f.id} confirmed={confirmed} />
+      </>
+      )}
 
-      {/* ── Doctor profiles ── */}
-      <DoctorProfiles facilityId={f.id} />
+      {section === "patients" && (
+        <PatientDaybook facilityId={f.id} confirmed={confirmed} />
+      )}
 
-      {/* ── Doctor treatment logs ── */}
-      <DoctorTreatmentLogs facilityId={f.id} />
+      {section === "doctors" && (
+        <>
+          <DoctorProfiles facilityId={f.id} />
+          <DoctorTreatmentLogs facilityId={f.id} />
+        </>
+      )}
 
-      {/* ── Billing & revenue ── */}
-      <BillingSection facilityId={f.id} />
+      {section === "billing" && <BillingSection facilityId={f.id} />}
 
-      {/* ── Biometric attendance ── */}
-      <BiometricAttendance facilityId={f.id} />
+      {section === "attendance" && <BiometricAttendance facilityId={f.id} />}
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Panel title="Facility checklist" aside="Older than 3 days is stale">
-          <InfraChecklist f={f} />
-        </Panel>
-        <Panel title="Last 14 days of submissions" aside="Today ringed" bodyClassName="px-4 py-3">
-          <SubmissionHistoryRow facilityId={f.id} />
-        </Panel>
-      </div>
+      {section === "record" && (
+        <>
+          <InstitutionRecord facility={f} />
+          <div className="grid gap-4 xl:grid-cols-2">
+            <Panel title="Facility checklist" aside="Older than 3 days is stale">
+              <InfraChecklist f={f} />
+            </Panel>
+            <Panel title="Last 14 days of submissions" aside="Today ringed" bodyClassName="px-4 py-3">
+              <SubmissionHistoryRow facilityId={f.id} />
+            </Panel>
+          </div>
+        </>
+      )}
     </div>
   );
 }

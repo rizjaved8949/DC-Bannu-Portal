@@ -473,8 +473,8 @@ function StaffDetailPage() {
 
       <p className="inline-flex items-center gap-2 text-xs text-ink-muted">
         <ShieldCheck className="size-4 shrink-0 text-kurram" />
-        Marked by the facility administrator and approved by the supervisor. This record holds
-        attendance marks only.
+        Attendance is marked by the facility administrator and approved by the supervisor.
+        Check-in times come from the facility's biometric gate.
       </p>
     </div>
   );

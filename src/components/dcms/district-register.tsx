@@ -4,7 +4,7 @@ import { staffByFacility, type Facility } from "@/data/mock";
 import { useApp } from "@/lib/app-state";
 
 export function DistrictRegister({ facilities }: { facilities: Facility[] }) {
-  const { schoolDayFor } = useApp();
+  const { schoolDayFor, role } = useApp();
   const schools = facilities.filter((f) => f.kind === "school");
   const hospitals = facilities.filter((f) => f.kind === "health");
   const staff = facilities.reduce((sum, f) => sum + (staffByFacility[f.id]?.length ?? 0), 0);
@@ -33,24 +33,28 @@ export function DistrictRegister({ facilities }: { facilities: Facility[] }) {
           report.
         </p>
       </div>
-      <Link to="/schools" className="register-stat">
-        <GraduationCap className="size-5 text-kurram" />
-        <div>
-          <p className="num text-[30px] font-bold leading-tight">{schools.length}</p>
-          <p className="font-semibold">Government schools</p>
-          <p className="mt-1 text-xs text-ink-muted">
-            {students.toLocaleString("en")} students enrolled
-          </p>
-        </div>
-      </Link>
-      <Link to="/health" className="register-stat">
-        <HeartPulse className="size-5 text-kurram" />
-        <div>
-          <p className="num text-[30px] font-bold leading-tight">{hospitals.length}</p>
-          <p className="font-semibold">Public health facilities</p>
-          <p className="mt-1 text-xs text-ink-muted">Shifts, services and bed capacity</p>
-        </div>
-      </Link>
+      {role.department !== "Health" && (
+        <Link to="/schools" className="register-stat">
+          <GraduationCap className="size-5 text-kurram" />
+          <div>
+            <p className="num text-[30px] font-bold leading-tight">{schools.length}</p>
+            <p className="font-semibold">Government schools</p>
+            <p className="mt-1 text-xs text-ink-muted">
+              {students.toLocaleString("en")} students enrolled
+            </p>
+          </div>
+        </Link>
+      )}
+      {role.department !== "Education" && (
+        <Link to="/health" className="register-stat">
+          <HeartPulse className="size-5 text-kurram" />
+          <div>
+            <p className="num text-[30px] font-bold leading-tight">{hospitals.length}</p>
+            <p className="font-semibold">Public health facilities</p>
+            <p className="mt-1 text-xs text-ink-muted">Shifts, services and bed capacity</p>
+          </div>
+        </Link>
+      )}
       <Link to="/staff" className="register-stat">
         <UsersRound className="size-5 text-kurram" />
         <div>

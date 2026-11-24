@@ -2279,9 +2279,29 @@ export interface DoctorProfile {
   department: string;
 }
 
-const QUALIFICATIONS = ["MBBS", "MBBS, FCPS", "MBBS, MCPS", "MBBS, Diploma Gynae", "MBBS, MS Surgery", "MBBS, DCH", "MBBS, DTM", "BDS"];
-const SPECIALISATIONS = ["General Medicine", "General Surgery", "Gynae & Obs", "Paediatrics", "Orthopaedics", "ENT", "Emergency Medicine", "Anaesthesia", "Dermatology", "Ophthalmology", "Dental"];
-const MED_DEPARTMENTS = ["OPD", "Emergency", "Ward A", "Ward B", "Surgery", "Labour Room", "Paediatric Ward", "ICU"];
+/**
+ * A doctor's degree, field and posting have to agree with each other: a BDS is
+ * a dentist and sits in the dental room, an MS Surgery is in theatre. Drawing
+ * the three independently produced records no clinician would accept.
+ */
+const MEDICAL_FIELDS: {
+  specialisation: string;
+  qualifications: string[];
+  departments: string[];
+  womenOnly?: boolean;
+}[] = [
+  { specialisation: "General Medicine", qualifications: ["MBBS", "MBBS, FCPS Medicine", "MBBS, MCPS"], departments: ["OPD", "Ward A", "Ward B"] },
+  { specialisation: "General Surgery", qualifications: ["MBBS, MS Surgery", "MBBS, FCPS Surgery"], departments: ["Surgery", "Ward B"] },
+  { specialisation: "Gynae & Obstetrics", qualifications: ["MBBS, Diploma Gynae", "MBBS, FCPS Gynae"], departments: ["Labour Room", "Ward A"], womenOnly: true },
+  { specialisation: "Paediatrics", qualifications: ["MBBS, DCH", "MBBS, FCPS Paediatrics"], departments: ["Paediatric Ward", "OPD"] },
+  { specialisation: "Orthopaedics", qualifications: ["MBBS, MS Orthopaedics", "MBBS, D-Ortho"], departments: ["Surgery", "OPD"] },
+  { specialisation: "ENT", qualifications: ["MBBS, DLO", "MBBS, FCPS ENT"], departments: ["OPD"] },
+  { specialisation: "Emergency Medicine", qualifications: ["MBBS", "MBBS, MCPS"], departments: ["Emergency"] },
+  { specialisation: "Anaesthesia", qualifications: ["MBBS, DA", "MBBS, FCPS Anaesthesia"], departments: ["Surgery", "ICU"] },
+  { specialisation: "Dermatology", qualifications: ["MBBS, DDerm"], departments: ["OPD"] },
+  { specialisation: "Ophthalmology", qualifications: ["MBBS, DOMS"], departments: ["OPD"] },
+  { specialisation: "Dentistry", qualifications: ["BDS", "BDS, FCPS"], departments: ["Dental"] },
+];
 
 export const doctorProfiles: DoctorProfile[] = (() => {
   const r = mulberry32(2311 * 23);
@@ -2291,17 +2311,31 @@ export const doctorProfiles: DoctorProfile[] = (() => {
     const docs = (staffByFacility[f.id] ?? []).filter(
       (s) => s.designation === "Medical Officer" || s.designation === "Women Medical Officer",
     );
+    // Smaller facilities have no theatre or ICU, so only the general fields apply.
+    const fields = MEDICAL_FIELDS.filter((x) => {
+      if (f.healthType === "DHQ") return true;
+      if (f.healthType === "WCH") return !["Dentistry", "Orthopaedics", "Anaesthesia"].includes(x.specialisation);
+      return ["General Medicine", "Paediatrics", "Emergency Medicine", "Gynae & Obstetrics"].includes(x.specialisation);
+    });
     for (const d of docs) {
+      // A Women Medical Officer may hold any field; only she may hold Gynae.
+      const eligible = d.designation === "Women Medical Officer"
+        ? fields
+        : fields.filter((x) => !x.womenOnly);
+      const field = eligible[int(0, eligible.length - 1)] ?? MEDICAL_FIELDS[0]!;
+      const years = int(2, 25);
+      const seenToday = int(8, 32);
       profiles.push({
         staffId: d.id,
         facilityId: f.id,
         name: d.name,
-        qualification: QUALIFICATIONS[int(0, QUALIFICATIONS.length - 1)]!,
-        specialisation: SPECIALISATIONS[int(0, SPECIALISATIONS.length - 1)]!,
-        yearsOfService: int(2, 25),
-        patientsSeenToday: int(8, 45),
-        patientsThisMonth: int(180, 650),
-        department: MED_DEPARTMENTS[int(0, Math.min(MED_DEPARTMENTS.length - 1, f.healthType === "DHQ" ? 7 : f.healthType === "WCH" ? 5 : 2))]!,
+        qualification: field.qualifications[int(0, field.qualifications.length - 1)]!,
+        specialisation: field.specialisation,
+        yearsOfService: years,
+        patientsSeenToday: seenToday,
+        // Roughly 24 working days, kept in step with today's figure.
+        patientsThisMonth: seenToday * int(19, 25),
+        department: field.departments[int(0, field.departments.length - 1)]!,
       });
     }
   }
@@ -2399,17 +2433,29 @@ export interface BiometricLog {
 export const biometricLogs: BiometricLog[] = (() => {
   const r = mulberry32(2311 * 31);
   const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
+  const EXPECTED_IN = 8 * 60;
   const logs: BiometricLog[] = [];
   for (const f of facilities) {
     const staffList = staffByFacility[f.id] ?? [];
     for (const s of staffList) {
-      if (r() < 0.08) continue;
-      const isSchool = f.kind === "school";
-      const expectedIn = isSchool ? 8 * 60 : 8 * 60;
-      const arrivalMin = expectedIn + int(-10, 45);
-      const method: BiometricLog["method"] = r() > 0.2 ? "Fingerprint" : r() > 0.5 ? "NFC card" : "Manual override";
-      const late = arrivalMin > expectedIn + 10;
-      const veryLate = arrivalMin > expectedIn + 30;
+      // The gate only has a record for someone who actually turned up, so
+      // anyone absent, on leave or on duty elsewhere has no scan today.
+      const mark = todayStatus(s);
+      if (mark === "Absent" || mark === "Approved leave" || mark === "Official duty") continue;
+      if (mark === "Leave" || mark === "Off-duty" || mark === "On-call") continue;
+
+      // Health rosters carry an explicit Late mark, so the scan must match it.
+      // School registers only record Present, so the gate is the sole record of
+      // when a teacher actually arrived — which is the point of installing it.
+      const arrivalMin =
+        mark === "Late"
+          ? EXPECTED_IN + int(12, 52)
+          : f.kind === "school" && r() < 0.17
+            ? EXPECTED_IN + int(12, 48)
+            : EXPECTED_IN + int(-12, 9);
+      const minutesLate = arrivalMin - EXPECTED_IN;
+      const method: BiometricLog["method"] =
+        r() > 0.2 ? "Fingerprint" : r() > 0.5 ? "NFC card" : "Manual override";
       logs.push({
         staffId: s.id,
         facilityId: f.id,
@@ -2418,7 +2464,7 @@ export const biometricLogs: BiometricLog[] = (() => {
         method,
         checkIn: arrivalMin,
         checkOut: r() > 0.3 ? arrivalMin + int(300, 480) : null,
-        status: veryLate ? "Very late" : late ? "Late" : "On time",
+        status: minutesLate > 30 ? "Very late" : minutesLate > 10 ? "Late" : "On time",
         date: TODAY,
       });
     }
@@ -2451,7 +2497,6 @@ export const weeklyAttendance: Record<string, DailyAttendanceRow[]> = (() => {
   const r = mulberry32(2311 * 37);
   const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
   const map: Record<string, DailyAttendanceRow[]> = {};
-  const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   for (const f of facilities.filter((f) => f.kind === "school")) {
     const day = schoolDays[f.id];
     if (!day) continue;
@@ -2461,14 +2506,14 @@ export const weeklyAttendance: Record<string, DailyAttendanceRow[]> = (() => {
     for (let d = 6; d >= 0; d--) {
       const date = addDays(TODAY, -d);
       const wd = weekday(date);
-      if (wd === 0 || wd === 5) continue; // skip Sunday & Friday
+      if (wd === 0 || wd === 6) continue; // schools are closed Saturday and Sunday
       const present = int(Math.floor(enrolled * 0.72), Math.min(enrolled, Math.floor(enrolled * 0.95)));
       const staffP = int(Math.floor(staffCount * 0.78), staffCount);
       const lateArr = int(0, Math.floor(staffCount * 0.15));
       const remarks = d === 0 ? "Today — in progress" : lateArr > 2 ? "Multiple late arrivals noted" : present / enrolled < 0.78 ? "Low attendance — weather/event" : "Normal day";
       rows.push({
         date,
-        day: dayNames[wd]!,
+        day: WEEKDAYS[wd]!,
         enrolled,
         present,
         absent: enrolled - present,
@@ -2537,7 +2582,8 @@ export const treatmentLogs: TreatmentLogEntry[] = (() => {
   const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
   const entries: TreatmentLogEntry[] = [];
   for (const dp of doctorProfiles) {
-    const count = int(5, dp.patientsSeenToday);
+    // One row per patient the profile says the doctor saw, so the two agree.
+    const count = dp.patientsSeenToday;
     for (let i = 0; i < count; i++) {
       const isMale = r() > 0.45;
       const idx = int(0, COMPLAINTS.length - 1);
@@ -2643,7 +2689,6 @@ export interface DailyBillingRow {
 export const weeklyBilling: Record<string, DailyBillingRow[]> = (() => {
   const r = mulberry32(2311 * 47);
   const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const map: Record<string, DailyBillingRow[]> = {};
   for (const f of healthFacilities) {
     const base = facilityBillingToday[f.id]!;
@@ -2659,7 +2704,7 @@ export const weeklyBilling: Record<string, DailyBillingRow[]> = (() => {
       const med = Math.round(base.medicineCharges * scale);
       rows.push({
         date,
-        day: dayNames[wd]!,
+        day: WEEKDAYS[wd]!,
         opdFees: opd, labCharges: lab, bedCharges: bed,
         surgeryFees: surg, medicineCharges: med,
         total: opd + lab + bed + surg + med,
@@ -2689,7 +2734,6 @@ export interface ClassDailyAttendance {
 export const classDailyAttendance: Record<string, ClassDailyAttendance[]> = (() => {
   const r = mulberry32(2311 * 53);
   const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const map: Record<string, ClassDailyAttendance[]> = {};
   for (const f of facilities.filter((f) => f.kind === "school")) {
     const day = schoolDays[f.id];
@@ -2698,7 +2742,7 @@ export const classDailyAttendance: Record<string, ClassDailyAttendance[]> = (() 
     for (let d = 6; d >= 0; d--) {
       const date = addDays(TODAY, -d);
       const wd = weekday(date);
-      if (wd === 0 || wd === 5) continue;
+      if (wd === 0 || wd === 6) continue; // schools are closed Saturday and Sunday
       for (const cls of day.classes) {
         const pBoys = int(Math.floor(cls.enrolledBoys * 0.7), cls.enrolledBoys);
         const pGirls = int(Math.floor(cls.enrolledGirls * 0.7), cls.enrolledGirls);
@@ -2706,7 +2750,7 @@ export const classDailyAttendance: Record<string, ClassDailyAttendance[]> = (() 
         rows.push({
           className: cls.className,
           date,
-          day: dayNames[wd]!,
+          day: WEEKDAYS[wd]!,
           enrolledBoys: cls.enrolledBoys,
           enrolledGirls: cls.enrolledGirls,
           presentBoys: pBoys,

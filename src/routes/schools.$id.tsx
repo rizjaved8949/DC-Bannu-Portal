@@ -1,6 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarDays,
+  ClipboardList,
+  FileText,
+  Fingerprint,
+  Users,
+} from "lucide-react";
 import { useState } from "react";
+
+import { SectionTabs } from "@/components/dcms/section-tabs";
 
 import {
   BackLink,
@@ -59,6 +68,9 @@ function SchoolDetailPage() {
   const { id } = Route.useParams();
   const f = facilityById[id];
   const { statusFor, reportFor, role, schoolDayFor } = useApp();
+  const [section, setSection] = useState<
+    "today" | "attendance" | "students" | "staff" | "record"
+  >("today");
   if (!f || f.kind !== "school" || !inRoleScope(role, f))
     return <NotFoundPanel what="school in your scope" back="/schools" backLabel="All schools" />;
 
@@ -89,7 +101,6 @@ function SchoolDetailPage() {
         </PageHeader>
       </div>
 
-      <InstitutionRecord facility={f} />
       <TimestampStrip report={r} status={st} />
 
       {!accepted && (
@@ -147,6 +158,20 @@ function SchoolDetailPage() {
         />
       </div>
 
+      <SectionTabs
+        label="School record sections"
+        value={section}
+        onChange={setSection}
+        options={[
+          { value: "today", label: "Today", icon: ClipboardList },
+          { value: "attendance", label: "Attendance history", icon: CalendarDays },
+          { value: "students", label: "Students", icon: Users, count: (studentsByFacility[f.id] ?? []).length },
+          { value: "staff", label: "Staff attendance", icon: Fingerprint, count: (biometricByFacility[f.id] ?? []).length },
+          { value: "record", label: "Institution record", icon: FileText },
+        ]}
+      />
+
+      {section === "today" && (
       <div className="grid gap-4 xl:grid-cols-2">
         <Panel title="Staff roster" aside={`${staff.length} staff, roster ${f.rosterVersion}`}>
           <div className="overflow-x-auto">
@@ -304,27 +329,34 @@ function SchoolDetailPage() {
             )}
           </Panel>
 
-          <Panel title="Facility checklist" aside="Older than 3 days is stale">
-            <InfraChecklist f={f} />
-          </Panel>
         </div>
       </div>
+      )}
 
-      <Panel title="Last 14 days of submissions" aside="Today ringed" bodyClassName="px-4 py-3">
-        <SubmissionHistoryRow facilityId={f.id} />
-      </Panel>
+      {section === "attendance" && (
+        <>
+          <WeeklyAttendanceRegister facilityId={f.id} />
+          <ClassDailyBreakdown facilityId={f.id} />
+        </>
+      )}
 
-      {/* ── Weekly attendance register ── */}
-      <WeeklyAttendanceRegister facilityId={f.id} />
+      {section === "students" && <StudentDirectory facilityId={f.id} />}
 
-      {/* ── Class daily attendance ── */}
-      <ClassDailyBreakdown facilityId={f.id} />
+      {section === "staff" && <SchoolBiometric facilityId={f.id} />}
 
-      {/* ── Student directory ── */}
-      <StudentDirectory facilityId={f.id} />
-
-      {/* ── Biometric attendance ── */}
-      <SchoolBiometric facilityId={f.id} />
+      {section === "record" && (
+        <>
+          <InstitutionRecord facility={f} />
+          <div className="grid gap-4 xl:grid-cols-2">
+            <Panel title="Facility checklist" aside="Older than 3 days is stale">
+              <InfraChecklist f={f} />
+            </Panel>
+            <Panel title="Last 14 days of submissions" aside="Today ringed" bodyClassName="px-4 py-3">
+              <SubmissionHistoryRow facilityId={f.id} />
+            </Panel>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -573,6 +605,11 @@ function SchoolBiometric({ facilityId }: { facilityId: string }) {
       title="Staff biometric attendance — today"
       aside={`${logs.length} staff checked in`}
     >
+      <p className="border-b border-line bg-subtle px-4 py-2 text-xs text-ink-muted">
+        The register records only present or absent. These check-in times come from the
+        facility's fingerprint and card reader, so a teacher marked present may still
+        show as late here.
+      </p>
       <div className="grid grid-cols-3 gap-2 border-b border-line px-4 py-3">
         <div className="text-center">
           <div className="text-lg font-bold tabular-nums text-verified">{onTime}</div>

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { DistrictRegister } from "@/components/dcms/district-register";
+import { HowToUse } from "@/components/dcms/how-to-use";
 import { ChannelIcon } from "@/components/dcms/channel";
 import { KpiTile } from "@/components/dcms/kpi-tile";
 import {
@@ -125,13 +126,20 @@ function OverviewPage() {
   const schoolsReported = schoolFacilities.filter((f) =>
     isAccepted(statusFor(f.id)),
   ).length;
-  const totalStudentsEnrolled = schoolFacilities.reduce((sum, f) => {
+  // Enrolment across every school, for the district total.
+  const enrolmentOnRecord = schoolFacilities.reduce((sum, f) => {
     const c = schoolStudentCounts(f, statusFor(f.id), schoolDayFor(f.id));
     return sum + c.enrolled;
   }, 0);
+  // Attendance is only comparable within schools that have reported, so the
+  // denominator must exclude schools with no accepted report.
   const totalStudentsPresent = schoolFacilities.reduce((sum, f) => {
     const c = schoolStudentCounts(f, statusFor(f.id), schoolDayFor(f.id));
     return sum + (c.present ?? 0);
+  }, 0);
+  const totalStudentsEnrolled = schoolFacilities.reduce((sum, f) => {
+    const c = schoolStudentCounts(f, statusFor(f.id), schoolDayFor(f.id));
+    return sum + (c.present == null ? 0 : c.enrolled);
   }, 0);
   const schoolStaffPresent = schoolFacilities.reduce((sum, f) => {
     const c = schoolStaffCounts(f, statusFor(f.id), schoolDayFor(f.id));
@@ -169,6 +177,8 @@ function OverviewPage() {
         urdu="ضلعی جائزہ"
         description={`A clear view of today's reporting, people and public services across ${role.scopeLabel === "Whole district" ? "District Bannu" : role.scopeLabel.toLowerCase()}.`}
       />
+
+      <HowToUse />
 
       <DistrictRegister facilities={facilities} />
       <FilterBar onExportCsv={exportCsv} />
@@ -276,7 +286,7 @@ function OverviewPage() {
       </div>
 
       {/* ── Department summaries side by side ── */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className={cn("grid gap-4", showSchools && showHealth && "lg:grid-cols-2")}>
         {showHealth && (
           <Panel
             title={
@@ -373,7 +383,7 @@ function OverviewPage() {
                 icon={<UsersRound className="size-4" />}
                 label="Students present"
                 value={totalStudentsPresent.toLocaleString("en")}
-                sub={`of ${totalStudentsEnrolled.toLocaleString("en")} enrolled`}
+                sub={`of ${totalStudentsEnrolled.toLocaleString("en")} in reporting schools`}
               />
               <StatBox
                 label="Student attendance"
@@ -382,7 +392,7 @@ function OverviewPage() {
                     ? `${pct(totalStudentsPresent, totalStudentsEnrolled, 0)}%`
                     : "—"
                 }
-                sub="present / enrolled"
+                sub={`${enrolmentOnRecord.toLocaleString("en")} enrolled district-wide`}
               />
               <StatBox
                 label="Staff present"
