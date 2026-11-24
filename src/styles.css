@@ -867,6 +867,160 @@ button:not(:disabled),
   }
 }
 
+/* The field application stays at handset width on every screen size. */
+.field-workspace {
+  grid-template-columns: minmax(260px, 1fr) minmax(0, 402px);
+  max-width: 1000px;
+  gap: 36px;
+}
+.field-mobile-device.field-app-shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 402px);
+  height: 844px;
+  justify-self: center;
+  border: 8px solid var(--topbar);
+  border-radius: 42px;
+  isolation: isolate;
+}
+.field-mobile-device::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  left: 50%;
+  width: 86px;
+  height: 21px;
+  transform: translateX(-50%);
+  border-radius: 20px;
+  background: var(--ink);
+  pointer-events: none;
+}
+.field-mobile-device::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  bottom: 5px;
+  left: 50%;
+  width: 110px;
+  height: 4px;
+  transform: translateX(-50%);
+  border-radius: 6px;
+  background: var(--ink);
+  pointer-events: none;
+}
+.field-mobile-device .field-app-masthead {
+  order: 0;
+  flex-shrink: 0;
+  padding: 14px 18px 12px;
+}
+.field-mobile-device .field-app-masthead > div:first-child {
+  min-height: 22px;
+}
+.field-mobile-device .field-app-masthead > div:nth-child(2) {
+  margin-top: 12px;
+}
+.field-mobile-device .field-app-masthead > div:last-child {
+  margin-top: 12px;
+  padding-top: 10px;
+}
+.field-mobile-device .field-app-content {
+  order: 1;
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+  padding: 18px;
+  background: var(--canvas);
+}
+.field-mobile-device .field-app-content h2 {
+  font-size: 22px;
+}
+.field-mobile-device .field-app-nav {
+  order: 2;
+  flex-shrink: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+  border-bottom: 0;
+  background: var(--surface);
+}
+.field-mobile-device .field-app-nav button {
+  min-height: 48px;
+  padding: 9px 3px;
+  font-size: 12px;
+  border-bottom-width: 2px;
+}
+.field-mobile-device > footer {
+  order: 3;
+  flex-shrink: 0;
+  padding: 7px 12px 15px;
+  text-align: center;
+  font-size: 11px;
+}
+.field-mobile-device > footer > span:last-child {
+  display: none;
+}
+.field-mobile-device .field-app-content .sm\:grid-cols-2 {
+  grid-template-columns: minmax(0, 1fr);
+}
+.field-mobile-device .field-report-callout {
+  padding: 14px;
+  background: var(--surface);
+}
+.field-mobile-device .field-step-nav {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.field-mobile-device .field-step-nav button {
+  flex-direction: row;
+  justify-content: start;
+  text-align: left;
+  padding-inline: 8px;
+}
+.field-mobile-device .field-report-device {
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 8px;
+}
+.field-mobile-device .field-report-status {
+  display: none;
+}
+.field-mobile-device .field-report-body {
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+  padding-inline: 10px;
+}
+.field-mobile-device .field-quick-action {
+  background: var(--surface);
+}
+.field-mobile-device .field-app-content .space-y-5 > .grid.grid-cols-2 {
+  gap: 10px;
+}
+.field-workspace-journey {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: none;
+}
+@media (max-width: 1023px) {
+  .field-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 430px) {
+  .field-mobile-device.field-app-shell {
+    border-width: 6px;
+    border-radius: 34px;
+    height: 800px;
+  }
+  .field-mobile-device .field-app-content {
+    padding: 14px;
+  }
+}
+
 /* Leaflet */
 .leaflet-container {
   font-family: var(--font-sans);

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Building2,
@@ -86,6 +86,10 @@ export function FieldWorkspace({
   const [tab, setTab] = useState<FieldTab>("home");
   const [step, setStep] = useState(1);
   const [journey, setJourney] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0 });
+  }, [tab, step, journey]);
   const current = reportFor(f.id);
   const queue = pendingOutbox.filter((r) => r.facilityId === f.id);
   const issues = reviewItems.filter((r) => r.facilityId === f.id && r.status !== "Closed");
@@ -152,7 +156,13 @@ export function FieldWorkspace({
             </p>
           </Panel>
         </aside>
-        <section className="field-app-shell min-w-0" aria-label="Usable field application">
+        <section
+          className={cn(
+            "field-app-shell min-w-0",
+            !(journey && tab === "report") && "field-mobile-device",
+          )}
+          aria-label="Mobile field application"
+        >
           <header className="field-app-masthead">
             <div className="flex items-center justify-between gap-3 text-xs text-topbar-muted">
               <span className="num">{hhmm(clockMin)} PKT</span>
@@ -202,7 +212,13 @@ export function FieldWorkspace({
               </button>
             ))}
           </nav>
-          <div className="field-app-content">
+          <div
+            ref={contentRef}
+            className="field-app-content"
+            tabIndex={0}
+            role="region"
+            aria-label="Mobile app content"
+          >
             {tab === "home" && (
               <div className="space-y-5">
                 <div>

@@ -248,7 +248,7 @@ function Phone({
           !journey && "field-report-device",
         )}
       >
-        <div className="flex h-7 items-center justify-between bg-topbar px-5 text-[11px] text-topbar-foreground">
+        <div className="field-report-status flex h-7 items-center justify-between bg-topbar px-5 text-[11px] text-topbar-foreground">
           <span className="tabular-nums">{hhmm(clockMin)}</span>
           <span className="inline-flex items-center gap-1 [&_svg]:size-3">
             {conn === "online" ? <Wifi /> : conn === "sms" ? <Signal /> : <WifiOff />}

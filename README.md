@@ -20,6 +20,8 @@ Incoming background activity is paused initially so presentation figures stay st
 
 ## Usable field application
 
+The **Field app** displays a mobile handset with live content inside its screen, an independent content scroller and fixed bottom navigation. It stays at phone width on desktop and adapts to narrow screens. Changing section or reporting step returns the screen content to the top.
+
 Open **Field app → Open app view** for a focused interface without the portal navigation. It supports school and hospital administrators and uses the same institution and reporting state as the district portal. Its six sections are **Home**, **Report**, **My reports**, **Institution**, **Complaints** and **Help**. Direct examples are `/field-app?facility=SCH108&view=app` and `/field-app?facility=HF204&view=app`.
 
 - **Home:** institution reporting status, outbox count, open review tasks, complaints and reporting shortcuts.
