@@ -128,3 +128,42 @@ export function districtSummary(
 
 export const pct = (a: number, b: number, digits = 1) =>
   b === 0 ? "0" : ((a / b) * 100).toFixed(digits);
+
+export function formatPkr(amount: number): string {
+  if (amount >= 1_000_000_000) return `${(amount / 1_000_000_000).toFixed(1)}B`;
+  if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M`;
+  if (amount >= 1_000) return `${(amount / 1_000).toFixed(0)}K`;
+  return String(amount);
+}
+
+import {
+  budgetLines,
+  patientStats,
+  type Department,
+  type BudgetLine,
+} from "@/data/mock";
+
+export function budgetSummary(dept?: Department) {
+  const lines = dept ? budgetLines.filter((l) => l.department === dept) : budgetLines;
+  const allocated = lines.reduce((a, l) => a + l.allocated, 0);
+  const spent = lines.reduce((a, l) => a + l.spent, 0);
+  const committed = lines.reduce((a, l) => a + l.committed, 0);
+  return { allocated, spent, committed, lines };
+}
+
+export function patientSummary(facilityIds?: string[]) {
+  const stats = facilityIds
+    ? patientStats.filter((p) => facilityIds.includes(p.facilityId))
+    : patientStats;
+  return {
+    opdTotal: stats.reduce((a, p) => a + p.opdToday, 0),
+    emergencyTotal: stats.reduce((a, p) => a + p.emergencyToday, 0),
+    admissionsTotal: stats.reduce((a, p) => a + p.admissionsToday, 0),
+    dischargesToday: stats.reduce((a, p) => a + p.dischargesToday, 0),
+    referralsTotal: stats.reduce((a, p) => a + p.referralsToday, 0),
+    bedsOccupied: stats.reduce((a, p) => a + p.bedsOccupied, 0),
+    bedsTotal: stats.reduce((a, p) => a + p.bedsTotal, 0),
+    icuOccupied: stats.reduce((a, p) => a + p.icuOccupied, 0),
+    icuTotal: stats.reduce((a, p) => a + p.icuTotal, 0),
+  };
+}

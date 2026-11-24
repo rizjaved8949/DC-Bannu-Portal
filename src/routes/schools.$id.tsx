@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertTriangle } from "lucide-react";
+import { useState } from "react";
 
 import {
   BackLink,
@@ -16,9 +17,12 @@ import { Code, Panel } from "@/components/dcms/section";
 import { Pill, STAFF_STATUS_TONE } from "@/components/dcms/status";
 import {
   facilityById,
+  hhmm,
   isAccepted,
   schoolDays,
   staffByFacility,
+  studentsByFacility,
+  biometricByFacility,
   type SchoolStaffStatus,
 } from "@/data/mock";
 import { inRoleScope, useApp } from "@/lib/app-state";
@@ -306,6 +310,154 @@ function SchoolDetailPage() {
       <Panel title="Last 14 days of submissions" aside="Today ringed" bodyClassName="px-4 py-3">
         <SubmissionHistoryRow facilityId={f.id} />
       </Panel>
+
+      {/* ── Student directory ── */}
+      <StudentDirectory facilityId={f.id} />
+
+      {/* ── Biometric attendance ── */}
+      <SchoolBiometric facilityId={f.id} />
     </div>
+  );
+}
+
+function StudentDirectory({ facilityId }: { facilityId: string }) {
+  const students = studentsByFacility[facilityId] ?? [];
+  const [expanded, setExpanded] = useState(false);
+  const [filterClass, setFilterClass] = useState<string>("all");
+  if (students.length === 0) return null;
+
+  const classes = [...new Set(students.map((s) => s.className))].sort();
+  const filtered = filterClass === "all" ? students : students.filter((s) => s.className === filterClass);
+  const shown = expanded ? filtered : filtered.slice(0, 15);
+  const biometric = students.filter((s) => s.attendanceMethod === "Biometric").length;
+
+  return (
+    <Panel
+      title="Student directory"
+      aside={`${students.length} students on record · ${pct(biometric, students.length, 0)}% biometric`}
+    >
+      <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2">
+        <span className="text-xs font-semibold text-ink-muted">Filter by class:</span>
+        <select
+          value={filterClass}
+          onChange={(e) => { setFilterClass(e.target.value); setExpanded(false); }}
+          className="rounded-sm border border-line bg-surface px-2 py-1 text-xs"
+        >
+          <option value="all">All classes</option>
+          {classes.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <span className="text-xs text-ink-muted">Showing {filtered.length} students</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="ledger">
+          <thead>
+            <tr>
+              <th scope="col" className="num">Roll</th>
+              <th scope="col">Name</th>
+              <th scope="col">Father's name</th>
+              <th scope="col" className="num">Age</th>
+              <th scope="col">Class</th>
+              <th scope="col">Subjects</th>
+              <th scope="col" className="num">Attendance</th>
+              <th scope="col">Method</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((s) => (
+              <tr key={s.id}>
+                <td data-label="Roll" className="num">{s.rollNo}</td>
+                <td data-label="Name">
+                  <span className="font-semibold">{s.name}</span>
+                  <span className="block text-2xs text-ink-muted">{s.gender === "M" ? "Male" : "Female"}</span>
+                </td>
+                <td data-label="Father's name" className="text-xs">{s.fatherName}</td>
+                <td data-label="Age" className="num">{s.age}</td>
+                <td data-label="Class">{s.className}</td>
+                <td data-label="Subjects" className="max-w-[200px] text-xs">{s.subjects.join(", ")}</td>
+                <td data-label="Attendance" className="num">
+                  <span className={cn("font-semibold", s.daysAttended / s.totalDays < 0.75 ? "text-problem" : "text-verified")}>
+                    {s.daysAttended}/{s.totalDays}
+                  </span>
+                  <span className="block text-2xs text-ink-muted">{pct(s.daysAttended, s.totalDays, 0)}%</span>
+                </td>
+                <td data-label="Method">
+                  <Pill tone={s.attendanceMethod === "Biometric" ? "verified" : "neutral"}>
+                    {s.attendanceMethod}
+                  </Pill>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {filtered.length > 15 && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="w-full border-t border-line px-4 py-2 text-xs font-semibold text-kurram hover:bg-subtle"
+        >
+          {expanded ? "Show fewer" : `Show all ${filtered.length} students`}
+        </button>
+      )}
+    </Panel>
+  );
+}
+
+function SchoolBiometric({ facilityId }: { facilityId: string }) {
+  const logs = biometricByFacility[facilityId] ?? [];
+  if (logs.length === 0) return null;
+  const onTime = logs.filter((l) => l.status === "On time").length;
+  const late = logs.filter((l) => l.status === "Late").length;
+  const veryLate = logs.filter((l) => l.status === "Very late").length;
+
+  return (
+    <Panel
+      title="Staff biometric attendance — today"
+      aside={`${logs.length} staff checked in`}
+    >
+      <div className="grid grid-cols-3 gap-2 border-b border-line px-4 py-3">
+        <div className="text-center">
+          <div className="text-lg font-bold tabular-nums text-verified">{onTime}</div>
+          <div className="text-2xs text-ink-muted">On time</div>
+        </div>
+        <div className="text-center">
+          <div className="text-lg font-bold tabular-nums text-pending">{late}</div>
+          <div className="text-2xs text-ink-muted">Late</div>
+        </div>
+        <div className="text-center">
+          <div className="text-lg font-bold tabular-nums text-problem">{veryLate}</div>
+          <div className="text-2xs text-ink-muted">Very late</div>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="ledger">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Designation</th>
+              <th scope="col">Method</th>
+              <th scope="col">Check-in</th>
+              <th scope="col">Check-out</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {logs.map((l) => (
+              <tr key={l.staffId}>
+                <td data-label="Name" className="font-semibold">{l.name}</td>
+                <td data-label="Designation">{l.designation}</td>
+                <td data-label="Method" className="text-xs">{l.method}</td>
+                <td data-label="Check-in" className="num">{hhmm(l.checkIn)}</td>
+                <td data-label="Check-out" className="num">{l.checkOut ? hhmm(l.checkOut) : "—"}</td>
+                <td data-label="Status">
+                  <Pill tone={l.status === "On time" ? "verified" : l.status === "Late" ? "pending" : "problem"}>
+                    {l.status}
+                  </Pill>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Panel>
   );
 }

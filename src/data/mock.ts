@@ -2071,3 +2071,363 @@ export const institutionProfiles: Record<string, InstitutionProfile> = Object.fr
     ];
   }),
 );
+
+// ---------- Finance & budget (admin view) ----------
+export interface BudgetLine {
+  category: string;
+  department: Department;
+  allocated: number;
+  spent: number;
+  committed: number;
+}
+
+export const budgetLines: BudgetLine[] = (() => {
+  const r = mulberry32(2311 * 11);
+  const lines: BudgetLine[] = [];
+  const eduCats = [
+    { category: "Salaries & allowances", base: 182_000_000 },
+    { category: "Maintenance & repairs", base: 14_200_000 },
+    { category: "Teaching materials & supplies", base: 8_600_000 },
+    { category: "Furniture & equipment", base: 6_100_000 },
+    { category: "Utilities & communications", base: 4_800_000 },
+    { category: "Travel & inspection", base: 2_400_000 },
+    { category: "IT & digital infrastructure", base: 3_200_000 },
+  ];
+  const healthCats = [
+    { category: "Salaries & allowances", base: 248_000_000 },
+    { category: "Medicines & consumables", base: 42_000_000 },
+    { category: "Medical equipment", base: 18_500_000 },
+    { category: "Maintenance & repairs", base: 11_600_000 },
+    { category: "Utilities & communications", base: 7_200_000 },
+    { category: "Ambulance & transport", base: 3_800_000 },
+    { category: "Lab & diagnostics supplies", base: 5_400_000 },
+  ];
+  for (const { category, base } of eduCats) {
+    const allocated = base + Math.floor((r() - 0.5) * base * 0.08);
+    const utilisation = 0.58 + r() * 0.28;
+    const spent = Math.round(allocated * utilisation);
+    const committed = Math.round(allocated * Math.min(1, utilisation + 0.05 + r() * 0.1));
+    lines.push({ category, department: "Education", allocated, spent, committed });
+  }
+  for (const { category, base } of healthCats) {
+    const allocated = base + Math.floor((r() - 0.5) * base * 0.08);
+    const utilisation = 0.52 + r() * 0.32;
+    const spent = Math.round(allocated * utilisation);
+    const committed = Math.round(allocated * Math.min(1, utilisation + 0.05 + r() * 0.1));
+    lines.push({ category, department: "Health", allocated, spent, committed });
+  }
+  return lines;
+})();
+
+export interface FacilityPatientStats {
+  facilityId: string;
+  opdToday: number;
+  emergencyToday: number;
+  admissionsToday: number;
+  dischargesToday: number;
+  referralsToday: number;
+  bedsOccupied: number;
+  bedsTotal: number;
+  icuOccupied: number;
+  icuTotal: number;
+}
+
+export const patientStats: FacilityPatientStats[] = (() => {
+  const r = mulberry32(2311 * 13);
+  const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
+  return healthFacilities.map((f) => {
+    const shift = shiftsByFacility[f.id]?.M;
+    const opd = shift?.opd ?? 0;
+    const t = f.healthType!;
+    const bedsTotal = t === "DHQ" ? 220 : t === "WCH" ? 120 : t === "RHC" ? 20 : 6;
+    const occ = Math.round(bedsTotal * (0.55 + r() * 0.3));
+    const icuTotal = t === "DHQ" ? 18 : t === "WCH" ? 8 : 0;
+    return {
+      facilityId: f.id,
+      opdToday: opd,
+      emergencyToday: t === "DHQ" ? int(32, 68) : t === "WCH" ? int(12, 28) : t === "RHC" ? int(4, 12) : int(0, 3),
+      admissionsToday: t === "DHQ" ? int(18, 42) : t === "WCH" ? int(8, 22) : t === "RHC" ? int(2, 8) : int(0, 2),
+      dischargesToday: t === "DHQ" ? int(14, 36) : t === "WCH" ? int(6, 18) : t === "RHC" ? int(1, 6) : int(0, 2),
+      referralsToday: t === "DHQ" ? int(2, 8) : t === "WCH" ? int(1, 5) : t === "RHC" ? int(0, 4) : int(0, 2),
+      bedsOccupied: Math.min(occ, bedsTotal),
+      bedsTotal,
+      icuOccupied: icuTotal ? Math.min(int(Math.floor(icuTotal * 0.5), icuTotal), icuTotal) : 0,
+      icuTotal,
+    };
+  });
+})();
+
+export const patientStatsById: Record<string, FacilityPatientStats> = Object.fromEntries(
+  patientStats.map((p) => [p.facilityId, p]),
+);
+
+// ---------- Monthly attendance trend (school & health, last 6 months) ----------
+export const monthlyTrend: { month: string; label: string; schoolPct: number; healthPct: number; opdTotal: number; emergencyTotal: number }[] = (() => {
+  const r = mulberry32(2311 * 17);
+  const months = ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov"];
+  return months.map((label, i) => ({
+    month: `2026-${String(i + 6).padStart(2, "0")}`,
+    label,
+    schoolPct: +(78 + r() * 12).toFixed(1),
+    healthPct: +(80 + r() * 10).toFixed(1),
+    opdTotal: Math.round(28000 + r() * 8000),
+    emergencyTotal: Math.round(1200 + r() * 600),
+  }));
+})();
+
+// ---------- Patient daybook entries (health facility detail) ----------
+export interface DaybookEntry {
+  id: string;
+  facilityId: string;
+  timeMin: number;
+  patientName: string;
+  age: number;
+  gender: "M" | "F";
+  cnic: string;
+  complaint: string;
+  diagnosis: string;
+  medicine: string;
+  doctor: string;
+  followUp: string | null;
+  status: "Treated" | "Admitted" | "Referred" | "Under observation";
+}
+
+const COMPLAINTS = [
+  "Fever and body aches", "Chest pain", "Difficulty breathing", "Abdominal pain",
+  "Diarrhea and vomiting", "Road traffic injury", "High blood pressure", "Diabetic crisis",
+  "Skin infection", "Eye infection", "Dental pain", "Pregnancy check-up",
+  "Child vaccination", "Fracture / bone injury", "Allergic reaction", "UTI symptoms",
+  "Severe headache", "Ear pain", "Wound / laceration", "Asthma attack",
+];
+const DIAGNOSES = [
+  "Acute febrile illness", "Angina pectoris", "COPD exacerbation", "Acute gastroenteritis",
+  "Gastroenteritis with dehydration", "Polytrauma", "Hypertensive emergency", "DKA",
+  "Cellulitis", "Conjunctivitis", "Dental caries", "Antenatal – normal",
+  "Routine immunisation", "Closed fracture", "Urticaria", "Urinary tract infection",
+  "Migraine", "Otitis media", "Laceration – superficial", "Acute bronchospasm",
+];
+const MEDICINES = [
+  "Paracetamol 500mg TDS + Azithromycin 500mg OD", "Aspirin 300mg stat + GTN spray",
+  "Nebuliser salbutamol + IV hydrocortisone", "ORS + IV fluid + Metronidazole",
+  "ORS + Zinc + Ciprofloxacin", "IV fluids + wound dressing + tetanus",
+  "Amlodipine 10mg + Captopril 25mg stat", "Insulin infusion + IV NS",
+  "Flucloxacillin 500mg QDS + wound care", "Ciprofloxacin eye drops QID",
+  "Ibuprofen 400mg + referral to dental", "Folic acid + iron supplement",
+  "BCG / OPV / Pentavalent as schedule", "Plaster cast + Diclofenac 50mg TDS",
+  "Cetirizine 10mg + IM adrenaline PRN", "Nitrofurantoin 100mg BD × 5 days",
+  "Sumatriptan 50mg + Domperidone 10mg", "Amoxicillin 500mg TDS + ear drops",
+  "Wound suture + Augmentin 625mg TDS", "Salbutamol inhaler + Prednisolone 40mg",
+];
+
+const DOCTOR_FIRST = ["Dr. Saeed", "Dr. Farooq", "Dr. Hina", "Dr. Asim", "Dr. Nadia", "Dr. Khalid", "Dr. Rabia", "Dr. Tariq", "Dr. Sana", "Dr. Waqas"];
+const DOCTOR_LAST = ["Khan", "Ahmad", "Shah", "Afridi", "Khattak", "Marwat", "Wazir", "Bangash"];
+const PATIENT_FIRST_M = ["Muhammad", "Ahmad", "Ali", "Usman", "Bilal", "Hamza", "Tariq", "Shahid", "Imran", "Kamran", "Saeed", "Farhan", "Zubair", "Naveed", "Irfan"];
+const PATIENT_FIRST_F = ["Fatima", "Ayesha", "Zainab", "Maryam", "Hina", "Nadia", "Sana", "Rabia", "Bushra", "Samina", "Nasreen", "Tahira", "Razia", "Parveen", "Kulsoom"];
+const PATIENT_LAST = ["Khan", "Ahmad", "Shah", "Afridi", "Khattak", "Marwat", "Wazir", "Bangash", "Orakzai", "Dawar", "Bhittani", "Niazi"];
+
+export const daybookEntries: DaybookEntry[] = (() => {
+  const r = mulberry32(2311 * 19);
+  const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
+  const entries: DaybookEntry[] = [];
+  for (const f of healthFacilities) {
+    const count = f.healthType === "DHQ" ? int(35, 55) : f.healthType === "WCH" ? int(15, 30) : f.healthType === "RHC" ? int(8, 18) : int(3, 8);
+    for (let i = 0; i < count; i++) {
+      const isMale = r() > 0.45;
+      const age = int(1, 85);
+      const idx = int(0, COMPLAINTS.length - 1);
+      const statuses: DaybookEntry["status"][] = ["Treated", "Treated", "Treated", "Admitted", "Referred", "Under observation"];
+      entries.push({
+        id: `DB-${f.code}-${String(i + 1).padStart(3, "0")}`,
+        facilityId: f.id,
+        timeMin: int(8 * 60, 11 * 60 + 30),
+        patientName: isMale
+          ? `${PATIENT_FIRST_M[int(0, PATIENT_FIRST_M.length - 1)]} ${PATIENT_LAST[int(0, PATIENT_LAST.length - 1)]}`
+          : `${PATIENT_FIRST_F[int(0, PATIENT_FIRST_F.length - 1)]} ${PATIENT_LAST[int(0, PATIENT_LAST.length - 1)]}`,
+        age,
+        gender: isMale ? "M" : "F",
+        cnic: `1720${int(1, 9)}-${int(1000000, 9999999)}-${int(1, 9)}`,
+        complaint: COMPLAINTS[idx]!,
+        diagnosis: DIAGNOSES[idx]!,
+        medicine: MEDICINES[idx]!,
+        doctor: `${DOCTOR_FIRST[int(0, DOCTOR_FIRST.length - 1)]} ${DOCTOR_LAST[int(0, DOCTOR_LAST.length - 1)]}`,
+        followUp: r() > 0.6 ? addDays(TODAY, int(3, 14)) : null,
+        status: statuses[int(0, statuses.length - 1)]!,
+      });
+    }
+  }
+  return entries;
+})();
+
+export const daybookByFacility: Record<string, DaybookEntry[]> = (() => {
+  const map: Record<string, DaybookEntry[]> = {};
+  for (const e of daybookEntries) {
+    (map[e.facilityId] ??= []).push(e);
+  }
+  return map;
+})();
+
+// ---------- Doctor profiles (health staff extended) ----------
+export interface DoctorProfile {
+  staffId: string;
+  facilityId: string;
+  name: string;
+  qualification: string;
+  specialisation: string;
+  yearsOfService: number;
+  patientsSeenToday: number;
+  patientsThisMonth: number;
+  department: string;
+}
+
+const QUALIFICATIONS = ["MBBS", "MBBS, FCPS", "MBBS, MCPS", "MBBS, Diploma Gynae", "MBBS, MS Surgery", "MBBS, DCH", "MBBS, DTM", "BDS"];
+const SPECIALISATIONS = ["General Medicine", "General Surgery", "Gynae & Obs", "Paediatrics", "Orthopaedics", "ENT", "Emergency Medicine", "Anaesthesia", "Dermatology", "Ophthalmology", "Dental"];
+const MED_DEPARTMENTS = ["OPD", "Emergency", "Ward A", "Ward B", "Surgery", "Labour Room", "Paediatric Ward", "ICU"];
+
+export const doctorProfiles: DoctorProfile[] = (() => {
+  const r = mulberry32(2311 * 23);
+  const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
+  const profiles: DoctorProfile[] = [];
+  for (const f of healthFacilities) {
+    const docs = (staffByFacility[f.id] ?? []).filter(
+      (s) => s.designation === "Medical Officer" || s.designation === "Women Medical Officer",
+    );
+    for (const d of docs) {
+      profiles.push({
+        staffId: d.id,
+        facilityId: f.id,
+        name: d.name,
+        qualification: QUALIFICATIONS[int(0, QUALIFICATIONS.length - 1)]!,
+        specialisation: SPECIALISATIONS[int(0, SPECIALISATIONS.length - 1)]!,
+        yearsOfService: int(2, 25),
+        patientsSeenToday: int(8, 45),
+        patientsThisMonth: int(180, 650),
+        department: MED_DEPARTMENTS[int(0, Math.min(MED_DEPARTMENTS.length - 1, f.healthType === "DHQ" ? 7 : f.healthType === "WCH" ? 5 : 2))]!,
+      });
+    }
+  }
+  return profiles;
+})();
+
+export const doctorsByFacility: Record<string, DoctorProfile[]> = (() => {
+  const map: Record<string, DoctorProfile[]> = {};
+  for (const p of doctorProfiles) (map[p.facilityId] ??= []).push(p);
+  return map;
+})();
+
+// ---------- Student directory (school detail) ----------
+export interface StudentRecord {
+  id: string;
+  facilityId: string;
+  name: string;
+  fatherName: string;
+  age: number;
+  gender: "M" | "F";
+  className: string;
+  rollNo: number;
+  subjects: string[];
+  daysAttended: number;
+  totalDays: number;
+  attendanceMethod: "Biometric" | "Manual";
+}
+
+const STUDENT_FIRST_M = ["Muhammad", "Ahmad", "Ali", "Usman", "Bilal", "Hamza", "Hassan", "Zain", "Abdullah", "Saad", "Fahad", "Talha", "Owais", "Rehan", "Arslan"];
+const STUDENT_FIRST_F = ["Fatima", "Ayesha", "Zainab", "Maryam", "Hina", "Sana", "Amna", "Iqra", "Noor", "Laiba", "Mahnoor", "Rimsha", "Aliza", "Sidra", "Arooj"];
+const FATHER_NAMES = ["Gul Zaman", "Shah Nawaz", "Noor Muhammad", "Fazal Rahim", "Sher Muhammad", "Habib Ullah", "Zar Wali", "Noor Khan", "Said Akbar", "Manzoor Ahmad", "Bakht Zada", "Yar Muhammad"];
+
+const PRIMARY_SUBJECTS = ["Urdu", "English", "Maths", "Islamiat", "Gen. Science"];
+const MIDDLE_SUBJECTS = ["Urdu", "English", "Maths", "Islamiat", "Gen. Science", "Social Studies", "Computer"];
+const HIGH_SUBJECTS = ["Urdu", "English", "Maths", "Physics", "Chemistry", "Biology", "Islamiat", "Pak Studies", "Computer"];
+
+export const studentRecords: StudentRecord[] = (() => {
+  const r = mulberry32(2311 * 29);
+  const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
+  const records: StudentRecord[] = [];
+  for (const f of facilities.filter((f) => f.kind === "school")) {
+    const day = schoolDays[f.id];
+    if (!day) continue;
+    for (const cls of day.classes) {
+      const totalInClass = cls.enrolledBoys + cls.enrolledGirls;
+      const sampleSize = Math.min(totalInClass, int(6, 12));
+      const isBoys = f.gender === "Boys";
+      const subjects = cls.className.startsWith("9") || cls.className.startsWith("10") ? HIGH_SUBJECTS
+        : cls.className.startsWith("6") || cls.className.startsWith("7") || cls.className.startsWith("8") ? MIDDLE_SUBJECTS
+        : PRIMARY_SUBJECTS;
+      for (let i = 0; i < sampleSize; i++) {
+        const isMale = isBoys || (f.gender === "Girls" ? false : r() > 0.45);
+        const totalDays = int(100, 120);
+        records.push({
+          id: `STU-${f.code}-${cls.className.replace(/\s/g, "")}-${String(i + 1).padStart(2, "0")}`,
+          facilityId: f.id,
+          name: isMale
+            ? `${STUDENT_FIRST_M[int(0, STUDENT_FIRST_M.length - 1)]} ${PATIENT_LAST[int(0, PATIENT_LAST.length - 1)]}`
+            : `${STUDENT_FIRST_F[int(0, STUDENT_FIRST_F.length - 1)]} ${PATIENT_LAST[int(0, PATIENT_LAST.length - 1)]}`,
+          fatherName: FATHER_NAMES[int(0, FATHER_NAMES.length - 1)]!,
+          age: int(5, 18),
+          gender: isMale ? "M" : "F",
+          className: cls.className,
+          rollNo: i + 1,
+          subjects,
+          daysAttended: int(Math.floor(totalDays * 0.65), totalDays),
+          totalDays,
+          attendanceMethod: r() > 0.3 ? "Biometric" : "Manual",
+        });
+      }
+    }
+  }
+  return records;
+})();
+
+export const studentsByFacility: Record<string, StudentRecord[]> = (() => {
+  const map: Record<string, StudentRecord[]> = {};
+  for (const s of studentRecords) (map[s.facilityId] ??= []).push(s);
+  return map;
+})();
+
+// ---------- Biometric attendance log ----------
+export interface BiometricLog {
+  staffId: string;
+  facilityId: string;
+  name: string;
+  designation: string;
+  method: "Fingerprint" | "NFC card" | "Manual override";
+  checkIn: number;
+  checkOut: number | null;
+  status: "On time" | "Late" | "Very late" | "Absent";
+  date: string;
+}
+
+export const biometricLogs: BiometricLog[] = (() => {
+  const r = mulberry32(2311 * 31);
+  const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
+  const logs: BiometricLog[] = [];
+  for (const f of facilities) {
+    const staffList = staffByFacility[f.id] ?? [];
+    for (const s of staffList) {
+      if (r() < 0.08) continue;
+      const isSchool = f.kind === "school";
+      const expectedIn = isSchool ? 8 * 60 : 8 * 60;
+      const arrivalMin = expectedIn + int(-10, 45);
+      const method: BiometricLog["method"] = r() > 0.2 ? "Fingerprint" : r() > 0.5 ? "NFC card" : "Manual override";
+      const late = arrivalMin > expectedIn + 10;
+      const veryLate = arrivalMin > expectedIn + 30;
+      logs.push({
+        staffId: s.id,
+        facilityId: f.id,
+        name: s.name,
+        designation: s.designation,
+        method,
+        checkIn: arrivalMin,
+        checkOut: r() > 0.3 ? arrivalMin + int(300, 480) : null,
+        status: veryLate ? "Very late" : late ? "Late" : "On time",
+        date: TODAY,
+      });
+    }
+  }
+  return logs;
+})();
+
+export const biometricByFacility: Record<string, BiometricLog[]> = (() => {
+  const map: Record<string, BiometricLog[]> = {};
+  for (const l of biometricLogs) (map[l.facilityId] ??= []).push(l);
+  return map;
+})();

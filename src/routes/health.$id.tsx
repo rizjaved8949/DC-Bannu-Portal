@@ -17,15 +17,19 @@ import { Code, Panel } from "@/components/dcms/section";
 import { Segmented } from "@/components/dcms/segmented";
 import { Pill, STAFF_STATUS_TONE } from "@/components/dcms/status";
 import {
+  daybookByFacility,
+  doctorsByFacility,
   facilityById,
   hhmm,
   isAccepted,
+  patientStatsById,
   SERVICES,
   SHIFT_NAMES,
   shiftCoverage,
   shiftsByFacility,
   staffByFacility,
   staffById,
+  biometricByFacility,
   type ShiftKey,
   type ShiftStaffStatus,
 } from "@/data/mock";
@@ -378,6 +382,15 @@ function HealthDetailPage() {
         </Panel>
       </div>
 
+      {/* ── Patient daybook ── */}
+      <PatientDaybook facilityId={f.id} confirmed={confirmed} />
+
+      {/* ── Doctor profiles ── */}
+      <DoctorProfiles facilityId={f.id} />
+
+      {/* ── Biometric attendance ── */}
+      <BiometricAttendance facilityId={f.id} />
+
       <div className="grid gap-4 xl:grid-cols-2">
         <Panel title="Facility checklist" aside="Older than 3 days is stale">
           <InfraChecklist f={f} />
@@ -386,6 +399,176 @@ function HealthDetailPage() {
           <SubmissionHistoryRow facilityId={f.id} />
         </Panel>
       </div>
+    </div>
+  );
+}
+
+function PatientDaybook({ facilityId, confirmed }: { facilityId: string; confirmed: boolean }) {
+  const entries = daybookByFacility[facilityId] ?? [];
+  const stats = patientStatsById[facilityId];
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded ? entries : entries.slice(0, 10);
+  const admitted = entries.filter((e) => e.status === "Admitted").length;
+  const referred = entries.filter((e) => e.status === "Referred").length;
+
+  return (
+    <Panel
+      title="Patient daybook — today"
+      aside={confirmed ? `${entries.length} entries` : "Awaiting report"}
+    >
+      {stats && (
+        <div className="grid grid-cols-2 gap-2 border-b border-line px-4 py-3 sm:grid-cols-4">
+          <MiniStat label="OPD" value={stats.opdToday} />
+          <MiniStat label="Emergency" value={stats.emergencyToday} />
+          <MiniStat label="Admitted" value={admitted} />
+          <MiniStat label="Referred" value={referred} />
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        <table className="ledger">
+          <thead>
+            <tr>
+              <th scope="col">Time</th>
+              <th scope="col">Patient</th>
+              <th scope="col" className="num">Age</th>
+              <th scope="col">Complaint</th>
+              <th scope="col">Diagnosis</th>
+              <th scope="col">Medicine</th>
+              <th scope="col">Doctor</th>
+              <th scope="col">Status</th>
+              <th scope="col">Follow-up</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((e) => (
+              <tr key={e.id}>
+                <td data-label="Time" className="num whitespace-nowrap">{hhmm(e.timeMin)}</td>
+                <td data-label="Patient">
+                  <span className="font-semibold">{e.patientName}</span>
+                  <span className="block text-2xs text-ink-muted">{e.gender === "M" ? "Male" : "Female"} · CNIC {e.cnic}</span>
+                </td>
+                <td data-label="Age" className="num">{e.age}</td>
+                <td data-label="Complaint" className="max-w-[160px] text-xs">{e.complaint}</td>
+                <td data-label="Diagnosis" className="max-w-[160px] text-xs">{e.diagnosis}</td>
+                <td data-label="Medicine" className="max-w-[200px] text-xs">{e.medicine}</td>
+                <td data-label="Doctor" className="whitespace-nowrap text-xs">{e.doctor}</td>
+                <td data-label="Status">
+                  <Pill tone={e.status === "Treated" ? "verified" : e.status === "Referred" ? "sent" : e.status === "Admitted" ? "pending" : "neutral"}>
+                    {e.status}
+                  </Pill>
+                </td>
+                <td data-label="Follow-up" className="text-xs">{e.followUp ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {entries.length > 10 && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="w-full border-t border-line px-4 py-2 text-xs font-semibold text-kurram hover:bg-subtle"
+        >
+          {expanded ? "Show fewer" : `Show all ${entries.length} entries`}
+        </button>
+      )}
+    </Panel>
+  );
+}
+
+function DoctorProfiles({ facilityId }: { facilityId: string }) {
+  const doctors = doctorsByFacility[facilityId] ?? [];
+  if (doctors.length === 0) return null;
+
+  return (
+    <Panel title="Doctor profiles" aside={`${doctors.length} medical officers`}>
+      <div className="overflow-x-auto">
+        <table className="ledger">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Qualification</th>
+              <th scope="col">Specialisation</th>
+              <th scope="col">Department</th>
+              <th scope="col" className="num">Years</th>
+              <th scope="col" className="num">Patients today</th>
+              <th scope="col" className="num">This month</th>
+            </tr>
+          </thead>
+          <tbody>
+            {doctors.map((d) => (
+              <tr key={d.staffId}>
+                <td data-label="Name" className="font-semibold">{d.name}</td>
+                <td data-label="Qualification">{d.qualification}</td>
+                <td data-label="Specialisation">{d.specialisation}</td>
+                <td data-label="Department">{d.department}</td>
+                <td data-label="Years" className="num">{d.yearsOfService}</td>
+                <td data-label="Patients today" className="num font-semibold">{d.patientsSeenToday}</td>
+                <td data-label="This month" className="num">{d.patientsThisMonth}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Panel>
+  );
+}
+
+function BiometricAttendance({ facilityId }: { facilityId: string }) {
+  const logs = biometricByFacility[facilityId] ?? [];
+  if (logs.length === 0) return null;
+  const onTime = logs.filter((l) => l.status === "On time").length;
+  const late = logs.filter((l) => l.status === "Late").length;
+  const veryLate = logs.filter((l) => l.status === "Very late").length;
+
+  return (
+    <Panel
+      title="Biometric attendance — today"
+      aside={`${logs.length} staff checked in`}
+    >
+      <div className="grid grid-cols-3 gap-2 border-b border-line px-4 py-3">
+        <MiniStat label="On time" value={onTime} />
+        <MiniStat label="Late (10–30 min)" value={late} />
+        <MiniStat label="Very late (30+ min)" value={veryLate} />
+      </div>
+      <div className="overflow-x-auto">
+        <table className="ledger">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Designation</th>
+              <th scope="col">Method</th>
+              <th scope="col">Check-in</th>
+              <th scope="col">Check-out</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {logs.map((l) => (
+              <tr key={l.staffId}>
+                <td data-label="Name" className="font-semibold">{l.name}</td>
+                <td data-label="Designation">{l.designation}</td>
+                <td data-label="Method" className="text-xs">{l.method}</td>
+                <td data-label="Check-in" className="num">{hhmm(l.checkIn)}</td>
+                <td data-label="Check-out" className="num">{l.checkOut ? hhmm(l.checkOut) : "—"}</td>
+                <td data-label="Status">
+                  <Pill tone={l.status === "On time" ? "verified" : l.status === "Late" ? "pending" : "problem"}>
+                    {l.status}
+                  </Pill>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Panel>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="text-center">
+      <div className="text-lg font-bold tabular-nums text-ink">{value}</div>
+      <div className="text-2xs text-ink-muted">{label}</div>
     </div>
   );
 }
