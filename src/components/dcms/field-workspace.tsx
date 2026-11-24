@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ComplaintForm } from "./complaint-form";
+import { FieldSmsEntries } from "./sms-delivery";
 import { Code, EmptyState, Panel } from "./section";
 import { Pill, SEVERITY_TONE, StatusBadge, STAFF_STATUS_TONE } from "./status";
 import {
@@ -81,6 +82,7 @@ export function FieldWorkspace({
     pendingOutbox,
     reviewItems,
     complaints,
+    smsEntries,
     storageAvailable,
   } = useApp();
   const [tab, setTab] = useState<FieldTab>("home");
@@ -92,6 +94,14 @@ export function FieldWorkspace({
   }, [tab, step, journey]);
   const current = reportFor(f.id);
   const queue = pendingOutbox.filter((r) => r.facilityId === f.id);
+  const queueCount =
+    queue.length +
+    smsEntries.filter(
+      (entry) =>
+        entry.kind === "complaint" &&
+        entry.facilityIds.includes(f.id) &&
+        ["saved", "sent"].includes(entry.status),
+    ).length;
   const issues = reviewItems.filter((r) => r.facilityId === f.id && r.status !== "Closed");
   const activeComplaints = complaints.filter(
     (c) => c.facilityIds.includes(f.id) && c.status !== "Resolved",
@@ -139,7 +149,7 @@ export function FieldWorkspace({
             <InfoRow label="Reporting status" value={<StatusBadge status={statusFor(f.id)} />} />
             <InfoRow
               label="Saved / awaiting receipt"
-              value={<span className="num font-bold">{queue.length}</span>}
+              value={<span className="num font-bold">{queueCount}</span>}
             />
             <InfoRow
               label="Open follow-ups"
@@ -204,9 +214,9 @@ export function FieldWorkspace({
               >
                 <Icon className="size-4" />
                 <span>{label}</span>
-                {id === "reports" && queue.length > 0 && (
+                {id === "reports" && queueCount > 0 && (
                   <span className="num rounded-sm bg-pending-tint px-1 text-pending">
-                    {queue.length}
+                    {queueCount}
                   </span>
                 )}
               </button>
@@ -237,14 +247,14 @@ export function FieldWorkspace({
                     <StatusBadge status={statusFor(f.id)} />
                   </div>
                   <p className="mt-3 text-lg font-bold">
-                    {queue.length
-                      ? "You have a report waiting for receipt"
+                    {queueCount
+                      ? "You have an entry waiting for receipt"
                       : isAccepted(statusFor(f.id))
                         ? "Your report is on the district register"
                         : "Keep your district record up to date"}
                   </p>
                   <p className="mt-2 text-sm text-ink-muted">
-                    {queue.length
+                    {queueCount
                       ? "Open My reports to check the outbox and district acknowledgement."
                       : f.kind === "school"
                         ? "Confirm the roster, mark every staff member and record class attendance before sending."
@@ -271,7 +281,7 @@ export function FieldWorkspace({
                     value={activeComplaints.length}
                     icon={<MessageSquareWarning />}
                   />
-                  <AppStat label="Reports in outbox" value={queue.length} icon={<Inbox />} />
+                  <AppStat label="Entries in outbox" value={queueCount} icon={<Inbox />} />
                 </div>
                 {issues.length > 0 && (
                   <section>
@@ -369,8 +379,9 @@ export function FieldWorkspace({
                     <h2 className="text-xl font-bold">Institution complaints</h2>
                     <p className="mt-1 text-sm text-ink-muted">Issues affecting {f.name}.</p>
                   </div>
-                  <ComplaintForm facility={f} />
+                  <ComplaintForm facility={f} connection={conn} />
                 </div>
+                <FieldSmsEntries facilityId={f.id} conn={conn} pendingOnly />
                 {complaints.filter((c) => c.facilityIds.includes(f.id)).length ? (
                   <ul className="space-y-3">
                     {complaints
@@ -453,7 +464,7 @@ function AppStat({ label, value, icon }: { label: string; value: number; icon: R
 }
 
 function FieldReports({ facility: f, conn }: { facility: Facility; conn: FieldConnection }) {
-  const { reports, pendingOutbox, deliverReport } = useApp();
+  const { reports, pendingOutbox, sendSavedEntries } = useApp();
   const { goToScreen } = useFieldNavigation();
   const [status, setStatus] = useState("All");
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -464,8 +475,10 @@ function FieldReports({ facility: f, conn }: { facility: Facility; conn: FieldCo
     return r.status === status;
   });
   const acknowledge = (id: string) => {
-    deliverReport(id, conn === "online" ? "online" : "sms");
-    toast.success("District acknowledgement received", { description: id });
+    sendSavedEntries(f.id, conn === "online" ? "online" : "sms");
+    toast.success(conn === "online" ? "Report delivered" : "Saved report sent by SMS", {
+      description: id,
+    });
   };
   return (
     <div className="space-y-4">
@@ -546,9 +559,9 @@ function FieldReports({ facility: f, conn }: { facility: Facility; conn: FieldCo
                 >
                   {expanded === r.id ? "Hide receipt details" : "View receipt details"}
                 </button>
-                {pendingOutbox.some((p) => p.id === r.id) && (
+                {r.status === "draft" && pendingOutbox.some((p) => p.id === r.id) && (
                   <Button size="sm" disabled={conn === "none"} onClick={() => acknowledge(r.id)}>
-                    {r.status === "draft" ? "Send saved report" : "Receive acknowledgement"}
+                    Send saved report
                   </Button>
                 )}
                 {r.status === "rejected" && (
@@ -572,6 +585,7 @@ function FieldReports({ facility: f, conn }: { facility: Facility; conn: FieldCo
           action={<Button onClick={() => goToScreen(1)}>Open reporting form</Button>}
         />
       )}
+      <FieldSmsEntries facilityId={f.id} conn={conn} />
       {conn === "none" && (
         <p className="rounded-md border border-line bg-pending-tint p-3 text-sm text-pending">
           No signal is selected. Saved reports remain in the outbox; select an available connection
@@ -793,7 +807,7 @@ function FieldHelp({ school }: { school: boolean }) {
     ],
     [
       "What happens without internet?",
-      "Use the connection control above the app. No signal lets you save a report locally. Selecting Online or SMS only delivers saved reports for the selected institution. An SMS submission remains Sent until Receive acknowledgement is selected. My reports shows the actual receipt and lifecycle.",
+      "Use the connection control above the app. No signal lets you save a report locally. Selecting Online or SMS only delivers saved reports for the selected institution. SMS submissions move from Sent to Received automatically when the simulated gateway validates them. The admin register updates at the same time. My reports shows the actual receipt and lifecycle.",
     ],
     [
       "When are my edits saved?",
@@ -823,7 +837,7 @@ function FieldHelp({ school }: { school: boolean }) {
     ],
     [
       "What is available in this presentation?",
-      "This is a working browser simulator with generated institution records and a fixed reporting day of 23 November 2026. Forms, saved outbox, receipts, revisions, complaints and district updates work locally. No actual SMS is sent, and no GPS, camera or biometric check is performed. Use Workspace controls to reset the presentation or start background reporting activity.",
+      "This is a working browser simulator with generated institution records and a fixed reporting day of 23 November 2026. Forms, SMS outbox, automatic gateway receipt, revisions, complaints and district updates work locally. Open views in the same browser stay in sync. No actual SMS is sent, and no GPS, camera or biometric check is performed. Use Workspace controls to reset the presentation or start background reporting activity.",
     ],
   ];
   return (

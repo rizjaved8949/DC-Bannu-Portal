@@ -38,6 +38,7 @@ import { downloadCsv } from "@/lib/csv";
 import { inRoleScope, useApp } from "@/lib/app-state";
 import { useSort } from "@/lib/use-sort";
 import { cn } from "@/lib/utils";
+import { SmsAdminIntake } from "@/components/dcms/sms-delivery";
 
 export const Route = createFileRoute("/inbox")({
   validateSearch: (s: Record<string, unknown>): { report?: string } =>
@@ -141,6 +142,9 @@ function InboxPage() {
         urdu="موصولہ رپورٹس"
         description="Every report that reached the district today, by app or SMS, with its checks and lifecycle. Click a row to inspect it."
       />
+      <div className="mt-4">
+        <SmsAdminIntake />
+      </div>
       <div className="mt-4">
         <FilterBar
           onExportCsv={exportCsv}
@@ -438,6 +442,31 @@ function parsePayload(
           })
           .join("; "),
       });
+    } else if (p.startsWith("E:")) {
+      out.push({
+        field: "Equipment",
+        value: p.slice(2),
+        meaning: p.slice(2) === "1" ? "Working" : "Fault reported",
+      });
+    } else if (p.startsWith("N:")) {
+      try {
+        const note = JSON.parse(decodeURIComponent(p.slice(2))) as Record<string, unknown>;
+        const lines = ["faults", "stockOuts", "interruptions"].map(
+          (key) =>
+            `${key === "stockOuts" ? "Stock-outs" : key === "faults" ? "Faults" : "Interruptions"}: ${Array.isArray(note[key]) ? note[key].join(", ") || "None" : "None"}`,
+        );
+        out.push({
+          field: "Shift handover notes",
+          value: "Complete SMS text record",
+          meaning: lines.join("; "),
+        });
+      } catch {
+        out.push({
+          field: "Shift handover notes",
+          value: "Invalid",
+          meaning: "The encoded handover text could not be parsed.",
+        });
+      }
     } else if (p.startsWith("X:")) {
       out.push({
         field: "Shift attendance exceptions",

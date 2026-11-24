@@ -2,7 +2,7 @@
 
 Bilingual district monitoring prototype for school reports, health shifts, staff attendance, facility infrastructure, report verification and offline reporting.
 
-React 19, TypeScript, TanStack Start, Vite and Nitro. Institutional records are generated deterministically from seed 2311; they are not an official district census. The reporting date is 23 November 2026. Role settings, reports, attendance changes, outbox entries and review decisions are saved in browser storage and survive refreshes. No backend, government database or real SMS provider is contacted.
+React 19, TypeScript, TanStack Start, Vite and Nitro. Institutional records are generated deterministically from seed 2311; they are not an official district census. The reporting date is 23 November 2026. Role settings, reports, attendance changes, outbox entries and review decisions are saved in browser storage and survive refreshes. No backend, government database or real SMS provider is contacted. The frontend simulates the SMS gateway and automatic admin updates.
 
 ## Client presentation walkthrough
 
@@ -11,12 +11,12 @@ The primary screens use normal operational language. The **Workspace controls** 
 1. Open **Overview**. The district register includes all 62 registered institutions, with reporting completeness shown separately. Open **Schools** or **Health facilities** to inspect any institution, including one with no daily report.
 2. Open an institution's profile. Show its administrative record, full roster, capacity, asset register, monitoring schedule and follow-ups. **Create follow-up** creates an assigned review item; **Export profile** downloads its register fields.
 3. Choose **Open field report**, or select a journey from Workspace controls. Every institution in the current role's scope is selectable. School forms include the full roster and all classes, including Classes 11–12 where applicable. Hospital forms include duty statuses, OPD, beds, service availability and handover notes.
-4. Choose **No signal**, enter attendance and **Save on phone**. Refresh to demonstrate recovery of the saved report. Switching to an available connection acknowledges and delivers the queued record. Alternatively, send directly with **SMS only**, then choose **Receive acknowledgement** to demonstrate the difference between sending and acceptance.
+4. Choose **No signal**, enter attendance and **Save on phone**. Refresh to demonstrate recovery of the saved report. Select **SMS only** when cellular SMS service is available. The entry moves through Sent to Received automatically when the simulated SMS gateway validates it. The institution record and admin inbox update without a manual acknowledgement action.
 5. Follow **Track in reports inbox**, inspect the coded payload, parsed data, checks and lifecycle, then **Accept report**. The same submission updates the institution record, attendance, district metrics and review queue. Corrections are submitted as new revisions and earlier reports remain in the register.
 6. Create an inspection follow-up or request a correction, assign its owner and close it with a note. Switch roles to show district, departmental and tehsil views. Refresh to show that decisions and role settings remain saved.
 7. Open **Complaints → New complaint**, or **Raise complaint** on an institution profile. Filter the institution picker by tehsil, locality and type, select one institution or use **Select all matching** for a joint complaint across schools and health facilities. Enter details, priority and an assigned office. Filter the complaint register by area, locality, institution, type, status, priority, category or search; CSV exports the matching records. Open a complaint to record progress, reassignment or resolution with an action note. Complaints and their audit history survive refresh. Departmental roles see institutions in their scope; joint complaints crossing those scopes require district-wide authority to update.
 
-Incoming background activity is paused initially so presentation figures stay stable. Manual reporting actions always update the interface. Start automatic activity from Workspace controls when wanted. Browser storage is private to that browser and origin, and is not a replacement for a shared production database.
+Incoming background activity is paused initially so presentation figures stay stable. Manual reporting actions always update the interface. Start automatic activity from Workspace controls when wanted. Saved state synchronizes across open views in the same browser and origin. It is not a replacement for a shared production database.
 
 ## Usable field application
 
@@ -73,3 +73,13 @@ Vercel's SSR routing supports opening and refreshing nested URLs such as `/schoo
 Standalone builds explicitly target Vercel. The existing Lovable configuration wrapper continues selecting its managed target inside Lovable. Keep the generated `.vercel/` directory and local environment files out of Git.
 
 Deployment references: [Vercel's TanStack Start guide](https://vercel.com/kb/guide/deploy-a-tanstack-start-app-to-vercel) and [Nitro's Vercel provider](https://nitro.build/deploy/providers/vercel).
+
+## No-internet reporting through SMS
+
+The editable [client pitch presentation](docs/DCMS_Bannu_Client_Pitch.pptx) includes 20 slides, application screenshots, SMS delivery design, pilot acceptance, proposed delivery milestones and presenter notes. The expansion roadmap proposes Police as the next module, followed by other departments agreed with district teams. Those future modules are not implemented in the current frontend.
+
+- **No Wi-Fi or mobile data, with cellular SMS service:** select **SMS only**. School attendance and class totals, hospital shift data, equipment state, complete handover notes and mobile complaints are encoded as SMS entries. Long text uses multiple SMS segments. The simulator automatically receives and validates queued messages after a short delay, updates the admin records, and records receipt. This runs even while background example activity is paused.
+- **No cellular signal at all:** save on the device. Reports and complaint entries survive a refresh. Select **SMS only** when service returns to send them without internet. Saved-only complaints stay outside the admin register until receipt.
+- **Admin visibility:** **Reports inbox → SMS reporting intake** shows each received report or complaint, institution, segment count and admin record link. The underlying institution metrics, staff attendance, services, handover notes and complaint register update from the same accepted entry.
+- **Production solution:** an SMS-capable field sender (such as a permitted native mobile sender or user-initiated SMS composer), a cellular SMS gateway/number, inbound webhook and shared backend must receive, reassemble, validate and deduplicate entries. That backend updates the connected admin portal and sends an acknowledgement by SMS. The institution needs cellular SMS service, not Wi-Fi or mobile data. The admin service still needs a working server connection.
+- SMS carries supported text and structured fields. It does not transport photos or file attachments. This frontend demonstrates the workflow locally and does not send chargeable messages or connect to a real carrier.

@@ -1831,6 +1831,7 @@ export function reportPayloadFor(input: {
   sequence: number;
   schoolDay?: SchoolDay;
   shift?: Shift;
+  equipmentOk?: boolean;
 }) {
   const f = facilityById[input.facilityId]!;
   const roster = staffByFacility[f.id] ?? [];
@@ -1876,6 +1877,8 @@ export function reportPayloadFor(input: {
     payload += `|V:${SERVICES.filter((s) => s in shift.services)
       .map((s) => `${SERVICES.indexOf(s)}=${shift.services[s] ? 1 : 0}`)
       .join(",")}`;
+    if (input.equipmentOk != null) payload += `|E:${input.equipmentOk ? 1 : 0}`;
+    payload += `|N:${encodeURIComponent(JSON.stringify(shift.handover))}`;
   }
   return payload;
 }
@@ -1912,6 +1915,18 @@ export interface Complaint {
   createdDate: string;
   createdMin: number;
   timeline: { at: string; by: string; text: string }[];
+}
+export interface SmsEntry {
+  id: string;
+  kind: "report" | "complaint";
+  referenceId: string;
+  facilityIds: string[];
+  payload: string;
+  status: "saved" | "sent" | "received" | "rejected";
+  createdMin: number;
+  receivedMin: number | null;
+  segments: number;
+  reason?: string;
 }
 export const complaints: Complaint[] = [
   {

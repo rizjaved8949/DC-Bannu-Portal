@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { MessageSquarePlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { COMPLAINT_CATEGORIES, type Complaint, type Facility } from "@/data/mock";
-import { useApp, useScopedFacilities } from "@/lib/app-state";
+import { useApp, useScopedFacilities, type Connection } from "@/lib/app-state";
 import { matchingComplaintFacilities } from "@/lib/complaints";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +19,13 @@ import { Textarea } from "@/components/ui/textarea";
 
 export const COMPLAINT_SELECT =
   "h-10 w-full min-w-0 rounded-md border border-line bg-surface px-3 text-sm text-ink focus:outline-2 focus:outline-kurram";
-export function ComplaintForm({ facility }: { facility?: Facility }) {
+export function ComplaintForm({
+  facility,
+  connection = "online",
+}: {
+  facility?: Facility;
+  connection?: Connection;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -39,7 +45,13 @@ export function ComplaintForm({ facility }: { facility?: Facility }) {
               Choose one or several institutions, describe the issue and assign responsibility.
             </DialogDescription>
           </DialogHeader>
-          {open && <ComplaintComposer initialFacility={facility} onClose={() => setOpen(false)} />}
+          {open && (
+            <ComplaintComposer
+              initialFacility={facility}
+              connection={connection}
+              onClose={() => setOpen(false)}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </>
@@ -48,9 +60,11 @@ export function ComplaintForm({ facility }: { facility?: Facility }) {
 function ComplaintComposer({
   initialFacility,
   onClose,
+  connection,
 }: {
   initialFacility: Facility | undefined;
   onClose: () => void;
+  connection: Connection;
 }) {
   const scope = useScopedFacilities({ applyFilters: false });
   const { createComplaint, role } = useApp();
@@ -84,19 +98,29 @@ function ComplaintComposer({
   const chosen = scope.filter((f) => selected.includes(f.id));
   const submit = () => {
     try {
-      const id = createComplaint({
-        facilityIds: chosen.map((f) => f.id),
-        title,
-        description,
-        category,
-        priority,
-        owner,
-      });
+      const id = createComplaint(
+        {
+          facilityIds: chosen.map((f) => f.id),
+          title,
+          description,
+          category,
+          priority,
+          owner,
+        },
+        connection,
+      );
       onClose();
-      navigate({ to: "/complaints", search: { complaint: id } });
-      toast.success("Complaint registered", {
-        description: `${id} · ${chosen.length} institution(s) · ${owner}`,
-      });
+      if (connection === "online") navigate({ to: "/complaints", search: { complaint: id } });
+      toast.success(
+        connection === "online"
+          ? "Complaint registered"
+          : connection === "sms"
+            ? "Complaint sent by SMS"
+            : "Complaint saved on device",
+        {
+          description: `${id} · ${chosen.length} institution(s) · ${owner}`,
+        },
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Check the complaint details.");
     }
@@ -109,6 +133,14 @@ function ComplaintComposer({
         submit();
       }}
     >
+      {connection !== "online" && (
+        <p className="rounded-md border border-line bg-subtle p-3 text-sm">
+          {connection === "sms"
+            ? "No internet is needed. The complaint text and selected institution codes will be sent by cellular SMS. The admin register updates after receipt and validation."
+            : "No cellular signal is selected. This complaint will stay in the device outbox until SMS service returns."}{" "}
+          Long text uses multiple SMS segments.
+        </p>
+      )}
       <fieldset className="space-y-3 rounded-lg border border-line p-4">
         <legend className="px-1 text-sm font-semibold">Affected institutions</legend>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -312,7 +344,11 @@ function ComplaintComposer({
             !owner.trim()
           }
         >
-          Register complaint
+          {connection === "sms"
+            ? "Send complaint by SMS"
+            : connection === "none"
+              ? "Save complaint on device"
+              : "Register complaint"}
           {chosen.length ? ` · ${chosen.length} institution${chosen.length === 1 ? "" : "s"}` : ""}
         </Button>
       </div>

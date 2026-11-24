@@ -40,12 +40,14 @@ import {
   type Tehsil,
   type TodayStaffStatus,
   type Complaint,
+  type SmsEntry,
   complaints as baseComplaints,
   COMPLAINT_CATEGORIES,
   COMPLAINT_STATUSES,
 } from "@/data/mock";
 import {
   restoreWorkspace,
+  complaintSchema,
   WORKSPACE_STORAGE_KEY,
   type StoredWorkspace,
   type SubmissionData,
@@ -127,6 +129,7 @@ export type ComplaintInput = Pick<
 >;
 function initialWorkspace(): StoredWorkspace {
   return {
+    smsEntries: [],
     complaints: structuredClone(baseComplaints),
     version: 3,
     referenceDate: TODAY,
@@ -333,6 +336,7 @@ function createReport(
     sequence,
     ...(input.schoolDay ? { schoolDay: input.schoolDay } : {}),
     ...(input.shift ? { shift: input.shift } : {}),
+    ...(input.equipmentOk != null ? { equipmentOk: input.equipmentOk } : {}),
   });
   const status =
     input.connection === "none" ? "draft" : input.connection === "sms" ? "sent" : "received";
@@ -379,18 +383,20 @@ function createReport(
     arrivals: status === "received" ? [report.id, ...state.arrivals].slice(0, 100) : state.arrivals,
   };
   if (status === "received") next = receivedReviews(next, report);
+  if (status === "sent") next = queueSms(next, "report", report.id, [f.id], payload);
   return { state: next, report };
 }
 function deliver(
   state: StoredWorkspace,
   id: string,
   connection: Exclude<Connection, "none">,
+  gateway = false,
 ): StoredWorkspace {
   const report = state.extraReports.find((r) => r.id === id);
   if (
     !report ||
     !["draft", "sent"].includes(report.status) ||
-    !inRoleScope(roleById[state.roleId], facilityById[report.facilityId]!)
+    (!gateway && !inRoleScope(roleById[state.roleId], facilityById[report.facilityId]!))
   )
     return state;
   const at = Math.min(1430, state.clockMin + 1);
@@ -416,13 +422,175 @@ function deliver(
       clockMin: at,
       extraReports: state.extraReports.map((r) => (r.id === id ? nextReport : r)),
       arrivals: [id, ...state.arrivals].slice(0, 100),
+      smsEntries: state.smsEntries.map((entry) =>
+        entry.referenceId === id && entry.status !== "received"
+          ? { ...entry, status: "received", receivedMin: at }
+          : entry,
+      ),
     },
     nextReport,
   );
 }
+function queueSms(
+  state: StoredWorkspace,
+  kind: SmsEntry["kind"],
+  referenceId: string,
+  facilityIds: string[],
+  payload: string,
+  saved = false,
+): StoredWorkspace {
+  if (state.smsEntries.some((entry) => entry.referenceId === referenceId)) return state;
+  const sequence =
+    Math.max(0, ...state.smsEntries.map((entry) => Number(entry.id.split("-").at(-1)) || 0)) + 1;
+  const entry: SmsEntry = {
+    id: `SMS-${TODAY_COMPACT}-${String(sequence).padStart(4, "0")}`,
+    kind,
+    referenceId,
+    facilityIds,
+    payload,
+    status: saved ? "saved" : "sent",
+    createdMin: state.clockMin,
+    receivedMin: null,
+    segments: codedSmsBudget(payload).segments,
+  };
+  return { ...state, smsEntries: [...state.smsEntries, entry].slice(-1500) };
+}
+function receiveSms(state: StoredWorkspace, id: string): StoredWorkspace {
+  const entry = state.smsEntries.find((entry) => entry.id === id);
+  if (!entry || entry.status !== "sent") return state;
+  const at = Math.min(1430, state.clockMin + 1);
+  try {
+    if (entry.segments !== codedSmsBudget(entry.payload).segments)
+      throw new Error("SMS segments are incomplete. Resend the entry.");
+    let next = state;
+    if (entry.kind === "report") {
+      const report = state.extraReports.find((r) => r.id === entry.referenceId);
+      if (
+        !report ||
+        report.smsPayload !== entry.payload ||
+        !report.sender.registered ||
+        !report.totalsPlausible ||
+        !["draft", "sent", "received", "pending", "verified"].includes(report.status) ||
+        report.rosterVersion !== facilityById[report.facilityId]!.rosterVersion
+      )
+        throw new Error("The sender, roster or SMS payload could not be validated.");
+      next = deliver(state, report.id, "sms", true);
+    } else {
+      const [protocol, reference, body] = entry.payload.split("|");
+      const complaint = complaintSchema.parse(JSON.parse(decodeURIComponent(body ?? "")));
+      if (
+        protocol !== "C1" ||
+        reference !== entry.referenceId ||
+        complaint.id !== entry.referenceId ||
+        complaint.facilityIds.length !== entry.facilityIds.length ||
+        complaint.facilityIds.some((id) => !entry.facilityIds.includes(id))
+      )
+        throw new Error("The complaint SMS could not be validated.");
+      if (!state.complaints.some((c) => c.id === complaint.id))
+        next = {
+          ...state,
+          complaints: [
+            ...state.complaints,
+            {
+              ...complaint,
+              timeline: [
+                ...complaint.timeline,
+                {
+                  at: `23 Nov ${hhmm(at)}`,
+                  by: "District SMS intake",
+                  text: "Received and validated through SMS. Complaint register updated.",
+                },
+              ],
+            },
+          ],
+        };
+    }
+    return {
+      ...next,
+      clockMin: at,
+      smsEntries: next.smsEntries.map((item) =>
+        item.id === id ? { ...item, status: "received", receivedMin: at } : item,
+      ),
+    };
+  } catch (error) {
+    return {
+      ...state,
+      smsEntries: state.smsEntries.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              status: "rejected",
+              reason: error instanceof Error ? error.message : "SMS validation failed.",
+            }
+          : item,
+      ),
+    };
+  }
+}
+function sendSaved(
+  state: StoredWorkspace,
+  facilityId: string,
+  connection: Exclude<Connection, "none">,
+): StoredWorkspace {
+  const facility = facilityById[facilityId];
+  if (!facility || !inRoleScope(roleById[state.roleId], facility)) return state;
+  let next = state;
+  for (const report of state.extraReports.filter(
+    (r) => r.facilityId === facilityId && ["draft", "sent"].includes(r.status),
+  )) {
+    if (connection === "online") {
+      next = deliver(next, report.id, "online");
+      continue;
+    }
+    const data = state.submissions[report.id];
+    if (!data) continue;
+    const payload =
+      report.smsPayload ?? reportPayloadFor({ facilityId, sequence: report.sequence, ...data });
+    const at = Math.min(1430, next.clockMin + 1);
+    next = {
+      ...next,
+      clockMin: at,
+      extraReports: next.extraReports.map((r) =>
+        r.id === report.id
+          ? {
+              ...r,
+              channel: "sms",
+              status: "sent",
+              smsPayload: payload,
+              sentAt: r.sentAt ?? at,
+              segments: { received: 0, total: codedSmsBudget(payload).segments },
+              lifecycle: r.lifecycle.map((step) =>
+                step.label === "Sent" ? { ...step, at: step.at ?? at } : step,
+              ),
+            }
+          : r,
+      ),
+    };
+    next = queueSms(next, "report", report.id, [facilityId], payload);
+  }
+  for (const entry of next.smsEntries.filter(
+    (entry) =>
+      entry.kind === "complaint" &&
+      entry.facilityIds.includes(facilityId) &&
+      entry.status === "saved" &&
+      entry.facilityIds.every((id) => inRoleScope(roleById[next.roleId], facilityById[id]!)),
+  )) {
+    next = {
+      ...next,
+      smsEntries: next.smsEntries.map((item) =>
+        item.id === entry.id ? { ...item, status: "sent" } : item,
+      ),
+    };
+    if (connection === "online") next = receiveSms(next, entry.id);
+  }
+  return next;
+}
 interface AppState {
+  smsEntries: SmsEntry[];
+  retrySmsEntry: (id: string) => void;
+  sendSavedEntries: (facilityId: string, connection: Exclude<Connection, "none">) => void;
   complaints: Complaint[];
-  createComplaint: (input: ComplaintInput) => string;
+  createComplaint: (input: ComplaintInput, connection?: Connection) => string;
   updateComplaint: (
     id: string,
     input: { status: Complaint["status"]; owner: string; note: string },
@@ -488,6 +656,36 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setStorageAvailable(false);
     }
   }, [state, storageReady]);
+  useEffect(() => {
+    const sync = (event: StorageEvent) => {
+      if (event.key !== WORKSPACE_STORAGE_KEY || !event.newValue) return;
+      const saved = restoreWorkspace(event.newValue);
+      if (saved && JSON.stringify(saved) !== JSON.stringify(stateRef.current)) apply(saved);
+    };
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, [apply]);
+  useEffect(() => {
+    if (!storageReady) return;
+    let recovered = stateRef.current;
+    for (const report of recovered.extraReports.filter(
+      (r) =>
+        r.status === "sent" && r.channel === "sms" && r.smsPayload && recovered.submissions[r.id],
+    ))
+      recovered = queueSms(recovered, "report", report.id, [report.facilityId], report.smsPayload!);
+    if (recovered !== stateRef.current) {
+      apply(recovered);
+      return;
+    }
+    if (!state.smsEntries.some((entry) => entry.status === "sent")) return;
+    const timer = window.setTimeout(() => {
+      let next = stateRef.current;
+      for (const entry of next.smsEntries.filter((entry) => entry.status === "sent"))
+        next = receiveSms(next, entry.id);
+      apply(next);
+    }, 1800);
+    return () => window.clearTimeout(timer);
+  }, [storageReady, state.smsEntries, state.extraReports, state.submissions, apply]);
   const role = roleById[state.roleId];
   const setRole = useCallback(
     (id: RoleId) => {
@@ -536,6 +734,33 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const deliverReport = useCallback(
     (id: string, connection: Exclude<Connection, "none"> = "sms") =>
       apply(deliver(stateRef.current, id, connection)),
+    [apply],
+  );
+  const sendSavedEntries = useCallback(
+    (facilityId: string, connection: Exclude<Connection, "none">) => {
+      apply(sendSaved(stateRef.current, facilityId, connection));
+    },
+    [apply],
+  );
+  const retrySmsEntry = useCallback(
+    (id: string) => {
+      const s = stateRef.current;
+      const entry = s.smsEntries.find((entry) => entry.id === id);
+      if (
+        !entry ||
+        entry.status !== "rejected" ||
+        !entry.facilityIds.every((id) => inRoleScope(roleById[s.roleId], facilityById[id]!))
+      )
+        return;
+      apply({
+        ...s,
+        smsEntries: s.smsEntries.map((item) => {
+          if (item.id !== id) return item;
+          const { reason: _reason, ...rest } = item;
+          return { ...rest, status: "sent", segments: codedSmsBudget(item.payload).segments };
+        }),
+      });
+    },
     [apply],
   );
   useEffect(() => {
@@ -724,7 +949,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [createFollowUp],
   );
   const createComplaint = useCallback(
-    (input: ComplaintInput) => {
+    (input: ComplaintInput, connection: Connection = "online") => {
       const s = stateRef.current;
       const ids = [...new Set(input.facilityIds)];
       if (
@@ -743,9 +968,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         !["Critical", "High", "Medium", "Low"].includes(input.priority)
       )
         throw new Error("Add a title, detailed complaint, valid priority and assigned owner.");
-      if (s.complaints.length >= 1000)
+      if (
+        s.complaints.length +
+          s.smsEntries.filter(
+            (entry) => entry.kind === "complaint" && ["saved", "sent"].includes(entry.status),
+          ).length >=
+        1000
+      )
         throw new Error("The complaint register is full. Reset the presentation to start again.");
-      const id = `CMP-${Math.max(1000, ...s.complaints.map((c) => Number(c.id.slice(4)) || 1000)) + 1}`;
+      const id = `CMP-${Math.max(1000, ...s.complaints.map((c) => Number(c.id.slice(4)) || 1000), ...s.smsEntries.filter((e) => e.kind === "complaint").map((e) => Number(e.referenceId.slice(4)) || 1000)) + 1}`;
       const c: Complaint = {
         ...input,
         facilityIds: ids,
@@ -765,7 +996,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           },
         ],
       };
-      apply({ ...s, complaints: [...s.complaints, c] });
+      if (connection === "online") apply({ ...s, complaints: [...s.complaints, c] });
+      else
+        apply(
+          queueSms(
+            s,
+            "complaint",
+            id,
+            ids,
+            `C1|${id}|${encodeURIComponent(JSON.stringify(c))}`,
+            connection === "none",
+          ),
+        );
       return id;
     },
     [apply],
@@ -826,6 +1068,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       inRoleScope(role, facilityById[r.facilityId]!),
   );
   const value: AppState = {
+    smsEntries: state.smsEntries,
+    retrySmsEntry,
+    sendSavedEntries,
     complaints: state.complaints,
     createComplaint,
     updateComplaint,

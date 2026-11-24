@@ -77,7 +77,7 @@ const CONNECTION_META: Record<
 function FieldAppPage() {
   const [persona, setPersona] = useState<Persona>("school");
   const [conn, setConn] = useState<Connection>("sms");
-  const { role, pendingOutbox, deliverReport, storageReady, statusFor } = useApp();
+  const { role, sendSavedEntries, storageReady, statusFor } = useApp();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const scope = useScopedFacilities({ applyFilters: false });
@@ -113,10 +113,7 @@ function FieldAppPage() {
   }, [storageReady, currentFacilityId, search, navigate]);
   const changeConnection = (value: Connection) => {
     setConn(value);
-    if (value !== "none")
-      pendingOutbox
-        .filter((r) => r.facilityId === currentFacility?.id)
-        .forEach((r) => deliverReport(r.id, value));
+    if (value !== "none" && currentFacility) sendSavedEntries(currentFacility.id, value);
   };
 
   return (
@@ -167,7 +164,8 @@ function FieldAppPage() {
             }))}
           />
           <span className="text-xs text-ink-muted">
-            Reports remain in the outbox until a connection and acknowledgement are available.
+            No Wi-Fi or mobile data? Select SMS only. A cellular SMS signal is enough to send
+            entries.
           </span>
         </div>
       </PageHeader>
@@ -194,6 +192,23 @@ function FieldAppPage() {
         <span className="ml-auto text-xs text-ink-muted">
           {currentFacility?.tehsil} tehsil · {currentFacility?.rosterVersion}
         </span>
+      </div>
+      <div
+        className="rounded-lg border border-line bg-sent-tint p-4 text-sm text-sent"
+        role="status"
+      >
+        <p className="font-semibold">
+          {conn === "sms"
+            ? "No internet: SMS reporting is active"
+            : conn === "none"
+              ? "No cellular signal: entries stay saved"
+              : "Internet reporting with SMS fallback"}
+        </p>
+        <p className="mt-1">
+          {conn === "none"
+            ? "Complete entries and save them on the device. When cellular SMS service returns, select SMS only to send them without Wi-Fi."
+            : "Attendance, class totals, hospital data, equipment faults, handover notes and complaints can travel by SMS. Receipt and validation update the admin side automatically."}
+        </p>
       </div>
       {!storageReady ? (
         <div className="panel px-5 py-8 text-ink-muted" role="status">
@@ -1240,7 +1255,9 @@ function HospitalFlow({ conn, f }: { conn: Connection; f: Facility }) {
                     : "Save on phone"
                   : sent
                     ? "Sent"
-                    : "Send shift report"}
+                    : conn === "sms"
+                      ? "Send shift by SMS"
+                      : "Send shift report"}
             </PrimaryButton>
           }
         >
@@ -1302,7 +1319,7 @@ function HospitalFlow({ conn, f }: { conn: Connection; f: Facility }) {
 }
 
 function SubmissionReceipt({ reportId }: { reportId: string | null }) {
-  const { reports, deliverReport } = useApp();
+  const { reports } = useApp();
   const r = reports.find((r) => r.id === reportId);
   if (!r) return null;
   return (
@@ -1313,24 +1330,11 @@ function SubmissionReceipt({ reportId }: { reportId: string | null }) {
         {r.status === "draft"
           ? "Saved in the outbox. Change the connection to send this report."
           : r.status === "sent"
-            ? "Message sent. District acknowledgement is still pending."
+            ? "SMS sent over the cellular network. The admin record will update automatically after receipt and validation."
             : r.status === "rejected"
               ? "Check the correction note and submit a revised report."
               : "This report is available in the district reporting register."}
       </p>
-      {r.status === "sent" && (
-        <Button
-          size="sm"
-          variant="outline"
-          className="w-full"
-          onClick={() => {
-            deliverReport(r.id);
-            toast.success("Acknowledgement received", { description: r.id });
-          }}
-        >
-          Receive acknowledgement
-        </Button>
-      )}
       <Link
         to="/inbox"
         search={{ report: r.id }}

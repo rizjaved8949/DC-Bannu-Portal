@@ -7,6 +7,7 @@ import {
   type SchoolDay,
   type Shift,
   type Complaint,
+  type SmsEntry,
   complaints as baseComplaints,
   COMPLAINT_CATEGORIES,
   COMPLAINT_STATUSES,
@@ -116,6 +117,7 @@ export interface SubmissionData {
   equipmentOk?: boolean;
 }
 export interface StoredWorkspace {
+  smsEntries: SmsEntry[];
   complaints: Complaint[];
   version: 3;
   referenceDate: string;
@@ -135,26 +137,39 @@ export interface StoredWorkspace {
   reviewItems: ReviewItem[];
   poolIndex: number;
 }
+export const complaintSchema = z.object({
+  id: z.string(),
+  facilityIds: z.array(facilityId).min(1),
+  title: z.string(),
+  description: z.string(),
+  category: z.enum(COMPLAINT_CATEGORIES),
+  priority: z.enum(["Critical", "High", "Medium", "Low"]),
+  status: z.enum(COMPLAINT_STATUSES),
+  owner: z.string(),
+  createdBy: z.string(),
+  createdDate: z.string(),
+  createdMin: minute,
+  timeline: z.array(z.object({ at: z.string(), by: z.string(), text: z.string() })),
+});
 const workspace = z.object({
-  complaints: z
+  smsEntries: z
     .array(
       z.object({
         id: z.string(),
+        kind: z.enum(["report", "complaint"]),
+        referenceId: z.string(),
         facilityIds: z.array(facilityId).min(1),
-        title: z.string(),
-        description: z.string(),
-        category: z.enum(COMPLAINT_CATEGORIES),
-        priority: z.enum(["Critical", "High", "Medium", "Low"]),
-        status: z.enum(COMPLAINT_STATUSES),
-        owner: z.string(),
-        createdBy: z.string(),
-        createdDate: z.string(),
+        payload: z.string(),
+        status: z.enum(["saved", "sent", "received", "rejected"]),
         createdMin: minute,
-        timeline: z.array(z.object({ at: z.string(), by: z.string(), text: z.string() })),
+        receivedMin: minute.nullable(),
+        segments: z.number().int().positive(),
+        reason: z.string().optional(),
       }),
     )
-    .max(1000)
-    .default(baseComplaints),
+    .max(1500)
+    .default([]),
+  complaints: z.array(complaintSchema).max(1000).default(baseComplaints),
   version: z.literal(3),
   referenceDate: z.literal(TODAY),
   roleId: z.enum(["dc", "deo", "dho", "ac-domel"]),
