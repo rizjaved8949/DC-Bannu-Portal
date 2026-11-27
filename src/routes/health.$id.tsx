@@ -59,14 +59,14 @@ export const Route = createFileRoute("/health/$id")({
   validateSearch: healthRecordSearch,
   head: ({ params }) => ({
     meta: [
-      { title: `${facilityById[params.id]?.name ?? "Health facility record"} · NWDCMS` },
+      { title: `${facilityById[params.id]?.name ?? "Health facility record"} · NWD Connect` },
       {
         name: "description",
         content: "Shift roster against minimum staffing, OPD, beds, services and handover notes.",
       },
       {
         property: "og:title",
-        content: `${facilityById[params.id]?.name ?? "Health facility record"} · NWDCMS`,
+        content: `${facilityById[params.id]?.name ?? "Health facility record"} · NWD Connect`,
       },
       {
         property: "og:description",

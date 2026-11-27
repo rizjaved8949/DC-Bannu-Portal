@@ -189,7 +189,7 @@ export function FieldWorkspace({
                 <Building2 className="size-6" />
               </span>
               <div>
-                <p className="font-bold text-lg">DCMS Field</p>
+                <p className="font-bold text-lg">NWD Connect Field</p>
                 <p className="text-xs text-topbar-muted">
                   {f.district === "Bannu" ? "District Bannu" : "North Waziristan"}
                 </p>

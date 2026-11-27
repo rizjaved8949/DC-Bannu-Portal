@@ -31,13 +31,13 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/health/")({
   head: () => ({
     meta: [
-      { title: "Health facilities · NWDCMS" },
+      { title: "Health facilities · NWD Connect" },
       {
         name: "description",
         content:
           "Shift coverage, OPD, beds and services for public health facilities in North Waziristan.",
       },
-      { property: "og:title", content: "Health facilities · NWDCMS" },
+      { property: "og:title", content: "Health facilities · NWD Connect" },
       {
         property: "og:description",
         content:
@@ -118,7 +118,7 @@ function HealthPage() {
 
   const exportCsv = () =>
     downloadCsv(
-      `nwdcms-health-${shiftKey}-2026-11-23.csv`,
+      `nwd-connect-health-${shiftKey}-2026-11-23.csv`,
       sorted.map((x) => ({
         Facility: x.f.name,
         Code: x.f.code,

@@ -247,11 +247,11 @@ function SideNavigation({
   );
   return (
     <div className={cn("side-navigation", collapsed && "is-collapsed")}>
-      <Link to="/" className="sidebar-brand" onClick={onNavigate} aria-label="NWDCMS home">
+      <Link to="/" className="sidebar-brand" onClick={onNavigate} aria-label="NWD Connect home">
         <Emblem />
         <span className="sidebar-label">
           <strong>
-            <span>NW</span>DCMS
+            NWD <span>Connect</span>
           </strong>
           <small>District monitoring system</small>
         </span>

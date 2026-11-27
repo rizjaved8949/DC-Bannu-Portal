@@ -1,5 +1,5 @@
 /**
- * All prototype data for NWDCMS. "Now" is Mon 23 Nov 2026, 11:40 PKT.
+ * All prototype data for NWD Connect. "Now" is Mon 23 Nov 2026, 11:40 PKT.
  * Times are stored as minutes-since-midnight or "YYYY-MM-DD" strings so server and
  * browser render identically.
  *
@@ -1627,7 +1627,7 @@ export const reviewItems: ReviewItem[] = (() => {
     const status = it.status ?? (chance(0.62) ? "Open" : chance(0.6) ? "In review" : "Closed");
     const created = `${formatShortDate(it.createdDate)} ${hhmm(it.createdMin)}`;
     const timeline: ReviewEvent[] = it.timeline ?? [
-      { at: created, text: "Flagged automatically", by: "DCMS rules" },
+      { at: created, text: "Flagged automatically", by: "NWD Connect rules" },
     ];
     if (!it.timeline && status !== "Open")
       timeline.push({

@@ -58,7 +58,7 @@ export function WorkspaceControls() {
   const hospital = scope.find((f) => f.id === "HF204") ?? scope.find((f) => f.kind === "health");
   const exportLog = () =>
     downloadCsv(
-      "nwdcms-reporting-activity.csv",
+      "nwd-connect-reporting-activity.csv",
       reports
         .filter((r) => ids.has(r.facilityId))
         .flatMap((r) =>

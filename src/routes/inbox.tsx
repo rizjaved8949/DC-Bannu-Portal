@@ -46,12 +46,12 @@ export const Route = createFileRoute("/inbox")({
     typeof s["report"] === "string" ? { report: s["report"] } : {},
   head: () => ({
     meta: [
-      { title: "Reports inbox · NWDCMS" },
+      { title: "Reports inbox · NWD Connect" },
       {
         name: "description",
         content: "Today's app and SMS reports with validation checks and lifecycle.",
       },
-      { property: "og:title", content: "Reports inbox · NWDCMS" },
+      { property: "og:title", content: "Reports inbox · NWD Connect" },
       {
         property: "og:description",
         content: "Today's app and SMS reports with validation checks and lifecycle.",
@@ -123,7 +123,7 @@ function InboxPage() {
 
   const exportCsv = () =>
     downloadCsv(
-      "nwdcms-inbox-2026-11-23.csv",
+      "nwd-connect-inbox-2026-11-23.csv",
       sorted.map((x) => ({
         Received: x.r.receivedAt != null ? hhmm(x.r.receivedAt) : "",
         Facility: x.f.name,

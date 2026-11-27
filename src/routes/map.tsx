@@ -20,12 +20,12 @@ const FacilityMap = lazy(() => import("@/components/dcms/map/facility-map"));
 export const Route = createFileRoute("/map")({
   head: () => ({
     meta: [
-      { title: "Facilities & map · NWDCMS" },
+      { title: "Facilities & map · NWD Connect" },
       {
         name: "description",
         content: "Facility registry, map and infrastructure checklist for North Waziristan.",
       },
-      { property: "og:title", content: "Facilities & map · NWDCMS" },
+      { property: "og:title", content: "Facilities & map · NWD Connect" },
       {
         property: "og:description",
         content: "Facility registry, map and infrastructure checklist for North Waziristan.",
@@ -73,7 +73,7 @@ function MapPage() {
 
   const exportCsv = () =>
     downloadCsv(
-      "nwdcms-facility-infrastructure-2026-11-23.csv",
+      "nwd-connect-facility-infrastructure-2026-11-23.csv",
       list.map((f) => ({
         Facility: f.name,
         Code: f.code,

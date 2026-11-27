@@ -45,7 +45,7 @@ export const Route = createFileRoute("/complaints")({
   }),
   head: () => ({
     meta: [
-      { title: "Complaints · NWDCMS" },
+      { title: "Complaints · NWD Connect" },
       {
         name: "description",
         content:
@@ -105,7 +105,7 @@ function ComplaintWorkspace() {
   };
   const exportRows = () =>
     downloadCsv(
-      "nwdcms-complaints.csv",
+      "nwd-connect-complaints.csv",
       list.map((c) => ({
         ID: c.id,
         Title: c.title,

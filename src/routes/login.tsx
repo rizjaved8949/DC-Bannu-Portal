@@ -21,11 +21,11 @@ import { ROLES, useApp, type RoleId, type RoleMeta } from "@/lib/app-state";
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Welcome · NWDCMS" },
+      { title: "Welcome · NWD Connect" },
       {
         name: "description",
         content:
-          "Explore the NWDCMS workspace for district education and public health monitoring.",
+          "Explore the NWD Connect workspace for district education and public health monitoring.",
       },
     ],
   }),
@@ -81,14 +81,14 @@ function DemoLoginPage() {
   };
   return (
     <div className="login-page">
-      <aside className="login-story" aria-label="About NWDCMS">
-        <a href="/login" className="login-brand" aria-label="NWDCMS welcome">
+      <aside className="login-story" aria-label="About NWD Connect">
+        <a href="/login" className="login-brand" aria-label="NWD Connect welcome">
           <span className="login-brand-mark" aria-hidden>
             <Building2 className="size-6" />
           </span>
           <span>
             <strong>
-              <span>NW</span>DCMS
+              NWD <span>Connect</span>
             </strong>
             <small>District Centralized Monitoring System</small>
           </span>
@@ -163,7 +163,7 @@ function DemoLoginPage() {
         </div>
         <div className="login-form-wrap">
           <PageHeader
-            title="Welcome to DCMS"
+            title="Welcome to NWD Connect"
             description="Choose a view and explore the district. No account or password needed."
           />
           <form onSubmit={enter}>

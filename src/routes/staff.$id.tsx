@@ -38,7 +38,7 @@ import { downloadCsv } from "@/lib/csv";
 export const Route = createFileRoute("/staff/$id")({
   head: ({ params }) => ({
     meta: [
-      { title: `${staffById[params.id]?.name ?? "Employee record"} · NWDCMS` },
+      { title: `${staffById[params.id]?.name ?? "Employee record"} · NWD Connect` },
       {
         name: "description",
         content:
@@ -46,7 +46,7 @@ export const Route = createFileRoute("/staff/$id")({
       },
       {
         property: "og:title",
-        content: `${staffById[params.id]?.name ?? "Employee record"} · NWDCMS`,
+        content: `${staffById[params.id]?.name ?? "Employee record"} · NWD Connect`,
       },
       { property: "og:description", content: "Attendance record for one staff member." },
     ],
@@ -300,7 +300,7 @@ function StaffDetailPage() {
             variant="outline"
             onClick={() =>
               downloadCsv(
-                `nwdcms-${s.code}-${period}.csv`,
+                `nwd-connect-${s.code}-${period}.csv`,
                 history.map((d) => ({
                   Date: d.date,
                   Employee: s.name,

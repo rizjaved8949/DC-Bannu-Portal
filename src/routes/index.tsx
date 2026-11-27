@@ -59,13 +59,13 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Overview · NWDCMS" },
+      { title: "Overview · NWD Connect" },
       {
         name: "description",
         content:
           "Today’s reporting, explained, incoming reports and district indicators for North Waziristan.",
       },
-      { property: "og:title", content: "Overview · NWDCMS" },
+      { property: "og:title", content: "Overview · NWD Connect" },
       {
         property: "og:description",
         content:
@@ -135,7 +135,7 @@ function OverviewPage() {
 
   const exportCsv = () =>
     downloadCsv(
-      "nwdcms-overview-2026-11-23.csv",
+      "nwd-connect-overview-2026-11-23.csv",
       facilities.map((f) => ({
         Facility: f.name,
         Code: f.code,

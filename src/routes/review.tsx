@@ -40,12 +40,12 @@ export const Route = createFileRoute("/review")({
     typeof s["item"] === "string" ? { item: s["item"] } : {},
   head: () => ({
     meta: [
-      { title: "Review queue · NWDCMS" },
+      { title: "Review queue · NWD Connect" },
       {
         name: "description",
         content: "Missing or unusual reports flagged for review, with evidence and next steps.",
       },
-      { property: "og:title", content: "Review queue · NWDCMS" },
+      { property: "og:title", content: "Review queue · NWD Connect" },
       {
         property: "og:description",
         content: "Missing or unusual reports flagged for review, with evidence and next steps.",
@@ -130,7 +130,7 @@ function ReviewPage() {
 
   const exportCsv = () =>
     downloadCsv(
-      "nwdcms-review-queue-2026-11-23.csv",
+      "nwd-connect-review-queue-2026-11-23.csv",
       list.map((it) => ({
         ID: it.id,
         Severity: it.severity,

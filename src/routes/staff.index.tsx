@@ -40,13 +40,13 @@ export const Route = createFileRoute("/staff/")({
     s["tab"] === "posts" || s["tab"] === "exceptions" ? { tab: s["tab"] } : {},
   head: () => ({
     meta: [
-      { title: "Staff · NWDCMS" },
+      { title: "Staff · NWD Connect" },
       {
         name: "description",
         content:
           "Staff directory, sanctioned and filled posts, and absence and leave exceptions for North Waziristan.",
       },
-      { property: "og:title", content: "Staff · NWDCMS" },
+      { property: "og:title", content: "Staff · NWD Connect" },
       {
         property: "og:description",
         content:
@@ -190,7 +190,7 @@ function Directory({ rows }: { rows: Row[] }) {
 
   const exportCsv = () =>
     downloadCsv(
-      "nwdcms-staff-directory-2026-11-23.csv",
+      "nwd-connect-staff-directory-2026-11-23.csv",
       sorted.map((x) => ({
         Name: x.s.name,
         "Personal no.": x.s.personalNoMasked,
@@ -366,7 +366,7 @@ function PostsAndVacancies({ facilities }: { facilities: Facility[] }) {
 
   const exportCsv = () =>
     downloadCsv(
-      "nwdcms-posts-2026-11-23.csv",
+      "nwd-connect-posts-2026-11-23.csv",
       view === "facility"
         ? byFacility.map((x) => ({
             Facility: x.f.name,
@@ -570,7 +570,7 @@ function Exceptions({ rows }: { rows: Row[] }) {
 
   const exportCsv = () =>
     downloadCsv(
-      "nwdcms-attendance-exceptions-2026-11-23.csv",
+      "nwd-connect-attendance-exceptions-2026-11-23.csv",
       items.map((x) => ({
         Name: x.s.name,
         Designation: x.s.designation,
