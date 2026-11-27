@@ -20,11 +20,11 @@ import { ROLES, useApp, type RoleId } from "@/lib/app-state";
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Welcome · DCMS Bannu" },
+      { title: "Welcome · NWDCMS" },
       {
         name: "description",
         content:
-          "Explore the DCMS Bannu demo workspace for district education and public health monitoring.",
+          "Explore the NWDCMS demo workspace for district education and public health monitoring.",
       },
     ],
   }),
@@ -57,14 +57,14 @@ function DemoLoginPage() {
   };
   return (
     <div className="login-page">
-      <aside className="login-story" aria-label="About DCMS Bannu">
-        <a href="/login" className="login-brand" aria-label="DCMS Bannu welcome">
+      <aside className="login-story" aria-label="About NWDCMS">
+        <a href="/login" className="login-brand" aria-label="NWDCMS welcome">
           <span className="login-brand-mark" aria-hidden>
             <Building2 className="size-6" />
           </span>
           <span>
             <strong>
-              DCMS <span>Bannu</span>
+              <span>NW</span>DCMS
             </strong>
             <small>District Centralized Monitoring System</small>
           </span>
@@ -126,7 +126,7 @@ function DemoLoginPage() {
           </div>
         </div>
         <footer className="login-story-footer">
-          <span>District Administration Bannu</span>
+          <span>District Administration North Waziristan</span>
           <span>Khyber Pakhtunkhwa</span>
         </footer>
       </aside>

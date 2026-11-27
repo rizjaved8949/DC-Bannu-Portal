@@ -20,15 +20,15 @@ const FacilityMap = lazy(() => import("@/components/dcms/map/facility-map"));
 export const Route = createFileRoute("/map")({
   head: () => ({
     meta: [
-      { title: "Facilities & map · DCMS Bannu" },
+      { title: "Facilities & map · NWDCMS" },
       {
         name: "description",
-        content: "Facility registry, map and infrastructure checklist for District Bannu.",
+        content: "Facility registry, map and infrastructure checklist for North Waziristan.",
       },
-      { property: "og:title", content: "Facilities & map · DCMS Bannu" },
+      { property: "og:title", content: "Facilities & map · NWDCMS" },
       {
         property: "og:description",
-        content: "Facility registry, map and infrastructure checklist for District Bannu.",
+        content: "Facility registry, map and infrastructure checklist for North Waziristan.",
       },
     ],
   }),
@@ -73,7 +73,7 @@ function MapPage() {
 
   const exportCsv = () =>
     downloadCsv(
-      "dcms-bannu-facility-infrastructure-2026-11-23.csv",
+      "nwdcms-facility-infrastructure-2026-11-23.csv",
       list.map((f) => ({
         Facility: f.name,
         Code: f.code,

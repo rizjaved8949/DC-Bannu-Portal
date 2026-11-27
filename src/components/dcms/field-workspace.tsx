@@ -432,7 +432,7 @@ export function FieldWorkspace({
                 ? "Saved locally in this browser"
                 : "Storage unavailable · keep this page open"}
             </span>
-            <span className="mt-1 block">District Administration Bannu · {f.rosterVersion}</span>
+            <span className="mt-1 block">District Administration North Waziristan · {f.rosterVersion}</span>
           </footer>
         </section>
       </div>

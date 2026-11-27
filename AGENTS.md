@@ -29,7 +29,7 @@ use the editor.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
 
-## Project rules (DCMS Bannu prototype)
+## Project rules (NWDCMS prototype)
 
 - Frontend-only prototype: all data comes from `src/data/mock.ts` (seeded mulberry32, seed 2311; "now" is 23 Nov 2026 11:40 PKT). Why: deterministic data renders identically on server and browser and needs no backend.
 - Never call `Date.now()`/`new Date()` for "now" or `Math.random()` in render code; use `TODAY`, `NOW_MIN` and seeded helpers from mock.ts. Why: avoids hydration mismatches.

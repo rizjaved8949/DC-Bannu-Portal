@@ -25,7 +25,7 @@ function NotFoundComponent() {
         <div className="empty-state-art" aria-hidden>
           <RouteOff className="size-7" />
         </div>
-        <p className="page-eyebrow justify-center">DCMS Bannu · 404</p>
+        <p className="page-eyebrow justify-center">NWDCMS · 404</p>
         <h1 className="mt-4 text-xl font-bold tracking-tight text-foreground">
           A little off the map
         </h1>
@@ -94,18 +94,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "DCMS Bannu – District Centralized Monitoring System" },
+      { title: "NWDCMS – District Centralized Monitoring System" },
       {
         name: "description",
         content:
-          "Daily reporting, staff attendance and facility status for schools and health facilities in District Bannu.",
+          "Daily reporting, staff attendance and facility status for schools and health facilities in North Waziristan.",
       },
-      { name: "author", content: "District Administration Bannu" },
-      { property: "og:title", content: "DCMS Bannu – District Centralized Monitoring System" },
+      { name: "author", content: "District Administration North Waziristan" },
+      { property: "og:title", content: "NWDCMS – District Centralized Monitoring System" },
       {
         property: "og:description",
         content:
-          "Daily reporting, staff attendance and facility status for schools and health facilities in District Bannu.",
+          "Daily reporting, staff attendance and facility status for schools and health facilities in North Waziristan.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

@@ -59,17 +59,17 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Overview · DCMS Bannu" },
+      { title: "Overview · NWDCMS" },
       {
         name: "description",
         content:
-          "Today’s reporting, explained, incoming reports and district indicators for Bannu.",
+          "Today’s reporting, explained, incoming reports and district indicators for North Waziristan.",
       },
-      { property: "og:title", content: "Overview · DCMS Bannu" },
+      { property: "og:title", content: "Overview · NWDCMS" },
       {
         property: "og:description",
         content:
-          "Today’s reporting, explained, incoming reports and district indicators for Bannu.",
+          "Today’s reporting, explained, incoming reports and district indicators for North Waziristan.",
       },
     ],
   }),
@@ -135,7 +135,7 @@ function OverviewPage() {
 
   const exportCsv = () =>
     downloadCsv(
-      "dcms-bannu-overview-2026-11-23.csv",
+      "nwdcms-overview-2026-11-23.csv",
       facilities.map((f) => ({
         Facility: f.name,
         Code: f.code,
@@ -153,7 +153,7 @@ function OverviewPage() {
     <div className="space-y-5">
       <PageHeader
         title="Overview"
-        description={`A clear view of today's reporting, people and public services ${role.department === "Health" ? "across public health facilities" : role.department === "Education" ? "across schools" : role.tehsil ? `across ${role.tehsil} tehsil` : "across District Bannu"}.`}
+        description={`A clear view of today's reporting, people and public services ${role.department === "Health" ? "across public health facilities" : role.department === "Education" ? "across schools" : role.tehsil ? `across ${role.tehsil} tehsil` : "across North Waziristan"}.`}
       />
 
       <FilterBar onExportCsv={exportCsv} />

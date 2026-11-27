@@ -16,7 +16,7 @@ import {
 } from "@/data/mock";
 
 // v4: schools switched to the real North Waziristan register (new facility ids).
-export const WORKSPACE_STORAGE_KEY = "dcms-bannu-workspace-v4";
+export const WORKSPACE_STORAGE_KEY = "nwdcms-workspace-v4";
 const facilityId = z.string().refine((id) => !!facilityById[id]);
 const minute = z.number().int().min(0).max(1439);
 const status = z.enum(["draft", "sent", "received", "pending", "verified", "rejected", "none"]);

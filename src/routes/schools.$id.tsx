@@ -51,14 +51,14 @@ export const Route = createFileRoute("/schools/$id")({
   validateSearch: schoolRecordSearch,
   head: ({ params }) => ({
     meta: [
-      { title: `${facilityById[params.id]?.name ?? "School record"} · DCMS Bannu` },
+      { title: `${facilityById[params.id]?.name ?? "School record"} · NWDCMS` },
       {
         name: "description",
         content: "School day report, staff roster, class totals and facility checklist.",
       },
       {
         property: "og:title",
-        content: `${facilityById[params.id]?.name ?? "School record"} · DCMS Bannu`,
+        content: `${facilityById[params.id]?.name ?? "School record"} · NWDCMS`,
       },
       {
         property: "og:description",

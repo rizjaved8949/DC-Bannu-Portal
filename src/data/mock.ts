@@ -1,5 +1,5 @@
 /**
- * All prototype data for DCMS Bannu. "Now" is Mon 23 Nov 2026, 11:40 PKT.
+ * All prototype data for NWDCMS. "Now" is Mon 23 Nov 2026, 11:40 PKT.
  * Times are stored as minutes-since-midnight or "YYYY-MM-DD" strings so server and
  * browser render identically.
  *

@@ -37,12 +37,12 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/schools/")({
   head: () => ({
     meta: [
-      { title: "Schools · DCMS Bannu" },
+      { title: "Schools · NWDCMS" },
       {
         name: "description",
         content: "North Waziristan school register (DEO data) with live school-day reporting.",
       },
-      { property: "og:title", content: "Schools · DCMS Bannu" },
+      { property: "og:title", content: "Schools · NWDCMS" },
       {
         property: "og:description",
         content: "North Waziristan school register (DEO data) with live school-day reporting.",

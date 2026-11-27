@@ -38,7 +38,7 @@ import { downloadCsv } from "@/lib/csv";
 export const Route = createFileRoute("/staff/$id")({
   head: ({ params }) => ({
     meta: [
-      { title: `${staffById[params.id]?.name ?? "Employee record"} · DCMS Bannu` },
+      { title: `${staffById[params.id]?.name ?? "Employee record"} · NWDCMS` },
       {
         name: "description",
         content:
@@ -46,7 +46,7 @@ export const Route = createFileRoute("/staff/$id")({
       },
       {
         property: "og:title",
-        content: `${staffById[params.id]?.name ?? "Employee record"} · DCMS Bannu`,
+        content: `${staffById[params.id]?.name ?? "Employee record"} · NWDCMS`,
       },
       { property: "og:description", content: "Attendance record for one staff member." },
     ],
@@ -300,7 +300,7 @@ function StaffDetailPage() {
             variant="outline"
             onClick={() =>
               downloadCsv(
-                `dcms-bannu-${s.code}-${period}.csv`,
+                `nwdcms-${s.code}-${period}.csv`,
                 history.map((d) => ({
                   Date: d.date,
                   Employee: s.name,

@@ -44,13 +44,13 @@ export const Route = createFileRoute("/field-app")({
   }),
   head: () => ({
     meta: [
-      { title: "Field app · DCMS Bannu" },
+      { title: "Field app · NWDCMS" },
       {
         name: "description",
         content:
           "Use institution reporting, saved reports, shift handover, complaints and the administrator guide.",
       },
-      { property: "og:title", content: "Field app · DCMS Bannu" },
+      { property: "og:title", content: "Field app · NWDCMS" },
       {
         property: "og:description",
         content:

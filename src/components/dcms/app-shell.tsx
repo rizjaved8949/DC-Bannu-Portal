@@ -240,11 +240,11 @@ function SideNavigation({
   );
   return (
     <div className={cn("side-navigation", collapsed && "is-collapsed")}>
-      <Link to="/" className="sidebar-brand" onClick={onNavigate} aria-label="DCMS Bannu home">
+      <Link to="/" className="sidebar-brand" onClick={onNavigate} aria-label="NWDCMS home">
         <Emblem />
         <span className="sidebar-label">
           <strong>
-            DCMS <span>Bannu</span>
+            <span>NW</span>DCMS
           </strong>
           <small>District monitoring system</small>
         </span>
@@ -470,7 +470,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <footer className="workspace-footer">
               <p>
                 <ShieldCheck className="size-4 text-kurram" />
-                District Administration Bannu{" "}
+                District Administration North Waziristan{" "}
                 <span className="hidden sm:inline">· Khyber Pakhtunkhwa</span>
               </p>
               <p>

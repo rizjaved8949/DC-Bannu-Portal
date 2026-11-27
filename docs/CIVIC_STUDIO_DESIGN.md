@@ -1,6 +1,6 @@
 # Civic Studio
 
-DCMS Bannu's visual system prioritizes readable district information, a distinctive bilingual identity, and fast daily work.
+NWDCMS's visual system prioritizes readable district information, a distinctive bilingual identity, and fast daily work.
 
 ## Directions considered
 

@@ -40,17 +40,17 @@ export const Route = createFileRoute("/staff/")({
     s["tab"] === "posts" || s["tab"] === "exceptions" ? { tab: s["tab"] } : {},
   head: () => ({
     meta: [
-      { title: "Staff · DCMS Bannu" },
+      { title: "Staff · NWDCMS" },
       {
         name: "description",
         content:
-          "Staff directory, sanctioned and filled posts, and absence and leave exceptions for District Bannu.",
+          "Staff directory, sanctioned and filled posts, and absence and leave exceptions for North Waziristan.",
       },
-      { property: "og:title", content: "Staff · DCMS Bannu" },
+      { property: "og:title", content: "Staff · NWDCMS" },
       {
         property: "og:description",
         content:
-          "Staff directory, sanctioned and filled posts, and absence and leave exceptions for District Bannu.",
+          "Staff directory, sanctioned and filled posts, and absence and leave exceptions for North Waziristan.",
       },
     ],
   }),
@@ -190,7 +190,7 @@ function Directory({ rows }: { rows: Row[] }) {
 
   const exportCsv = () =>
     downloadCsv(
-      "dcms-bannu-staff-directory-2026-11-23.csv",
+      "nwdcms-staff-directory-2026-11-23.csv",
       sorted.map((x) => ({
         Name: x.s.name,
         "Personal no.": x.s.personalNoMasked,
@@ -366,7 +366,7 @@ function PostsAndVacancies({ facilities }: { facilities: Facility[] }) {
 
   const exportCsv = () =>
     downloadCsv(
-      "dcms-bannu-posts-2026-11-23.csv",
+      "nwdcms-posts-2026-11-23.csv",
       view === "facility"
         ? byFacility.map((x) => ({
             Facility: x.f.name,
@@ -570,7 +570,7 @@ function Exceptions({ rows }: { rows: Row[] }) {
 
   const exportCsv = () =>
     downloadCsv(
-      "dcms-bannu-attendance-exceptions-2026-11-23.csv",
+      "nwdcms-attendance-exceptions-2026-11-23.csv",
       items.map((x) => ({
         Name: x.s.name,
         Designation: x.s.designation,

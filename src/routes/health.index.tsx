@@ -31,17 +31,17 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/health/")({
   head: () => ({
     meta: [
-      { title: "Health facilities · DCMS Bannu" },
+      { title: "Health facilities · NWDCMS" },
       {
         name: "description",
         content:
-          "Shift coverage, OPD, beds and services for public health facilities in District Bannu.",
+          "Shift coverage, OPD, beds and services for public health facilities in North Waziristan.",
       },
-      { property: "og:title", content: "Health facilities · DCMS Bannu" },
+      { property: "og:title", content: "Health facilities · NWDCMS" },
       {
         property: "og:description",
         content:
-          "Shift coverage, OPD, beds and services for public health facilities in District Bannu.",
+          "Shift coverage, OPD, beds and services for public health facilities in North Waziristan.",
       },
     ],
   }),
@@ -118,7 +118,7 @@ function HealthPage() {
 
   const exportCsv = () =>
     downloadCsv(
-      `dcms-bannu-health-${shiftKey}-2026-11-23.csv`,
+      `nwdcms-health-${shiftKey}-2026-11-23.csv`,
       sorted.map((x) => ({
         Facility: x.f.name,
         Code: x.f.code,

@@ -57,7 +57,7 @@ const pages = [
 
 for (const [path, title] of pages) {
   const response = await handler.fetch(
-    new Request(`https://dcms-bannu.test${path}`, { headers: { accept: "text/html" } }),
+    new Request(`https://nwdcms.test${path}`, { headers: { accept: "text/html" } }),
     context,
   );
   const html = await response.text();
@@ -84,7 +84,7 @@ for (const asset of assets) {
   await access(assetPath);
 }
 const missing = await handler.fetch(
-  new Request("https://dcms-bannu.test/no-such-page", { headers: { accept: "text/html" } }),
+  new Request("https://nwdcms.test/no-such-page", { headers: { accept: "text/html" } }),
   context,
 );
 assert.equal(missing.status, 404, "Unknown URLs must return 404");

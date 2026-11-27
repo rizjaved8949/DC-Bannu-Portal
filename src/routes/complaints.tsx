@@ -45,7 +45,7 @@ export const Route = createFileRoute("/complaints")({
   }),
   head: () => ({
     meta: [
-      { title: "Complaints · DCMS Bannu" },
+      { title: "Complaints · NWDCMS" },
       {
         name: "description",
         content:
@@ -105,7 +105,7 @@ function ComplaintWorkspace() {
   };
   const exportRows = () =>
     downloadCsv(
-      "dcms-bannu-complaints.csv",
+      "nwdcms-complaints.csv",
       list.map((c) => ({
         ID: c.id,
         Title: c.title,

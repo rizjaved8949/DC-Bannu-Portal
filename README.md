@@ -1,4 +1,4 @@
-# DCMS Bannu
+# NWDCMS
 
 Bilingual district monitoring prototype for school reports, health shifts, staff attendance, facility infrastructure, report verification and offline reporting.
 

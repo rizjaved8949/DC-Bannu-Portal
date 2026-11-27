@@ -18,7 +18,7 @@ export function PageHeader({
     <header className="page-header">
       <p className="page-eyebrow">
         <span aria-hidden />
-        District intelligence · Bannu
+        District intelligence · North Waziristan
       </p>
       <div className="flex items-baseline justify-between gap-6">
         <h1 className="text-[30px] font-bold leading-tight tracking-tight text-ink sm:text-[36px]">
