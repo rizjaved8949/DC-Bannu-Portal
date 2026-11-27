@@ -61,15 +61,15 @@ Wrapped table links now have solid rectangular click targets. Registers remember
 
 Browser verification opened all nine primary sections, checking the selected sidebar item and scroll position. It also covered mouse-clicked facility names, parent links, health section Back/Forward and refresh, staff history, school deep links, mobile drawer closure, and visibility of the last keyboard-selected tab. No browser console errors were observed.
 
-### Demo entry and reporting clarity
+### Sign-in entry and reporting clarity
 
-`/login` is a standalone, bilingual demo entry screen with a responsive evergreen brand panel, native keyboard-accessible role selection and a working “Continue with demo” action. It uses the existing role state and preserves the workspace. It collects no credentials and does not provide authentication or restrict existing deep links. The header and profile menu link to it.
+`/login` is a standalone, bilingual sign-in screen with a responsive evergreen brand panel, native keyboard-accessible role selection and a working “Continue” action. It uses the existing role state and preserves the workspace. It collects no credentials and does not provide authentication or restrict existing deep links. The header and profile menu link to it.
 
 The overview now places critical follow-ups and an explanation of daily reporting before the directory and department summaries. The original 352/478 figure means that 352 operational facilities have a report that reached the district, including 32 rejected reports. Its three separate outcomes are 320 accepted, 32 requiring correction and 126 not yet received, totaling the same 478 expected facilities. The accepted group includes 132 reports awaiting officer verification. The other 84 registered schools are closed or non-functional and excluded from the expected total. Delivery channels are explained separately from reporting status.
 
 The symbol-only facility matrix has been replaced with labelled, paginated area totals and named facility records. The underlying reporting calculations, status transitions, seeded data and role-scoping code are unchanged. Empty scopes explain why no reports are expected and offer a filter reset.
 
-The updated suite passes 44 of 45 tests. Added checks cover the reporting categories, empty scope, login route and demo role selection. The same pre-existing complaints scope test remains the only failure. Browser checks verified phone and desktop demo entry, correct role scope, named details and reporting counts with no console errors.
+The updated suite passes 44 of 45 tests. Added checks cover the reporting categories, empty scope, login route and role selection. The same pre-existing complaints scope test remains the only failure. Browser checks verified phone and desktop sign-in, correct role scope, named details and reporting counts with no console errors.
 
 ### Finite registers and colour refinement
 

@@ -21,7 +21,7 @@ export function DemoNote({ children }: { children?: ReactNode }) {
     <p className="flex items-start gap-2 border-b border-line bg-subtle px-4 py-2 text-xs text-ink-muted">
       <Radio className="mt-0.5 size-3.5 shrink-0 text-sent" aria-hidden />
       <span>
-        <span className="font-semibold text-ink">Live demo.</span>{" "}
+        <span className="font-semibold text-ink">Simulated data.</span>{" "}
         {children ??
           "Simulated to show how daily reports will appear once schools report. The school register figures are real; these daily values are not."}
       </span>

@@ -208,7 +208,7 @@ function SchoolDetailPage() {
             freshness={
               flagged.length
                 ? `${flagged.length} class ${flagged.length === 1 ? "row needs" : "rows need"} review`
-                : "Demo · totals plausible"
+                : "Simulated · totals plausible"
             }
           />
         </div>

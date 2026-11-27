@@ -96,9 +96,9 @@ function TopBar({
         </div>
         <div className="ml-auto flex items-center gap-1 sm:gap-3">
           <SearchTrigger compact />
-          <Link to="/login" className="demo-entry-link" aria-label="Open demo login">
+          <Link to="/login" className="demo-entry-link" aria-label="Open sign-in and role selection">
             <LogIn className="size-4" />
-            <span>Demo access</span>
+            <span>Sign in</span>
           </Link>
           <button
             className="topbar-icon"
@@ -212,7 +212,7 @@ function RoleMenu() {
         <DropdownMenuItem asChild>
           <Link to="/login" className="flex items-center gap-2">
             <LogIn className="size-4" />
-            Demo login & role selection
+            Sign in & role selection
           </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>

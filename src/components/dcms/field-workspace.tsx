@@ -661,8 +661,8 @@ function FieldInstitution({ facility: f }: { facility: Facility }) {
         ["Register status", src.statusText || "Not stated"],
         ["No of students", src.students ?? "Not given"],
         ["No of working teachers", src.teachers ?? "Not given"],
-        ["Registered reporting number (demo)", f.phoneMasked],
-        ["Reporting roster (demo)", f.rosterVersion],
+        ["Registered reporting number (simulated)", f.phoneMasked],
+        ["Reporting roster (simulated)", f.rosterVersion],
       ]
     : [
         ["Institution code", f.code],

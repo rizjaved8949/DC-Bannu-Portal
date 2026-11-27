@@ -24,7 +24,7 @@ export const Route = createFileRoute("/login")({
       {
         name: "description",
         content:
-          "Explore the NWDCMS demo workspace for district education and public health monitoring.",
+          "Explore the NWDCMS workspace for district education and public health monitoring.",
       },
     ],
   }),
@@ -47,7 +47,7 @@ function DemoLoginPage() {
       setRole(selected);
       await navigate({ to: "/" });
       toast.success("Welcome to your district workspace", {
-        description: "You’re exploring the demo. Switch roles from your profile at any time.",
+        description: "Switch roles from your profile at any time.",
       });
     } catch {
       toast.error("The workspace didn’t open. Please try again.");
@@ -134,7 +134,7 @@ function DemoLoginPage() {
         <div className="login-entry-top">
           <span>
             <Sparkles className="size-3.5" />
-            Interactive demo
+            Interactive preview
           </span>
         </div>
         <div className="login-form-wrap">
@@ -178,11 +178,11 @@ function DemoLoginPage() {
               aria-busy={entering}
             >
               <LogIn />
-              {entering ? "Opening your workspace…" : "Continue with demo"}
+              {entering ? "Opening your workspace…" : "Continue"}
             </Button>
             <p className="login-demo-note">
               <ShieldCheck className="size-4" />
-              Sample data · Demo access · No credentials collected
+              Sample data · No credentials collected
             </p>
           </form>
         </div>

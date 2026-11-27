@@ -84,10 +84,10 @@ export function InstitutionRecord({ facility: f }: { facility: Facility }) {
           "Coordinates",
           src.lat != null && src.lng != null ? `${src.lat}, ${src.lng}` : "Not in coordinates file",
         ],
-        ["Registered reporting number (demo)", f.phoneMasked],
-        ["Reporting roster (demo)", f.rosterVersion],
+        ["Registered reporting number (simulated)", f.phoneMasked],
+        ["Reporting roster (simulated)", f.rosterVersion],
         [
-          "Reporting channel (demo)",
+          "Reporting channel (simulated)",
           f.channel === "sms" ? "Registered SMS and offline reporting" : "App with SMS fallback",
         ],
       ]

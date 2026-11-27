@@ -183,7 +183,7 @@ function SchoolsPage() {
     <div>
       <PageHeader
         title="Schools"
-        description="North Waziristan school register from the DEO's files, with today's school-day reporting shown as a live demo."
+        description="North Waziristan school register from the DEO's files, with today's school-day reporting shown as a simulated live feed."
       />
       <div className="mt-4">
         <FilterBar
@@ -354,7 +354,7 @@ function SchoolsPage() {
                 </div>
                 <h2 className="mb-2 text-sm font-semibold text-ink">
                   Today's reporting{" "}
-                  <span className="text-xs font-normal text-ink-muted">· live demo</span>
+                  <span className="text-xs font-normal text-ink-muted">· simulated</span>
                 </h2>
                 <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
                   <KpiTile
@@ -362,42 +362,42 @@ function SchoolsPage() {
                     value={reported}
                     sub={`of ${functional.length} functional schools`}
                     tone={reported / Math.max(1, functional.length) > 0.7 ? "verified" : "pending"}
-                    freshness="Demo: accepted by the district server"
+                    freshness="Simulated: accepted by the district server"
                   />
                   <KpiTile
                     label="Staff present"
                     value={staffT ? `${pct(staffP, staffT)}%` : "No data"}
                     sub={`${staffP} of ${staffT} in reporting schools`}
                     tone="verified"
-                    freshness={`Demo · ${reported} schools counted`}
+                    freshness={`Simulated · ${reported} schools counted`}
                   />
                   <KpiTile
                     label="Students present"
                     value={stuT ? `${pct(stuP, stuT)}%` : "No data"}
                     sub={`${stuP.toLocaleString("en")} of ${stuT.toLocaleString("en")} enrolled`}
                     tone="verified"
-                    freshness={`Demo · enrolment is real: ${stuEnrolledAll.toLocaleString("en")}`}
+                    freshness={`Simulated · enrolment is real: ${stuEnrolledAll.toLocaleString("en")}`}
                   />
                   <KpiTile
                     label="No report yet"
                     value={functional.filter((x) => x.st === "none").length}
                     sub="functional schools without a report"
                     tone={functional.some((x) => x.st === "none") ? "problem" : "neutral"}
-                    freshness="Demo · non-functional schools not expected"
+                    freshness="Simulated · non-functional schools not expected"
                   />
                   <KpiTile
                     label="Staff absent"
                     value={absentStaff.toString()}
                     sub="absent without leave or on duty"
                     tone={absentStaff > 10 ? "problem" : "neutral"}
-                    freshness="Demo · from accepted school reports"
+                    freshness="Simulated · from accepted school reports"
                   />
                   <KpiTile
                     label="Biometric on time"
                     value={bioLogs.length ? `${pct(bioOnTime, bioLogs.length, 0)}%` : "—"}
                     sub={`${bioOnTime} on time · ${bioLate} late`}
                     tone={bioLate / Math.max(1, bioLogs.length) > 0.2 ? "pending" : "verified"}
-                    freshness="Demo · fingerprint / NFC check-ins"
+                    freshness="Simulated · fingerprint / NFC check-ins"
                   />
                 </div>
               </>

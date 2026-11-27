@@ -28,10 +28,10 @@ describe("Demo entry", () => {
       </AppStateProvider>,
     );
     expect(
-      screen.getByText("Sample data · Demo access · No credentials collected"),
+      screen.getByText("Sample data · No credentials collected"),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: /District Health Officer/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Continue with demo" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }));
     expect(screen.getByTestId("current-role")).toHaveTextContent("dho");
   });
