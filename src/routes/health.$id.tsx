@@ -1,3 +1,4 @@
+import { healthRecordSearch, type HealthSection } from "@/components/dcms/navigation";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Check,
@@ -55,6 +56,7 @@ import { pct } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/health/$id")({
+  validateSearch: healthRecordSearch,
   head: ({ params }) => ({
     meta: [
       { title: `${facilityById[params.id]?.name ?? "Health facility record"} · DCMS Bannu` },
@@ -89,12 +91,21 @@ function HealthDetailPage() {
   const { id } = Route.useParams();
   const { statusFor, reportFor, filters, role, shiftFor, facilityFor } = useApp();
   const f = facilityFor(id);
-  const [shiftKey, setShiftKey] = useState<ShiftKey>(
-    filters.shift === "Evening" ? "E" : filters.shift === "Night" ? "N" : "M",
-  );
-  const [section, setSection] = useState<
-    "shift" | "patients" | "doctors" | "billing" | "attendance" | "record"
-  >("shift");
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const shiftKey: ShiftKey =
+    search.shift ?? (filters.shift === "Evening" ? "E" : filters.shift === "Night" ? "N" : "M");
+  const section = search.section ?? "shift";
+  const setSection = (next: HealthSection) =>
+    navigate({
+      search: {
+        ...(search.shift ? { shift: search.shift } : {}),
+        ...(next === "shift" ? {} : { section: next }),
+      },
+      resetScroll: false,
+    });
+  const setShiftKey = (next: ShiftKey) =>
+    navigate({ search: { ...search, shift: next }, resetScroll: false });
   if (!f || f.kind !== "health" || !inRoleScope(role, f))
     return (
       <NotFoundPanel

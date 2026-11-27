@@ -1,6 +1,11 @@
+import { StrictMode } from "react";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PaginatedRegister } from "@/components/dcms/paginated-register";
+import {
+  RegisterNavigationContext,
+  type RegisterPosition,
+} from "@/components/dcms/navigation-memory";
 
 const records = Array.from({ length: 28 }, (_, index) => `School ${index + 1}`);
 function Register({ items = records, scope = "district" }: { items?: string[]; scope?: string }) {
@@ -23,6 +28,46 @@ function Register({ items = records, scope = "district" }: { items?: string[]; s
 const visibleRows = () =>
   within(screen.getByRole("region", { name: "schools results" })).getAllByRole("row");
 describe("Finite register browsing", () => {
+  it("keeps restored coordinates when React replays mount effects", () => {
+    const memory = new Map<string, RegisterPosition>([
+      ["schools", { scope: "district", page: 1, size: 10, top: 200, left: 20 }],
+    ]);
+    render(
+      <StrictMode>
+        <RegisterNavigationContext.Provider value={memory}>
+          <Register />
+        </RegisterNavigationContext.Provider>
+      </StrictMode>,
+    );
+    expect(HTMLElement.prototype.scrollTo).toHaveBeenLastCalledWith({
+      top: 200,
+      left: 20,
+      behavior: "instant",
+    });
+  });
+  it("restores the browsing page after opening a record and returning, within the same scope", () => {
+    const memory = new Map<string, RegisterPosition>();
+    const view = render(
+      <RegisterNavigationContext.Provider value={memory}>
+        <Register />
+      </RegisterNavigationContext.Provider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Next page of schools" }));
+    view.unmount();
+    const returned = render(
+      <RegisterNavigationContext.Provider value={memory}>
+        <Register />
+      </RegisterNavigationContext.Provider>,
+    );
+    expect(visibleRows()[0]).toHaveTextContent("School 11");
+    returned.unmount();
+    render(
+      <RegisterNavigationContext.Provider value={memory}>
+        <Register scope="different-role" />
+      </RegisterNavigationContext.Provider>,
+    );
+    expect(visibleRows()[0]).toHaveTextContent("School 1");
+  });
   beforeEach(() => {
     HTMLElement.prototype.scrollTo = vi.fn();
   });

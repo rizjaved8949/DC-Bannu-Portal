@@ -6,22 +6,13 @@ import {
   PanelLeftOpen,
   Moon,
   Sun,
-  ChevronRight,
   ChevronDown,
   Check,
-  LayoutDashboard,
-  GraduationCap,
-  HeartPulse,
-  UsersRound,
-  MapPinned,
-  Inbox,
-  ClipboardCheck,
-  Smartphone,
   ShieldCheck,
   MapPin,
-  MessageSquareWarning,
+  LogIn,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import {
   DropdownMenu,
@@ -46,25 +37,9 @@ import { inRoleScope, ROLES, useApp, type RoleId } from "@/lib/app-state";
 import { cn } from "@/lib/utils";
 import { WorkspaceControls } from "./workspace-controls";
 import { GlobalSearch, SearchTrigger } from "./global-search";
-
-/** `department` marks a tab that only applies to officers holding that portfolio. */
-const TABS = [
-  { to: "/", label: "Overview", icon: LayoutDashboard, exact: true },
-  { to: "/schools", label: "Schools", icon: GraduationCap, department: "Education", dept: "edu" },
-  {
-    to: "/health",
-    label: "Health facilities",
-    icon: HeartPulse,
-    department: "Health",
-    dept: "health",
-  },
-  { to: "/staff", label: "Staff", icon: UsersRound },
-  { to: "/map", label: "Facilities & map", icon: MapPinned },
-  { to: "/inbox", label: "Reports inbox", icon: Inbox },
-  { to: "/review", label: "Review queue", icon: ClipboardCheck },
-  { to: "/complaints", label: "Complaints", icon: MessageSquareWarning },
-  { to: "/field-app", label: "Field app", icon: Smartphone },
-] as const;
+import { PRIMARY_NAV as TABS, sectionForPath } from "./navigation";
+import { WorkspaceBreadcrumbs } from "./workspace-breadcrumbs";
+import { RegisterNavigationContext, type RegisterPosition } from "./navigation-memory";
 
 /** Section accent for a route: indigo for schools, teal for health, brand green elsewhere. */
 function deptForPath(pathname: string): "edu" | "health" | undefined {
@@ -107,30 +82,23 @@ function TopBar({
 }) {
   const { role, lastSync } = useApp();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const current = TABS.find((tab) =>
-    tab.to === "/" ? pathname === "/" : pathname.startsWith(tab.to),
-  );
   const { critical } = useOpenReviewCount();
   return (
     <div className="workspace-topbar no-print">
       <div className="flex h-[76px] items-center gap-3 px-4 lg:px-8">
         {mobileNav}
-        <div
-          className="workspace-breadcrumb hidden min-w-0 items-center gap-2 text-xs text-ink-muted sm:flex"
-          aria-label="Breadcrumb"
-        >
-          <span className="hidden xl:inline">District workspace</span>
-          <ChevronRight className="hidden size-3.5 xl:block" aria-hidden />
-          <span className="truncate font-semibold text-ink">{current?.label ?? "Overview"}</span>
-          {pathname.split("/").filter(Boolean).length > 1 && (
-            <>
-              <ChevronRight className="size-3.5" aria-hidden />
-              <span>Record</span>
-            </>
-          )}
+        <span className="topbar-mobile-title">
+          {sectionForPath(pathname)?.label ?? "Workspace"}
+        </span>
+        <div className="desktop-page-context">
+          <WorkspaceBreadcrumbs />
         </div>
         <div className="ml-auto flex items-center gap-1 sm:gap-3">
           <SearchTrigger compact />
+          <Link to="/login" className="demo-entry-link" aria-label="Open demo login">
+            <LogIn className="size-4" />
+            <span>Demo access</span>
+          </Link>
           <button
             className="topbar-icon"
             onClick={toggleTheme}
@@ -239,6 +207,13 @@ function RoleMenu() {
           <Check className="size-3.5" />
           Switching role filters every page
         </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link to="/login" className="flex items-center gap-2">
+            <LogIn className="size-4" />
+            Demo login & role selection
+          </Link>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -289,9 +264,13 @@ function SideNavigation({
                   <TooltipTrigger asChild>
                     <Link
                       to={t.to}
+                      search={{}}
                       onClick={onNavigate}
                       data-dept={"dept" in t ? t.dept : undefined}
-                      activeOptions={{ exact: "exact" in t ? t.exact : false }}
+                      activeOptions={{
+                        exact: "exact" in t ? t.exact : false,
+                        includeSearch: false,
+                      }}
                       className="sidebar-link"
                       aria-label={t.label}
                       activeProps={{ className: "is-active", "aria-current": "page" }}
@@ -330,6 +309,7 @@ function SideNavigation({
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const registerPositions = useRef(new Map<string, RegisterPosition>());
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -444,57 +424,64 @@ export function AppShell({ children }: { children: ReactNode }) {
       </SheetContent>
     </Sheet>
   );
+  if (pathname === "/login") return <>{children}</>;
+
   return (
-    <TooltipProvider delayDuration={150}>
-      <GlobalSearch />
-      <div
-        className={cn("dcms-app-shell min-h-screen bg-canvas", collapsed && "sidebar-collapsed")}
-      >
-        <a href="#main-content" className="skip-link">
-          Skip to content
-        </a>
-        <aside className="desktop-sidebar no-print">
-          <SideNavigation collapsed={collapsed} />
-          <button
-            onClick={toggleSidebar}
-            className="sidebar-collapse"
-            aria-expanded={!collapsed}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? (
-              <PanelLeftOpen className="size-4" />
-            ) : (
-              <PanelLeftClose className="size-4" />
-            )}
-          </button>
-        </aside>
-        <div className="workspace-frame">
-          <TopBar mobileNav={mobileNav} theme={theme} toggleTheme={toggleTheme} />
-          <main
-            id="main-content"
-            tabIndex={-1}
-            data-dept={deptForPath(pathname)}
-            data-section={pathname.split("/").filter(Boolean)[0] ?? "overview"}
-            className="workspace-main"
-          >
-            <div className="route-content">{children}</div>
-          </main>
-          <footer className="workspace-footer">
-            <p>
-              <ShieldCheck className="size-4 text-kurram" />
-              District Administration Bannu{" "}
-              <span className="hidden sm:inline">· Khyber Pakhtunkhwa</span>
-            </p>
-            <p>
-              Built around public service <span className="footer-divider" /> English /{" "}
-              <span lang="ur" dir="rtl" className="font-urdu">
-                اردو
-              </span>
-            </p>
-          </footer>
+    <RegisterNavigationContext.Provider value={registerPositions.current}>
+      <TooltipProvider delayDuration={150}>
+        <GlobalSearch />
+        <div
+          className={cn("dcms-app-shell min-h-screen bg-canvas", collapsed && "sidebar-collapsed")}
+        >
+          <a href="#main-content" className="skip-link">
+            Skip to content
+          </a>
+          <aside className="desktop-sidebar no-print">
+            <SideNavigation collapsed={collapsed} />
+            <button
+              onClick={toggleSidebar}
+              className="sidebar-collapse"
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="size-4" />
+              ) : (
+                <PanelLeftClose className="size-4" />
+              )}
+            </button>
+          </aside>
+          <div className="workspace-frame">
+            <TopBar mobileNav={mobileNav} theme={theme} toggleTheme={toggleTheme} />
+            <div className="mobile-page-context no-print">
+              <WorkspaceBreadcrumbs />
+            </div>
+            <main
+              id="main-content"
+              tabIndex={-1}
+              data-dept={deptForPath(pathname)}
+              data-section={pathname.split("/").filter(Boolean)[0] ?? "overview"}
+              className="workspace-main"
+            >
+              <div className="route-content">{children}</div>
+            </main>
+            <footer className="workspace-footer">
+              <p>
+                <ShieldCheck className="size-4 text-kurram" />
+                District Administration Bannu{" "}
+                <span className="hidden sm:inline">· Khyber Pakhtunkhwa</span>
+              </p>
+              <p>
+                Built around public service <span className="footer-divider" /> English /{" "}
+                <span lang="ur" dir="rtl" className="font-urdu">
+                  اردو
+                </span>
+              </p>
+            </footer>
+          </div>
         </div>
-      </div>
-    </TooltipProvider>
+      </TooltipProvider>
+    </RegisterNavigationContext.Provider>
   );
 }

@@ -1,3 +1,4 @@
+import { schoolRecordSearch, type SchoolSection } from "@/components/dcms/navigation";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
@@ -47,6 +48,7 @@ import { pct } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/schools/$id")({
+  validateSearch: schoolRecordSearch,
   head: ({ params }) => ({
     meta: [
       { title: `${facilityById[params.id]?.name ?? "School record"} · DCMS Bannu` },
@@ -73,9 +75,11 @@ function SchoolDetailPage() {
   const { id } = Route.useParams();
   const f = facilityById[id];
   const { statusFor, reportFor, role, schoolDayFor } = useApp();
-  const [section, setSection] = useState<
-    "register" | "today" | "attendance" | "students" | "staff" | "record"
-  >("register");
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const section = search.section ?? "register";
+  const setSection = (next: SchoolSection) =>
+    navigate({ search: next === "register" ? {} : { section: next }, resetScroll: false });
   if (!f || f.kind !== "school" || !inRoleScope(role, f))
     return <NotFoundPanel what="school in your scope" back="/schools" backLabel="All schools" />;
 

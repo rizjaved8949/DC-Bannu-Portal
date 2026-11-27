@@ -125,7 +125,8 @@ function ReviewPage() {
       setStatusFilter("all");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search.item]);
-  const select = (id: string) => navigate({ search: { item: id }, replace: true });
+  const select = (id: string) =>
+    navigate({ search: { item: id }, replace: true, resetScroll: false });
 
   const exportCsv = () =>
     downloadCsv(

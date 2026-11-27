@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, Check, Clock } from "lucide-react";
+import { AlertTriangle, Check, Clock, ChevronLeft } from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -216,8 +216,14 @@ export function BackLink({
   label: string;
 }) {
   return (
-    <Link to={to} className="inline-flex items-center gap-1 text-sm text-dept hover:underline">
-      ← {label}
+    <Link
+      to={to}
+      search={{}}
+      resetScroll={false}
+      className="record-back-link inline-flex items-center gap-1.5 text-sm text-dept hover:underline"
+    >
+      <ChevronLeft className="size-4" aria-hidden />
+      {label}
     </Link>
   );
 }

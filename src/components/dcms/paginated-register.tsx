@@ -1,7 +1,8 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Rows3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { RegisterNavigationContext } from "./navigation-memory";
 
 /** Presentation-only paging. Search, sorting, counts and exports retain the complete dataset. */
 export function PaginatedRegister<T>({
@@ -16,8 +17,15 @@ export function PaginatedRegister<T>({
   children: (visible: readonly T[]) => ReactNode;
 }) {
   const id = useId();
-  const [size, setSize] = useState(10);
-  const [position, setPosition] = useState({ scope: resetKey, page: 0 });
+  const memory = useContext(RegisterNavigationContext);
+  const saved = memory?.get(label);
+  const initialPosition = useRef(saved?.scope === resetKey ? { ...saved } : null);
+  const [size, setSize] = useState(initialPosition.current?.size ?? 10);
+  const [position, setPosition] = useState({
+    scope: resetKey,
+    page: initialPosition.current?.page ?? 0,
+  });
+  const initialView = useRef({ scope: resetKey, page: position.page, size });
   const [printing, setPrinting] = useState(false);
   const viewport = useRef<HTMLDivElement>(null);
   // Commit the new browsing scope so clearing a filter cannot revive an old page.
@@ -42,8 +50,28 @@ export function PaginatedRegister<T>({
   }, []);
 
   useEffect(() => {
-    viewport.current?.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    if (
+      initialView.current.scope !== resetKey ||
+      initialView.current.page !== page ||
+      initialView.current.size !== size
+    )
+      initialPosition.current = null;
+    const restore = initialPosition.current?.scope === resetKey ? initialPosition.current : null;
+    viewport.current?.scrollTo({
+      top: restore?.top ?? 0,
+      left: restore?.left ?? 0,
+      behavior: "instant",
+    });
   }, [page, size, resetKey]);
+  useEffect(() => {
+    memory?.set(label, {
+      scope: resetKey,
+      page,
+      size,
+      top: viewport.current?.scrollTop ?? 0,
+      left: viewport.current?.scrollLeft ?? 0,
+    });
+  }, [memory, label, resetKey, page, size]);
 
   const go = (next: number) =>
     setPosition({ scope: resetKey, page: Math.max(0, Math.min(next, pages - 1)) });
@@ -86,6 +114,16 @@ export function PaginatedRegister<T>({
       <div
         className="register-scroll"
         ref={viewport}
+        data-scroll-restoration-id={`register-${label.replaceAll(" ", "-")}`}
+        onScroll={(event) => {
+          memory?.set(label, {
+            scope: resetKey,
+            page,
+            size,
+            top: event.currentTarget.scrollTop,
+            left: event.currentTarget.scrollLeft,
+          });
+        }}
         role="region"
         aria-label={`${label} results`}
         tabIndex={0}

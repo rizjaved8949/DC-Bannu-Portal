@@ -64,7 +64,7 @@ function StaffPage() {
   const navigate = Route.useNavigate();
   const tab: Tab = search.tab ?? "directory";
   const setTab = (t: Tab) =>
-    navigate({ search: t === "directory" ? {} : { tab: t }, replace: true });
+    navigate({ search: t === "directory" ? {} : { tab: t }, resetScroll: false });
   const facilities = useScopedFacilities();
   const { statusFor, staffStatusFor } = useApp();
   const all = useMemo(

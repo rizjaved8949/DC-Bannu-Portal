@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ComplaintsRouteImport } from './routes/complaints'
 import { Route as FieldAppRouteImport } from './routes/field-app'
 import { Route as InboxRouteImport } from './routes/inbox'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as ReviewRouteImport } from './routes/review'
 import { Route as HealthIndexRouteImport } from './routes/health.index'
@@ -40,6 +41,11 @@ const FieldAppRoute = FieldAppRouteImport.update({
 const InboxRoute = InboxRouteImport.update({
   id: '/inbox',
   path: '/inbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MapRoute = MapRouteImport.update({
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/complaints': typeof ComplaintsRoute
   '/field-app': typeof FieldAppRoute
   '/inbox': typeof InboxRoute
+  '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/review': typeof ReviewRoute
   '/health/$id': typeof HealthIdRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/complaints': typeof ComplaintsRoute
   '/field-app': typeof FieldAppRoute
   '/inbox': typeof InboxRoute
+  '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/review': typeof ReviewRoute
   '/health/$id': typeof HealthIdRoute
@@ -117,6 +125,7 @@ export interface FileRoutesById {
   '/complaints': typeof ComplaintsRoute
   '/field-app': typeof FieldAppRoute
   '/inbox': typeof InboxRoute
+  '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/review': typeof ReviewRoute
   '/health/$id': typeof HealthIdRoute
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
     | '/complaints'
     | '/field-app'
     | '/inbox'
+    | '/login'
     | '/map'
     | '/review'
     | '/health/$id'
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
     | '/complaints'
     | '/field-app'
     | '/inbox'
+    | '/login'
     | '/map'
     | '/review'
     | '/health/$id'
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
     | '/complaints'
     | '/field-app'
     | '/inbox'
+    | '/login'
     | '/map'
     | '/review'
     | '/health/$id'
@@ -176,6 +188,7 @@ export interface RootRouteChildren {
   ComplaintsRoute: typeof ComplaintsRoute
   FieldAppRoute: typeof FieldAppRoute
   InboxRoute: typeof InboxRoute
+  LoginRoute: typeof LoginRoute
   MapRoute: typeof MapRoute
   ReviewRoute: typeof ReviewRoute
   HealthIdRoute: typeof HealthIdRoute
@@ -214,6 +227,13 @@ declare module '@tanstack/react-router' {
       path: '/inbox'
       fullPath: '/inbox'
       preLoaderRoute: typeof InboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/map': {
@@ -280,6 +300,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComplaintsRoute: ComplaintsRoute,
   FieldAppRoute: FieldAppRoute,
   InboxRoute: InboxRoute,
+  LoginRoute: LoginRoute,
   MapRoute: MapRoute,
   ReviewRoute: ReviewRoute,
   HealthIdRoute: HealthIdRoute,

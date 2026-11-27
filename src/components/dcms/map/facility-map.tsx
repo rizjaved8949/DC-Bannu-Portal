@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Link } from "@tanstack/react-router";
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from "react-leaflet";
 
 import { STATUS_LABEL, type Facility, type ReportStatus } from "@/data/mock";
@@ -105,12 +106,13 @@ export default function FacilityMap({
                         : "Awaiting field verification"}
                   </dd>
                 </dl>
-                <a
-                  href={f.kind === "school" ? `/schools/${f.id}` : `/health/${f.id}`}
+                <Link
+                  to={f.kind === "school" ? "/schools/$id" : "/health/$id"}
+                  params={{ id: f.id }}
                   className="mt-1.5 inline-block text-xs font-semibold text-dept hover:underline"
                 >
                   Open facility page
-                </a>
+                </Link>
               </div>
             </Popup>
           </CircleMarker>

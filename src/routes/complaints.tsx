@@ -101,7 +101,7 @@ function ComplaintWorkspace() {
   const set = (key: keyof ComplaintFilters, value: string) => {
     setFilters((f) => ({ ...f, [key]: value, ...(key === "area" ? { locality: "All" } : {}) }));
     if (["area", "locality", "kind"].includes(key) && search.facility)
-      navigate({ search: { complaint: search.complaint }, replace: true });
+      navigate({ search: { complaint: search.complaint }, replace: true, resetScroll: false });
   };
   const exportRows = () =>
     downloadCsv(
@@ -219,6 +219,7 @@ function ComplaintWorkspace() {
                     complaint: search.complaint,
                   },
                   replace: true,
+                  resetScroll: false,
                 })
               }
             >
@@ -238,7 +239,7 @@ function ComplaintWorkspace() {
               variant="outline"
               onClick={() => {
                 setFilters(EMPTY_COMPLAINT_FILTERS);
-                navigate({ search: {}, replace: true });
+                navigate({ search: {}, replace: true, resetScroll: false });
               }}
             >
               Reset filters
@@ -324,7 +325,8 @@ function ComplaintWorkspace() {
       <Sheet
         open={!!selected}
         onOpenChange={(open) => {
-          if (!open) navigate({ search: { facility: search.facility }, replace: true });
+          if (!open)
+            navigate({ search: { facility: search.facility }, replace: true, resetScroll: false });
         }}
       >
         <SheetContent className="overflow-y-auto sm:max-w-xl">

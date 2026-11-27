@@ -51,6 +51,26 @@ This redesign changes presentation and navigation affordances. It does not chang
 
 ## Verification
 
+### Navigation reliability
+
+Primary navigation and breadcrumbs share one section catalogue. Breadcrumbs link to real parent pages and show the current record name, with role scope checked before displaying it. The mobile header keeps the section visible, and its drawer closes after choosing a destination. Sidebar selection follows the section path independently of query parameters.
+
+School and health record sections now use validated `section` URL parameters; health shifts also use `shift`. Selected sections survive refresh and work with browser Back/Forward. Staff subviews participate in history. Tab changes and record-selection queries retain the current scroll position, and keyboard-selected record tabs scroll horizontally into view on phones. Map popups use client-side links.
+
+Wrapped table links now have solid rectangular click targets. Registers remember their browsing page, row count and internal scroll position in the current workspace so parent links can return to the same place. This presentation memory is scoped to the matching filters/role and is not an authentication or data store. Tests cover navigation parsing, breadcrumb names/scope, returning to a register and React mount-effect replay.
+
+Browser verification opened all nine primary sections, checking the selected sidebar item and scroll position. It also covered mouse-clicked facility names, parent links, health section Back/Forward and refresh, staff history, school deep links, mobile drawer closure, and visibility of the last keyboard-selected tab. No browser console errors were observed.
+
+### Demo entry and reporting clarity
+
+`/login` is a standalone, bilingual demo entry screen with a responsive evergreen brand panel, native keyboard-accessible role selection and a working “Continue with demo” action. It uses the existing role state and preserves the workspace. It collects no credentials and does not provide authentication or restrict existing deep links. The header and profile menu link to it.
+
+The overview now places critical follow-ups and an explanation of daily reporting before the directory and department summaries. The original 352/478 figure means that 352 operational facilities have a report that reached the district, including 32 rejected reports. Its three separate outcomes are 320 accepted, 32 requiring correction and 126 not yet received, totaling the same 478 expected facilities. The accepted group includes 132 reports awaiting officer verification. The other 84 registered schools are closed or non-functional and excluded from the expected total. Delivery channels are explained separately from reporting status.
+
+The symbol-only facility matrix has been replaced with labelled, paginated area totals and named facility records. The underlying reporting calculations, status transitions, seeded data and role-scoping code are unchanged. Empty scopes explain why no reports are expected and offer a filter reset.
+
+The updated suite passes 44 of 45 tests. Added checks cover the reporting categories, empty scope, login route and demo role selection. The same pre-existing complaints scope test remains the only failure. Browser checks verified phone and desktop demo entry, correct role scope, named details and reporting counts with no console errors.
+
 ### Finite registers and colour refinement
 
 Schools, health facilities, staff, posts, exceptions, reports, complaints and infrastructure records now use shared presentation-only pagination: 10 rows by default, choices of 5/10/25/50, page jumps, clear ranges, boundary controls and a bounded scroll region. Filtering, sorting or changing role scope starts browsing at page one. Counts and CSV exports still use the complete filtered dataset. Print mode temporarily expands all rows and school insights, then restores the browsing layout.

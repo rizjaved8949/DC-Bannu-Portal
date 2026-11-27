@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useEffect, useRef } from "react";
 
 export interface SectionTab<T extends string> {
   value: T;
@@ -23,10 +24,22 @@ export function SectionTabs<T extends string>({
   options: SectionTab<T>[];
   label: string;
 }) {
+  const tabs = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const container = tabs.current;
+    const active = container?.querySelector<HTMLButtonElement>('[aria-selected="true"]');
+    if (!container || !active) return;
+    const left = active.offsetLeft;
+    const right = left + active.offsetWidth;
+    if (left < container.scrollLeft) container.scrollTo({ left, behavior: "instant" });
+    else if (right > container.scrollLeft + container.clientWidth)
+      container.scrollTo({ left: right - container.clientWidth, behavior: "instant" });
+  }, [value]);
   return (
     <div className="record-section-tabs no-print sticky top-[76px] z-30 border-y border-line bg-surface px-2">
       <div
         role="tablist"
+        ref={tabs}
         aria-label={label}
         onKeyDown={(event) => {
           if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
@@ -41,7 +54,9 @@ export function SectionTabs<T extends string>({
           const option = options[next];
           if (option) {
             onChange(option.value);
-            event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+            event.currentTarget
+              .querySelectorAll<HTMLButtonElement>('[role="tab"]')
+              [next]?.focus({ preventScroll: true });
           }
         }}
         className="flex items-stretch gap-1 overflow-x-auto [scrollbar-width:none]"

@@ -20,7 +20,6 @@ import {
 
 import { DistrictRegister } from "@/components/dcms/district-register";
 import { HowToUse } from "@/components/dcms/how-to-use";
-import { ChannelIcon } from "@/components/dcms/channel";
 import { KpiTile } from "@/components/dcms/kpi-tile";
 import {
   AttendanceTrend,
@@ -29,16 +28,15 @@ import {
   ShiftsBelowMinimum,
 } from "@/components/dcms/overview/charts";
 import { IncomingFeed } from "@/components/dcms/overview/incoming-feed";
-import { ReportingBoard } from "@/components/dcms/overview/reporting-board";
+import { DailyReporting } from "@/components/dcms/overview/daily-reporting";
 import { PageHeader } from "@/components/dcms/page-header";
 import { Panel } from "@/components/dcms/section";
 import { FilterBar } from "@/components/dcms/filter-bar";
-import { STATUS_TONE, TONE_VAR, Pill } from "@/components/dcms/status";
+import { Pill } from "@/components/dcms/status";
 import {
   facilityById,
   hhmm,
   LAST_SYNC,
-  REPORT_STATUS_ORDER,
   STATUS_LABEL,
   staffByFacility,
   schoolDays,
@@ -64,12 +62,14 @@ export const Route = createFileRoute("/")({
       { title: "Overview · DCMS Bannu" },
       {
         name: "description",
-        content: "Today's reporting board, incoming reports and district indicators for Bannu.",
+        content:
+          "Today’s reporting, explained, incoming reports and district indicators for Bannu.",
       },
       { property: "og:title", content: "Overview · DCMS Bannu" },
       {
         property: "og:description",
-        content: "Today's reporting board, incoming reports and district indicators for Bannu.",
+        content:
+          "Today’s reporting, explained, incoming reports and district indicators for Bannu.",
       },
     ],
   }),
@@ -99,10 +99,6 @@ function OverviewPage() {
       : role.department === "Health"
         ? "health facilities"
         : "facilities";
-  const distribution = REPORT_STATUS_ORDER.map((status) => ({
-    status,
-    count: facilities.filter((f) => statusFor(f.id) === status).length,
-  }));
 
   const schoolFacilities = facilities.filter((f) => f.kind === "school");
   const healthFacilities = facilities.filter((f) => f.kind === "health");
@@ -158,12 +154,10 @@ function OverviewPage() {
       <PageHeader
         title="Overview"
         urdu="ضلعی جائزہ"
-        description={`A clear view of today's reporting, people and public services across ${role.scopeLabel === "Whole district" ? "District Bannu" : role.scopeLabel.toLowerCase()}.`}
+        description={`A clear view of today's reporting, people and public services ${role.department === "Health" ? "across public health facilities" : role.department === "Education" ? "across schools" : role.tehsil ? `across ${role.tehsil} tehsil` : "across District Bannu"}.`}
       />
 
       <FilterBar onExportCsv={exportCsv} />
-
-      <DistrictRegister facilities={facilities} />
 
       {critical.length > 0 && (
         <div className="overview-alert">
@@ -194,6 +188,33 @@ function OverviewPage() {
           </Link>
         </div>
       )}
+
+      {/* ── Reporting board + feed ── */}
+      <div className="grid gap-4 xl:grid-cols-12">
+        <Panel
+          className="flex flex-col xl:col-span-8"
+          title={
+            <span className="flex items-center gap-2">
+              <MapPinned className="size-[18px] text-dept" />
+              Today’s reporting, explained
+            </span>
+          }
+          aside={
+            <span className="inline-flex items-center gap-1.5">
+              <ShieldCheck className="size-3.5 text-dept" />
+              Synced <span className="tabular-nums text-ink">{lastSync}</span>
+            </span>
+          }
+          bodyClassName="flex-1 px-5 py-5"
+        >
+          <DailyReporting facilities={facilities} />
+        </Panel>
+        <div className="self-start xl:col-span-4">
+          <IncomingFeed />
+        </div>
+      </div>
+
+      <DistrictRegister facilities={facilities} />
 
       {/* ── Key numbers bar ── */}
       <div className="overview-metrics grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
@@ -395,75 +416,6 @@ function OverviewPage() {
       >
         <BudgetOverview showSchools={showSchools} showHealth={showHealth} budget={bs} />
       </Panel>
-
-      {/* ── Reporting board + feed ── */}
-      <div className="grid gap-4 xl:grid-cols-12">
-        <Panel
-          className="flex flex-col xl:col-span-8"
-          title={
-            <span className="flex items-center gap-2">
-              <MapPinned className="size-[18px] text-dept" />
-              Today's reporting board
-            </span>
-          }
-          aside={
-            <span className="inline-flex items-center gap-1.5">
-              <ShieldCheck className="size-3.5 text-dept" />
-              Synced <span className="tabular-nums text-ink">{lastSync}</span>
-            </span>
-          }
-          bodyClassName="flex-1 px-5 py-5"
-        >
-          <div className="coverage-summary">
-            <div className="coverage-number num">
-              {s.reported}
-              <small> / {s.total}</small>
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold">
-                {facilityWord.charAt(0).toUpperCase() + facilityWord.slice(1)} reported today
-              </p>
-              <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-ink-muted">
-                <span className="inline-flex items-center gap-1">
-                  <ChannelIcon channel="sms" className="size-3.5" />
-                  {s.bySms} by SMS
-                </span>
-                <span>·</span>
-                <span>{s.noReport} awaiting a report</span>
-                <span>·</span>
-                <span>{s.rejected} need a resend</span>
-              </p>
-              <div
-                className="coverage-progress mt-3"
-                aria-label="Facility reporting status distribution"
-              >
-                {distribution
-                  .filter((d) => d.count)
-                  .map((d) => (
-                    <span
-                      key={d.status}
-                      style={{
-                        width: `${(d.count / Math.max(s.total, 1)) * 100}%`,
-                        background: TONE_VAR[STATUS_TONE[d.status]],
-                      }}
-                      title={`${d.count} ${STATUS_LABEL[d.status]}`}
-                    />
-                  ))}
-              </div>
-            </div>
-            <div className="hidden self-start rounded-sm border border-line bg-subtle px-2 py-1 text-xs text-ink-muted sm:block">
-              {pct(s.reported, s.total, 0)}% coverage
-            </div>
-          </div>
-          <ReportingBoard facilities={facilities} />
-          <p className="mt-3 text-2xs text-ink-muted">
-            Each square is one facility. Select a square to open its record.
-          </p>
-        </Panel>
-        <div className="xl:col-span-4">
-          <IncomingFeed />
-        </div>
-      </div>
 
       {/* ── Charts ── */}
       <div className="grid gap-4 lg:grid-cols-2">

@@ -1,120 +1,137 @@
 import { Link } from "@tanstack/react-router";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { hhmm, isReported, STATUS_LABEL, TEHSILS, type Facility } from "@/data/mock";
+import { ChevronDown, FileSearch, MapPinned } from "lucide-react";
+import { isReported, TEHSILS, type Facility } from "@/data/mock";
 import { useApp } from "@/lib/app-state";
-import { ChannelIcon } from "../channel";
-import { Code } from "../section";
-import { StatusBadge, StatusGlyph, StatusLegend, STATUS_TONE, TONE_TINT_VAR } from "../status";
+import { pct } from "@/lib/metrics";
+import { PaginatedRegister } from "../paginated-register";
+import { StatusBadge } from "../status";
 
-function Cell({ f }: { f: Facility }) {
-  const { statusFor, reportFor } = useApp();
-  const status = statusFor(f.id);
-  const r = reportFor(f.id);
-  const detail = f.kind === "school" ? "/schools/$id" : "/health/$id";
-  return (
-    <Tooltip delayDuration={120}>
-      <TooltipTrigger asChild>
-        <Link
-          to={detail}
-          params={{ id: f.id }}
-          aria-label={`${f.name}, ${STATUS_LABEL[status]}`}
-          className="reporting-cell flex size-7 items-center justify-center rounded-sm border border-line hover:border-ink-muted"
-          style={{ backgroundColor: TONE_TINT_VAR[STATUS_TONE[status]] }}
-        >
-          <StatusGlyph status={status} size={13} />
-        </Link>
-      </TooltipTrigger>
-      <TooltipContent
-        side="top"
-        className="w-64 rounded-lg border border-line bg-surface p-3 text-ink shadow-pop"
-      >
-        <div className="text-sm font-semibold leading-snug">{f.name}</div>
-        <div className="mt-0.5 flex items-center gap-2 text-xs text-ink-muted">
-          <Code className="text-xs">{f.code}</Code>
-          <span>{f.tehsil}</span>
-        </div>
-        <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-          <dt className="text-ink-muted">Channel</dt>
-          <dd className="flex items-center gap-1.5">
-            <ChannelIcon channel={r?.channel ?? f.channel} className="size-3.5" />
-            {(r?.channel ?? f.channel) === "sms" ? "SMS" : "App"}
-          </dd>
-          <dt className="text-ink-muted">Last received</dt>
-          <dd className="tabular-nums">{r?.receivedAt != null ? hhmm(r.receivedAt) : "Not yet"}</dd>
-          <dt className="text-ink-muted">Status</dt>
-          <dd>
-            <StatusBadge status={status} />
-          </dd>
-        </dl>
-      </TooltipContent>
-    </Tooltip>
-  );
-}
-
-/** Today's reporting board: one 22px cell per facility, one column per tehsil. */
+/** Named, paginated details replace the symbol-only facility matrix. */
 export function ReportingBoard({ facilities }: { facilities: Facility[] }) {
-  const { statusFor } = useApp();
-  const tehsils = TEHSILS.filter((t) => facilities.some((f) => f.tehsil === t));
+  const { statusFor, role, filters } = useApp();
+  const resetKey = JSON.stringify([role.id, filters]);
+  const areas = TEHSILS.filter((area) =>
+    facilities.some((facility) => facility.tehsil === area),
+  ).map((area) => {
+    const expected = facilities.filter(
+      (facility) => facility.tehsil === area && facility.operational,
+    );
+    const reported = expected.filter((facility) => isReported(statusFor(facility.id))).length;
+    return { name: area, expected: expected.length, reported };
+  });
   return (
-    <TooltipProvider>
-      <div
-        className="reporting-board-scroll grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6"
-        role="region"
-        aria-label="Reporting board by tehsil"
-        tabIndex={0}
-      >
-        {tehsils.map((t) => {
-          const list = facilities.filter((f) => f.tehsil === t);
-          const schools = list.filter((f) => f.kind === "school");
-          const health = list.filter((f) => f.kind === "health");
-          const reported = list.filter((f) => isReported(statusFor(f.id))).length;
-          return (
-            <div
-              key={t}
-              className="tehsil-column min-w-0 rounded-sm border border-line bg-subtle px-2.5 pb-3 pt-2.5"
-            >
-              <div className="border-b border-line pb-2.5">
-                <div className="text-sm font-semibold text-ink">{t}</div>
-                <div className="text-xs tabular-nums text-ink-muted">
-                  {reported} of {list.length} reported
-                </div>
-              </div>
-              <div className="mt-2 h-[3px] overflow-hidden rounded-full bg-line" aria-hidden>
-                <div
-                  className="h-full bg-dept"
-                  style={{ width: `${(reported / list.length) * 100}%` }}
-                />
-              </div>
-              {schools.length > 0 && (
-                <div className="mt-2">
-                  <div className="mb-1 text-2xs text-ink-muted">Schools</div>
-                  <div className="flex flex-wrap gap-1">
-                    {schools.map((f) => (
-                      <Cell key={f.id} f={f} />
-                    ))}
-                  </div>
-                </div>
-              )}
-              {health.length > 0 && (
-                <div className="mt-2.5">
-                  <div className="mb-1 text-2xs text-ink-muted">Health</div>
-                  <div className="flex flex-wrap gap-1">
-                    {health.map((f) => (
-                      <Cell key={f.id} f={f} />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      {facilities.length === 0 && (
-        <p className="py-8 text-center text-ink-muted">
-          No facilities match these filters. Clear the department or tehsil filter.
+    <div className="reporting-detail-options">
+      <details className="reporting-detail">
+        <summary>
+          <span className="reporting-detail-icon" aria-hidden>
+            <MapPinned />
+          </span>
+          <span>
+            <strong>Compare reporting by area</strong>
+            <small>{areas.length} areas · labelled totals and progress</small>
+          </span>
+          <ChevronDown className="size-4" aria-hidden />
+        </summary>
+        <p className="reporting-detail-help">
+          Each row shows how many operational facilities in that area have reported, and how many
+          are still outstanding.
         </p>
-      )}
-      <StatusLegend className="mt-4 border-t border-line pt-3" />
-    </TooltipProvider>
+        <PaginatedRegister items={areas} label="areas" resetKey={resetKey}>
+          {(rows) => (
+            <table className="ledger reporting-area-table">
+              <thead>
+                <tr>
+                  <th scope="col">Tehsil / area</th>
+                  <th scope="col">Reported / expected</th>
+                  <th scope="col">Progress</th>
+                  <th scope="col" className="num">
+                    Still outstanding
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((area) => (
+                  <tr key={area.name}>
+                    <td data-label="Tehsil / area" className="font-semibold">
+                      {area.name}
+                    </td>
+                    <td data-label="Reported / expected" className="num">
+                      {area.reported} of {area.expected}
+                    </td>
+                    <td data-label="Progress">
+                      <span className="reporting-area-progress">
+                        <span className="reporting-area-track" aria-hidden>
+                          <span style={{ width: `${pct(area.reported, area.expected, 0)}%` }} />
+                        </span>
+                        <span className="num">
+                          {area.expected
+                            ? `${pct(area.reported, area.expected, 0)}%`
+                            : "Not expected today"}
+                        </span>
+                      </span>
+                    </td>
+                    <td data-label="Still outstanding" className="num">
+                      {area.expected - area.reported}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </PaginatedRegister>
+      </details>
+      <details className="reporting-detail">
+        <summary>
+          <span className="reporting-detail-icon" aria-hidden>
+            <FileSearch />
+          </span>
+          <span>
+            <strong>Find an individual facility</strong>
+            <small>{facilities.length} named records · open a school or health facility</small>
+          </span>
+          <ChevronDown className="size-4" aria-hidden />
+        </summary>
+        <PaginatedRegister items={facilities} label="facility reports" resetKey={resetKey}>
+          {(rows) => (
+            <table className="ledger">
+              <thead>
+                <tr>
+                  <th scope="col">Facility</th>
+                  <th scope="col">Tehsil / area</th>
+                  <th scope="col">Report today</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((facility) => (
+                  <tr key={facility.id}>
+                    <td data-label="Facility">
+                      <Link
+                        to={facility.kind === "school" ? "/schools/$id" : "/health/$id"}
+                        params={{ id: facility.id }}
+                        className="font-semibold text-dept hover:underline"
+                      >
+                        {facility.name}
+                      </Link>
+                      <small className="block text-ink-muted">
+                        {facility.kind === "school" ? "School" : "Health facility"} ·{" "}
+                        {facility.code}
+                      </small>
+                    </td>
+                    <td data-label="Tehsil / area">{facility.tehsil}</td>
+                    <td data-label="Report today">
+                      {facility.operational ? (
+                        <StatusBadge status={statusFor(facility.id)} />
+                      ) : (
+                        <span className="text-xs text-ink-muted">Not expected today</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </PaginatedRegister>
+      </details>
+    </div>
   );
 }

@@ -109,7 +109,8 @@ function InboxPage() {
           inRoleScope(role, facilityById[r.facilityId]!),
       )
     : undefined;
-  const open = (id: string | null) => navigate({ search: id ? { report: id } : {}, replace: true });
+  const open = (id: string | null) =>
+    navigate({ search: id ? { report: id } : {}, replace: true, resetScroll: false });
 
   const sms = rows.filter((x) => x.r.channel === "sms").length;
   const awaiting = rows.filter(
