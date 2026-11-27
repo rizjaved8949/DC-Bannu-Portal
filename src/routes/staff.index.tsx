@@ -1,3 +1,4 @@
+import { PaginatedRegister } from "@/components/dcms/paginated-register";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
@@ -57,7 +58,6 @@ export const Route = createFileRoute("/staff/")({
 });
 
 type Tab = "directory" | "posts" | "exceptions";
-const PAGE = 50;
 
 function StaffPage() {
   const search = Route.useSearch();
@@ -158,7 +158,6 @@ type DirCol = "name" | "personal" | "designation" | "bps" | "posting" | "today";
 function Directory({ rows }: { rows: Row[] }) {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"All" | TodayStaffStatus>("All");
-  const [page, setPage] = useState(0);
   const filtered = useMemo(
     () =>
       rows
@@ -188,9 +187,6 @@ function Directory({ rows }: { rows: Row[] }) {
     },
     "posting",
   );
-  const pages = Math.max(1, Math.ceil(sorted.length / PAGE));
-  const currentPage = Math.min(page, pages - 1);
-  const slice = sorted.slice(currentPage * PAGE, currentPage * PAGE + PAGE);
   const statuses = Array.from(new Set(rows.map((x) => x.today))).sort();
 
   const exportCsv = () =>
@@ -218,7 +214,6 @@ function Directory({ rows }: { rows: Row[] }) {
             value={status}
             onValueChange={(v) => {
               setStatus(v as "All" | TodayStaffStatus);
-              setPage(0);
             }}
           >
             <SelectTrigger className="h-8 w-[160px]" aria-label="Today's status">
@@ -237,7 +232,6 @@ function Directory({ rows }: { rows: Row[] }) {
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
-              setPage(0);
             }}
             placeholder="Search name, designation, posting or personal no."
             aria-label="Search staff"
@@ -249,110 +243,89 @@ function Directory({ rows }: { rows: Row[] }) {
         </div>
       }
     >
-      {slice.length === 0 ? (
+      {sorted.length === 0 ? (
         <EmptyState
           title="No staff match these filters."
           hint="Clear the status filter or try a shorter search."
         />
       ) : (
         <>
-          <div className="overflow-x-auto">
-            <table className="ledger">
-              <thead>
-                <tr>
-                  <SortTh id="name" active={key} dir={dir} onSort={toggle}>
-                    Name
-                  </SortTh>
-                  <SortTh id="personal" active={key} dir={dir} onSort={toggle}>
-                    Personal no.
-                  </SortTh>
-                  <SortTh id="designation" active={key} dir={dir} onSort={toggle}>
-                    Designation
-                  </SortTh>
-                  <SortTh id="bps" active={key} dir={dir} onSort={toggle} num>
-                    BPS
-                  </SortTh>
-                  <SortTh id="posting" active={key} dir={dir} onSort={toggle}>
-                    Posting
-                  </SortTh>
-                  <SortTh id="today" active={key} dir={dir} onSort={toggle}>
-                    Today
-                  </SortTh>
-                </tr>
-              </thead>
-              <tbody>
-                {slice.map(({ s, f, today }) => (
-                  <tr key={s.id}>
-                    <td data-label="Name">
-                      <Link
-                        to="/staff/$id"
-                        params={{ id: s.id }}
-                        className="inline-flex items-center gap-2 font-semibold text-ink hover:text-dept hover:underline"
-                      >
-                        <span
-                          aria-hidden
-                          className="flex size-7 items-center justify-center rounded-full bg-dept-tint text-xs font-bold text-dept"
-                        >
-                          {s.initials}
-                        </span>
-                        {s.name}
-                      </Link>
-                    </td>
-                    <td data-label="Personal no.">
-                      <Code>{s.personalNoMasked}</Code>
-                    </td>
-                    <td data-label="Designation">
-                      {s.designation}
-                      <span className="block text-xs text-ink-muted">{s.employment}</span>
-                    </td>
-                    <td data-label="BPS" className="num">
-                      {s.bps}
-                    </td>
-                    <td data-label="Posting">
-                      <Link
-                        to={f.kind === "school" ? "/schools/$id" : "/health/$id"}
-                        params={{ id: f.id }}
-                        className="hover:text-dept hover:underline"
-                      >
-                        {f.name}
-                      </Link>
-                      <span className="block text-xs text-ink-muted">{f.tehsil}</span>
-                    </td>
-                    <td data-label="Today">
-                      <Pill tone={STAFF_STATUS_TONE[today] ?? "neutral"}>{today}</Pill>
-                    </td>
+          <PaginatedRegister
+            items={sorted}
+            label="staff"
+            resetKey={JSON.stringify([q, status, key, dir, rows.map((x) => x.s.id)])}
+          >
+            {(pageRows) => (
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <SortTh id="name" active={key} dir={dir} onSort={toggle}>
+                      Name
+                    </SortTh>
+                    <SortTh id="personal" active={key} dir={dir} onSort={toggle}>
+                      Personal no.
+                    </SortTh>
+                    <SortTh id="designation" active={key} dir={dir} onSort={toggle}>
+                      Designation
+                    </SortTh>
+                    <SortTh id="bps" active={key} dir={dir} onSort={toggle} num>
+                      BPS
+                    </SortTh>
+                    <SortTh id="posting" active={key} dir={dir} onSort={toggle}>
+                      Posting
+                    </SortTh>
+                    <SortTh id="today" active={key} dir={dir} onSort={toggle}>
+                      Today
+                    </SortTh>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2 text-xs text-ink-muted">
-            <span className="tabular-nums">
-              Showing {currentPage * PAGE + 1} to{" "}
-              {Math.min(sorted.length, (currentPage + 1) * PAGE)} of {sorted.length}
-            </span>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={currentPage === 0}
-                onClick={() => setPage(currentPage - 1)}
-              >
-                Previous
-              </Button>
-              <span className="px-2 tabular-nums">
-                Page {currentPage + 1} of {pages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={currentPage >= pages - 1}
-                onClick={() => setPage(currentPage + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+                </thead>
+                <tbody>
+                  {pageRows.map(({ s, f, today }) => (
+                    <tr key={s.id}>
+                      <td data-label="Name">
+                        <Link
+                          to="/staff/$id"
+                          params={{ id: s.id }}
+                          className="inline-flex items-center gap-2 font-semibold text-ink hover:text-dept hover:underline"
+                        >
+                          <span
+                            aria-hidden
+                            className="flex size-7 items-center justify-center rounded-full bg-dept-tint text-xs font-bold text-dept"
+                          >
+                            {s.initials}
+                          </span>
+                          {s.name}
+                        </Link>
+                      </td>
+                      <td data-label="Personal no.">
+                        <Code>{s.personalNoMasked}</Code>
+                      </td>
+                      <td data-label="Designation">
+                        {s.designation}
+                        <span className="block text-xs text-ink-muted">{s.employment}</span>
+                      </td>
+                      <td data-label="BPS" className="num">
+                        {s.bps}
+                      </td>
+                      <td data-label="Posting">
+                        <Link
+                          to={f.kind === "school" ? "/schools/$id" : "/health/$id"}
+                          params={{ id: f.id }}
+                          className="hover:text-dept hover:underline"
+                        >
+                          {f.name}
+                        </Link>
+                        <span className="block text-xs text-ink-muted">{f.tehsil}</span>
+                      </td>
+                      <td data-label="Today">
+                        <Pill tone={STAFF_STATUS_TONE[today] ?? "neutral"}>{today}</Pill>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </PaginatedRegister>
         </>
       )}
     </Panel>
@@ -436,112 +409,128 @@ function PostsAndVacancies({ facilities }: { facilities: Facility[] }) {
     >
       <div className="overflow-x-auto">
         {view === "facility" ? (
-          <table className="ledger">
-            <thead>
-              <tr>
-                <th scope="col">Facility</th>
-                <th scope="col">Tehsil</th>
-                <th scope="col" className="num">
-                  Sanctioned
-                </th>
-                <th scope="col" className="num">
-                  Filled
-                </th>
-                <th scope="col" className="num">
-                  Vacant
-                </th>
-                <th scope="col">Vacant posts</th>
-              </tr>
-            </thead>
-            <tbody>
-              {byFacility.map((x) => (
-                <tr key={x.f.id}>
-                  <td data-label="Facility">
-                    <Link
-                      to={x.f.kind === "school" ? "/schools/$id" : "/health/$id"}
-                      params={{ id: x.f.id }}
-                      className="font-semibold text-ink hover:text-dept hover:underline"
-                    >
-                      {x.f.name}
-                    </Link>
-                    <span className="block">
-                      <Code className="text-xs text-ink-muted">{x.f.code}</Code>
-                    </span>
-                  </td>
-                  <td data-label="Tehsil">{x.f.tehsil}</td>
-                  <td data-label="Sanctioned" className="num">
-                    {x.sanctioned}
-                  </td>
-                  <td data-label="Filled" className="num">
-                    {x.filled}
-                  </td>
-                  <td
-                    data-label="Vacant"
-                    className={cn("num", x.vacant > 0 && "font-semibold text-pending")}
-                  >
-                    {x.vacant}
-                  </td>
-                  <td data-label="Vacant posts" className="text-xs text-ink-muted">
-                    {x.lines.length === 0
-                      ? "None"
-                      : x.lines
-                          .map((l) => `${l.sanctioned - l.filled} ${l.designation}`)
-                          .join(", ")}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <PaginatedRegister
+            items={byFacility}
+            label="facilities"
+            resetKey={JSON.stringify([view, facilities.map((f) => f.id)])}
+          >
+            {(pageRows) => (
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <th scope="col">Facility</th>
+                    <th scope="col">Tehsil</th>
+                    <th scope="col" className="num">
+                      Sanctioned
+                    </th>
+                    <th scope="col" className="num">
+                      Filled
+                    </th>
+                    <th scope="col" className="num">
+                      Vacant
+                    </th>
+                    <th scope="col">Vacant posts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageRows.map((x) => (
+                    <tr key={x.f.id}>
+                      <td data-label="Facility">
+                        <Link
+                          to={x.f.kind === "school" ? "/schools/$id" : "/health/$id"}
+                          params={{ id: x.f.id }}
+                          className="font-semibold text-ink hover:text-dept hover:underline"
+                        >
+                          {x.f.name}
+                        </Link>
+                        <span className="block">
+                          <Code className="text-xs text-ink-muted">{x.f.code}</Code>
+                        </span>
+                      </td>
+                      <td data-label="Tehsil">{x.f.tehsil}</td>
+                      <td data-label="Sanctioned" className="num">
+                        {x.sanctioned}
+                      </td>
+                      <td data-label="Filled" className="num">
+                        {x.filled}
+                      </td>
+                      <td
+                        data-label="Vacant"
+                        className={cn("num", x.vacant > 0 && "font-semibold text-pending")}
+                      >
+                        {x.vacant}
+                      </td>
+                      <td data-label="Vacant posts" className="text-xs text-ink-muted">
+                        {x.lines.length === 0
+                          ? "None"
+                          : x.lines
+                              .map((l) => `${l.sanctioned - l.filled} ${l.designation}`)
+                              .join(", ")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </PaginatedRegister>
         ) : (
-          <table className="ledger">
-            <thead>
-              <tr>
-                <th scope="col">Designation</th>
-                <th scope="col" className="num">
-                  Sanctioned
-                </th>
-                <th scope="col" className="num">
-                  Filled
-                </th>
-                <th scope="col" className="num">
-                  Vacant
-                </th>
-                <th scope="col" className="num">
-                  Filled %
-                </th>
-                <th scope="col" className="num">
-                  Facilities with a vacancy
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {byDesignation.map((x) => (
-                <tr key={x.d}>
-                  <td data-label="Designation" className="font-semibold">
-                    {x.d}
-                  </td>
-                  <td data-label="Sanctioned" className="num">
-                    {x.sanctioned}
-                  </td>
-                  <td data-label="Filled" className="num">
-                    {x.filled}
-                  </td>
-                  <td
-                    data-label="Vacant"
-                    className={cn("num", x.vacant > 0 && "font-semibold text-pending")}
-                  >
-                    {x.vacant}
-                  </td>
-                  <td data-label="Filled %" className="num">
-                    {pct(x.filled, x.sanctioned)}%
-                  </td>
-                  <td data-label="Facilities with a vacancy" className="num">
-                    {x.facilities}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <PaginatedRegister
+            items={byDesignation}
+            label="designations"
+            resetKey={JSON.stringify([view, facilities.map((f) => f.id)])}
+          >
+            {(pageRows) => (
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <th scope="col">Designation</th>
+                    <th scope="col" className="num">
+                      Sanctioned
+                    </th>
+                    <th scope="col" className="num">
+                      Filled
+                    </th>
+                    <th scope="col" className="num">
+                      Vacant
+                    </th>
+                    <th scope="col" className="num">
+                      Filled %
+                    </th>
+                    <th scope="col" className="num">
+                      Facilities with a vacancy
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageRows.map((x) => (
+                    <tr key={x.d}>
+                      <td data-label="Designation" className="font-semibold">
+                        {x.d}
+                      </td>
+                      <td data-label="Sanctioned" className="num">
+                        {x.sanctioned}
+                      </td>
+                      <td data-label="Filled" className="num">
+                        {x.filled}
+                      </td>
+                      <td
+                        data-label="Vacant"
+                        className={cn("num", x.vacant > 0 && "font-semibold text-pending")}
+                      >
+                        {x.vacant}
+                      </td>
+                      <td data-label="Filled %" className="num">
+                        {pct(x.filled, x.sanctioned)}%
+                      </td>
+                      <td data-label="Facilities with a vacancy" className="num">
+                        {x.facilities}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </PaginatedRegister>
         )}
       </div>
     </Panel>
@@ -618,62 +607,68 @@ function Exceptions({ rows }: { rows: Row[] }) {
           hint="Nobody has 3 or more absences, 6 leave days or 4 late arrivals in the last 30 days."
         />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="ledger">
-            <thead>
-              <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Posting</th>
-                <th scope="col">Today</th>
-                <th scope="col" className="num">
-                  Absent
-                </th>
-                <th scope="col" className="num">
-                  Leave
-                </th>
-                <th scope="col" className="num">
-                  Late
-                </th>
-                <th scope="col">Why listed</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((x) => (
-                <tr key={x.s.id}>
-                  <td data-label="Name">
-                    <Link
-                      to="/staff/$id"
-                      params={{ id: x.s.id }}
-                      className="font-semibold text-ink hover:text-dept hover:underline"
-                    >
-                      {x.s.name}
-                    </Link>
-                    <span className="block text-xs text-ink-muted">{x.s.designation}</span>
-                  </td>
-                  <td data-label="Posting">{x.f.name}</td>
-                  <td data-label="Today">
-                    <Pill tone={STAFF_STATUS_TONE[x.today] ?? "neutral"}>{x.today}</Pill>
-                  </td>
-                  <td
-                    data-label="Absent"
-                    className={cn("num", x.absent >= 3 && "font-semibold text-problem")}
-                  >
-                    {x.absent} of {x.working}
-                  </td>
-                  <td data-label="Leave" className="num">
-                    {x.leave}
-                  </td>
-                  <td data-label="Late" className="num">
-                    {x.late}
-                  </td>
-                  <td data-label="Why listed" className="text-xs text-ink-muted">
-                    {x.reason}
-                  </td>
+        <PaginatedRegister
+          items={items}
+          label="exceptions"
+          resetKey={JSON.stringify(rows.map((x) => x.s.id))}
+        >
+          {(pageRows) => (
+            <table className="ledger">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Posting</th>
+                  <th scope="col">Today</th>
+                  <th scope="col" className="num">
+                    Absent
+                  </th>
+                  <th scope="col" className="num">
+                    Leave
+                  </th>
+                  <th scope="col" className="num">
+                    Late
+                  </th>
+                  <th scope="col">Why listed</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {pageRows.map((x) => (
+                  <tr key={x.s.id}>
+                    <td data-label="Name">
+                      <Link
+                        to="/staff/$id"
+                        params={{ id: x.s.id }}
+                        className="font-semibold text-ink hover:text-dept hover:underline"
+                      >
+                        {x.s.name}
+                      </Link>
+                      <span className="block text-xs text-ink-muted">{x.s.designation}</span>
+                    </td>
+                    <td data-label="Posting">{x.f.name}</td>
+                    <td data-label="Today">
+                      <Pill tone={STAFF_STATUS_TONE[x.today] ?? "neutral"}>{x.today}</Pill>
+                    </td>
+                    <td
+                      data-label="Absent"
+                      className={cn("num", x.absent >= 3 && "font-semibold text-problem")}
+                    >
+                      {x.absent} of {x.working}
+                    </td>
+                    <td data-label="Leave" className="num">
+                      {x.leave}
+                    </td>
+                    <td data-label="Late" className="num">
+                      {x.late}
+                    </td>
+                    <td data-label="Why listed" className="text-xs text-ink-muted">
+                      {x.reason}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </PaginatedRegister>
       )}
     </Panel>
   );

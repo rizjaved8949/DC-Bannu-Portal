@@ -95,7 +95,7 @@ export function StatusGlyph({
           <path
             d="M4.2 7.2 6.1 9 9.9 5.2"
             fill="none"
-            stroke="white"
+            stroke="var(--surface)"
             strokeWidth="1.6"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -103,7 +103,7 @@ export function StatusGlyph({
         </>
       ) : (
         <>
-          <circle cx="7" cy="7" r="5.75" fill="white" stroke={c} strokeWidth="1.5" />
+          <circle cx="7" cy="7" r="5.75" fill="var(--surface)" stroke={c} strokeWidth="1.5" />
           {status === "sent" && <path d="M7 7 L7 1.25 A5.75 5.75 0 0 1 12.75 7 Z" fill={c} />}
           {status === "received" && <path d="M7 7 L7 1.25 A5.75 5.75 0 0 1 7 12.75 Z" fill={c} />}
           {status === "pending" && <path d="M7 7 L7 1.25 A5.75 5.75 0 1 1 1.25 7 Z" fill={c} />}
@@ -135,7 +135,7 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm px-2 py-0.5 text-xs font-semibold",
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold",
         TONE_PILL[tone],
         className,
       )}
@@ -161,7 +161,7 @@ export function Pill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm px-2 py-0.5 text-xs font-semibold [&_svg]:size-3.5",
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold [&_svg]:size-3.5",
         TONE_PILL[tone],
         className,
       )}

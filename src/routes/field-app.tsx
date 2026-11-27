@@ -270,13 +270,13 @@ function Phone({
             <span>{conn === "online" ? "4G" : conn === "sms" ? "2G" : "No service"}</span>
           </span>
         </div>
-        <div className="flex items-start justify-between gap-2 border-b border-line bg-dept px-4 py-2.5 text-white">
+        <div className="flex items-start justify-between gap-2 border-b border-line bg-dept px-4 py-2.5 text-primary-foreground">
           <div>
             <div className="text-md font-bold leading-tight">{title}</div>
             <div
               dir="rtl"
               lang="ur"
-              className="font-urdu text-left text-[16px] leading-[1.8] text-white/85"
+              className="font-urdu text-left text-[16px] leading-[1.8] text-primary-foreground/85"
             >
               {urdu}
             </div>
@@ -285,7 +285,7 @@ function Phone({
             className={cn(
               "mt-1 inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-semibold [&_svg]:size-3",
               meta.tone === "verified"
-                ? "bg-white/15"
+                ? "bg-primary-foreground/15"
                 : meta.tone === "pending"
                   ? "bg-wheat/80 text-topbar"
                   : "bg-problem-tint text-problem",
@@ -313,7 +313,7 @@ function Phone({
         <figcaption className="inline-flex items-center gap-2 text-xs text-ink-muted">
           <span
             aria-hidden
-            className="flex size-5 items-center justify-center rounded-full bg-dept text-[11px] font-bold text-white"
+            className="flex size-5 items-center justify-center rounded-full bg-dept text-[11px] font-bold text-primary-foreground"
           >
             {n}
           </span>
@@ -340,10 +340,14 @@ function PrimaryButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="flex w-full flex-col items-center rounded-md bg-dept px-4 py-2 text-white disabled:opacity-50"
+      className="flex w-full flex-col items-center rounded-md bg-dept px-4 py-2 text-primary-foreground disabled:opacity-50"
     >
       <span className="text-sm font-semibold">{children}</span>
-      <span dir="rtl" lang="ur" className="font-urdu text-[16px] leading-[1.8] text-white/85">
+      <span
+        dir="rtl"
+        lang="ur"
+        className="font-urdu text-[16px] leading-[1.8] text-primary-foreground/85"
+      >
         {urdu}
       </span>
     </button>
@@ -369,7 +373,7 @@ function Steps({
             className={cn(
               "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border-2 [&_svg]:size-3",
               s.state === "done"
-                ? "border-verified bg-verified text-white"
+                ? "border-verified bg-verified text-primary-foreground"
                 : s.state === "active"
                   ? "border-wheat bg-surface"
                   : s.state === "blocked"
@@ -651,12 +655,12 @@ function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
                           "min-w-8 px-1.5 py-1 text-xs font-semibold first:rounded-l-[3px] last:rounded-r-[3px]",
                           active
                             ? m === "P"
-                              ? "bg-verified text-white"
+                              ? "bg-verified text-primary-foreground"
                               : m === "A"
-                                ? "bg-problem text-white"
+                                ? "bg-problem text-primary-foreground"
                                 : m === "L"
-                                  ? "bg-sent text-white"
-                                  : "bg-neutral text-white"
+                                  ? "bg-sent text-primary-foreground"
+                                  : "bg-neutral text-primary-foreground"
                             : "text-ink-muted hover:bg-subtle",
                         )}
                       >

@@ -1,3 +1,4 @@
+import { PaginatedRegister } from "@/components/dcms/paginated-register";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, Info, X } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -218,7 +219,7 @@ function InboxPage() {
         </p>
       </div>
 
-      <Panel title="Today's reports" aside={`${sorted.length} shown`}>
+      <Panel title="Today's reports" aside={`${sorted.length} matching reports`}>
         {sorted.length === 0 ? (
           <EmptyState
             title="No reports match these filters."
@@ -238,92 +239,98 @@ function InboxPage() {
             }
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="ledger">
-              <thead>
-                <tr>
-                  <SortTh id="received" active={key} dir={dir} onSort={toggle} num>
-                    Received
-                  </SortTh>
-                  <SortTh id="facility" active={key} dir={dir} onSort={toggle}>
-                    Facility
-                  </SortTh>
-                  <SortTh id="channel" active={key} dir={dir} onSort={toggle}>
-                    Channel
-                  </SortTh>
-                  <SortTh id="id" active={key} dir={dir} onSort={toggle}>
-                    Report ID
-                  </SortTh>
-                  <SortTh id="roster" active={key} dir={dir} onSort={toggle}>
-                    Roster
-                  </SortTh>
-                  <SortTh id="segments" active={key} dir={dir} onSort={toggle}>
-                    Segments
-                  </SortTh>
-                  <SortTh id="status" active={key} dir={dir} onSort={toggle}>
-                    Status
-                  </SortTh>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map(({ r, f }) => (
-                  <tr
-                    key={r.id}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={`Open report ${r.id}`}
-                    onClick={() => open(r.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        open(r.id);
-                      }
-                    }}
-                    className={cn(
-                      "cursor-pointer",
-                      selected?.id === r.id && "bg-dept-tint hover:bg-dept-tint",
-                    )}
-                  >
-                    <td data-label="Received" className="num">
-                      {r.receivedAt != null ? (
-                        hhmm(r.receivedAt)
-                      ) : (
-                        <span className="text-ink-muted">Sent {hhmm(r.sentAt)}</span>
-                      )}
-                    </td>
-                    <td data-label="Facility">
-                      <span className="font-semibold text-ink">{f.name}</span>
-                      <span className="block text-xs text-ink-muted">
-                        {f.tehsil} · <Code className="text-xs text-ink-muted">{f.code}</Code>
-                      </span>
-                    </td>
-                    <td data-label="Channel">
-                      <ChannelLabel channel={r.channel} />
-                    </td>
-                    <td data-label="Report ID">
-                      <Code>{r.id}</Code>
-                    </td>
-                    <td data-label="Roster">
-                      <Code className={cn(r.rosterVersion !== f.rosterVersion && "text-problem")}>
-                        {r.rosterVersion}
-                      </Code>
-                    </td>
-                    <td
-                      data-label="Segments"
+          <PaginatedRegister
+            items={sorted}
+            label="reports"
+            resetKey={JSON.stringify([role.id, filters, channel, status, key, dir])}
+          >
+            {(pageRows) => (
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <SortTh id="received" active={key} dir={dir} onSort={toggle} num>
+                      Received
+                    </SortTh>
+                    <SortTh id="facility" active={key} dir={dir} onSort={toggle}>
+                      Facility
+                    </SortTh>
+                    <SortTh id="channel" active={key} dir={dir} onSort={toggle}>
+                      Channel
+                    </SortTh>
+                    <SortTh id="id" active={key} dir={dir} onSort={toggle}>
+                      Report ID
+                    </SortTh>
+                    <SortTh id="roster" active={key} dir={dir} onSort={toggle}>
+                      Roster
+                    </SortTh>
+                    <SortTh id="segments" active={key} dir={dir} onSort={toggle}>
+                      Segments
+                    </SortTh>
+                    <SortTh id="status" active={key} dir={dir} onSort={toggle}>
+                      Status
+                    </SortTh>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageRows.map(({ r, f }) => (
+                    <tr
+                      key={r.id}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`Open report ${r.id}`}
+                      onClick={() => open(r.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          open(r.id);
+                        }
+                      }}
                       className={cn(
-                        r.segments.received < r.segments.total && "font-semibold text-problem",
+                        "cursor-pointer",
+                        selected?.id === r.id && "bg-dept-tint hover:bg-dept-tint",
                       )}
                     >
-                      {r.segments.received} of {r.segments.total}
-                    </td>
-                    <td data-label="Status">
-                      <StatusBadge status={r.status} short />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <td data-label="Received" className="num">
+                        {r.receivedAt != null ? (
+                          hhmm(r.receivedAt)
+                        ) : (
+                          <span className="text-ink-muted">Sent {hhmm(r.sentAt)}</span>
+                        )}
+                      </td>
+                      <td data-label="Facility">
+                        <span className="font-semibold text-ink">{f.name}</span>
+                        <span className="block text-xs text-ink-muted">
+                          {f.tehsil} · <Code className="text-xs text-ink-muted">{f.code}</Code>
+                        </span>
+                      </td>
+                      <td data-label="Channel">
+                        <ChannelLabel channel={r.channel} />
+                      </td>
+                      <td data-label="Report ID">
+                        <Code>{r.id}</Code>
+                      </td>
+                      <td data-label="Roster">
+                        <Code className={cn(r.rosterVersion !== f.rosterVersion && "text-problem")}>
+                          {r.rosterVersion}
+                        </Code>
+                      </td>
+                      <td
+                        data-label="Segments"
+                        className={cn(
+                          r.segments.received < r.segments.total && "font-semibold text-problem",
+                        )}
+                      >
+                        {r.segments.received} of {r.segments.total}
+                      </td>
+                      <td data-label="Status">
+                        <StatusBadge status={r.status} short />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </PaginatedRegister>
         )}
       </Panel>
 

@@ -1,3 +1,4 @@
+import { PaginatedRegister } from "@/components/dcms/paginated-register";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
@@ -218,48 +219,56 @@ function MapPage() {
           title="Infrastructure"
           aside="OK, Problem or Stale (older than 3 days)"
         >
-          <div className="max-h-[620px] overflow-auto">
-            <table className="ledger">
-              <thead className="sticky top-0">
-                <tr>
-                  <th scope="col">Facility</th>
-                  {INFRA_KEYS.map((k) => (
-                    <th key={k} scope="col">
-                      {INFRA_LABELS[k]}
-                    </th>
-                  ))}
-                  <th scope="col">Equipment</th>
-                  <th scope="col">Today</th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.map((f) => (
-                  <tr key={f.id} className={cn(f.id === selected && "bg-dept-tint")}>
-                    <td data-label="Facility">
-                      <Link
-                        to={f.kind === "school" ? "/schools/$id" : "/health/$id"}
-                        params={{ id: f.id }}
-                        className="font-semibold text-ink hover:text-dept hover:underline"
-                      >
-                        {f.name}
-                      </Link>
-                      <span className="block text-xs text-ink-muted">{f.tehsil}</span>
-                    </td>
-                    {INFRA_KEYS.map((k) => (
-                      <td key={k} data-label={INFRA_LABELS[k]}>
-                        <InfraCell flag={f.infra[k]} />
-                      </td>
+          <div>
+            <PaginatedRegister
+              items={list}
+              label="infrastructure records"
+              resetKey={JSON.stringify([q, facilities.map((f) => f.id)])}
+            >
+              {(pageRows) => (
+                <table className="ledger">
+                  <thead className="sticky top-0">
+                    <tr>
+                      <th scope="col">Facility</th>
+                      {INFRA_KEYS.map((k) => (
+                        <th key={k} scope="col">
+                          {INFRA_LABELS[k]}
+                        </th>
+                      ))}
+                      <th scope="col">Equipment</th>
+                      <th scope="col">Today</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pageRows.map((f) => (
+                      <tr key={f.id} className={cn(f.id === selected && "bg-dept-tint")}>
+                        <td data-label="Facility">
+                          <Link
+                            to={f.kind === "school" ? "/schools/$id" : "/health/$id"}
+                            params={{ id: f.id }}
+                            className="font-semibold text-ink hover:text-dept hover:underline"
+                          >
+                            {f.name}
+                          </Link>
+                          <span className="block text-xs text-ink-muted">{f.tehsil}</span>
+                        </td>
+                        {INFRA_KEYS.map((k) => (
+                          <td key={k} data-label={INFRA_LABELS[k]}>
+                            <InfraCell flag={f.infra[k]} />
+                          </td>
+                        ))}
+                        <td data-label="Equipment">
+                          <InfraCell flag={f.equipment} label={f.equipment.label} />
+                        </td>
+                        <td data-label="Today">
+                          <StatusBadge status={statusFor(f.id)} short />
+                        </td>
+                      </tr>
                     ))}
-                    <td data-label="Equipment">
-                      <InfraCell flag={f.equipment} label={f.equipment.label} />
-                    </td>
-                    <td data-label="Today">
-                      <StatusBadge status={statusFor(f.id)} short />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  </tbody>
+                </table>
+              )}
+            </PaginatedRegister>
           </div>
         </Panel>
 

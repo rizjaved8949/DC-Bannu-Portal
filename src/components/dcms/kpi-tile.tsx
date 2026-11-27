@@ -42,7 +42,7 @@ const TONE_ACCENT: Record<Tone | "kurram", { rule: string; chip: string }> = {
   kurram: { rule: "before:bg-dept", chip: "bg-dept-tint text-dept" },
 };
 
-/** White panel, 3px top rule, label with a tinted icon chip, 32px value, sub-line, optional freshness. */
+/** Flat metric card with a status accent, icon badge, value and provenance. */
 export function KpiTile({
   label,
   value,
@@ -62,31 +62,29 @@ export function KpiTile({
   const accent = TONE_ACCENT[tone];
   return (
     <div
+      data-tone={tone}
       className={cn(
-        "kpi-tile panel relative overflow-hidden px-4 pb-4 pt-[18px]",
-        "before:absolute before:inset-x-0 before:top-0 before:h-[3px] before:content-['']",
+        "kpi-tile panel relative overflow-hidden p-5",
+        "before:absolute before:bottom-5 before:left-0 before:top-5 before:w-[3px] before:rounded-r-full before:content-['']",
         accent.rule,
         className,
       )}
     >
-      <div className="flex items-center justify-between gap-2 text-xs text-ink-muted">
+      <div className="kpi-label flex items-center justify-between gap-2 text-xs font-semibold text-ink-muted">
         <span>{label}</span>
         <span
-          className={cn(
-            "flex size-7 shrink-0 items-center justify-center rounded-full",
-            accent.chip,
-          )}
+          className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", accent.chip)}
           aria-hidden
         >
           <Icon className="size-[15px]" strokeWidth={1.9} />
         </span>
       </div>
-      <div className="mb-1 mt-1.5 text-[32px] font-bold leading-tight tabular-nums text-ink">
+      <div className="kpi-value mb-1 mt-3 text-[36px] font-bold leading-tight tracking-tight tabular-nums text-ink">
         {value}
       </div>
-      <div className="text-xs text-ink">{sub}</div>
+      <div className="kpi-sub text-xs text-ink">{sub}</div>
       {freshness && (
-        <div className="mt-1.5 border-t border-line pt-1.5 text-2xs text-ink-muted">
+        <div className="kpi-freshness mt-4 border-t border-line pt-3 text-2xs text-ink-muted">
           {freshness}
         </div>
       )}

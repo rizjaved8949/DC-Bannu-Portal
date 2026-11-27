@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { SearchCheck } from "lucide-react";
 
 /** A ledger panel with a plain title row. */
 export function Panel({
@@ -38,9 +39,14 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="px-6 py-10 text-center">
+    <div className="empty-state px-6 py-12 text-center">
+      <div className="empty-state-art" aria-hidden>
+        <SearchCheck className="size-7" />
+      </div>
       <p className="font-semibold text-ink">{title}</p>
-      {hint && <p className="mt-1 text-sm text-ink-muted">{hint}</p>}
+      {hint && (
+        <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-ink-muted">{hint}</p>
+      )}
       {action && <div className="mt-3">{action}</div>}
     </div>
   );

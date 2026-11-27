@@ -1,3 +1,4 @@
+import { PaginatedRegister } from "@/components/dcms/paginated-register";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 
@@ -61,7 +62,7 @@ type Col =
   | "billing";
 
 function HealthPage() {
-  const { statusFor, reportFor, filters, resetFilters, shiftFor } = useApp();
+  const { statusFor, reportFor, filters, resetFilters, shiftFor, role } = useApp();
   const list = useScopedFacilities({ kind: "health" });
   const shiftKey: ShiftKey =
     filters.shift === "Evening" ? "E" : filters.shift === "Night" ? "N" : "M";
@@ -227,131 +228,137 @@ function HealthPage() {
             }
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="ledger">
-              <thead>
-                <tr>
-                  <SortTh id="name" active={key} dir={dir} onSort={toggle}>
-                    Facility
-                  </SortTh>
-                  <SortTh id="type" active={key} dir={dir} onSort={toggle}>
-                    Type
-                  </SortTh>
-                  <SortTh id="tehsil" active={key} dir={dir} onSort={toggle}>
-                    Tehsil
-                  </SortTh>
-                  <SortTh id="coverage" active={key} dir={dir} onSort={toggle} num>
-                    Shift coverage
-                  </SortTh>
-                  <SortTh id="opd" active={key} dir={dir} onSort={toggle} num>
-                    OPD today
-                  </SortTh>
-                  <SortTh id="beds" active={key} dir={dir} onSort={toggle} num>
-                    Beds available
-                  </SortTh>
-                  <SortTh id="down" active={key} dir={dir} onSort={toggle}>
-                    Services down
-                  </SortTh>
-                  <SortTh id="emergency" active={key} dir={dir} onSort={toggle} num>
-                    Emergency
-                  </SortTh>
-                  <SortTh id="admissions" active={key} dir={dir} onSort={toggle} num>
-                    Admissions
-                  </SortTh>
-                  <SortTh id="billing" active={key} dir={dir} onSort={toggle} num>
-                    Revenue
-                  </SortTh>
-                  <SortTh id="status" active={key} dir={dir} onSort={toggle}>
-                    Report status
-                  </SortTh>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map(({ f, st, shift, cov, down, ps, bill }) => (
-                  <tr key={f.id}>
-                    <td data-label="Facility">
-                      <Link
-                        to="/health/$id"
-                        params={{ id: f.id }}
-                        className="font-semibold text-dept hover:underline"
-                      >
-                        {f.name}
-                      </Link>
-                      <span className="block">
-                        <Code className="text-xs text-ink-muted">{f.code}</Code>
-                      </span>
-                    </td>
-                    <td data-label="Type">{f.healthType}</td>
-                    <td data-label="Tehsil">{f.tehsil}</td>
-                    <td
-                      data-label="Shift coverage"
-                      className={cn(
-                        "num",
-                        isAccepted(st) &&
-                          shift.phase !== "upcoming" &&
-                          cov.belowMinimum &&
-                          "font-semibold text-problem",
-                      )}
-                    >
-                      {isAccepted(st) && shift.phase !== "upcoming" ? cov.covered : "—"} of{" "}
-                      {cov.required} required
-                      {isAccepted(st) && shift.phase !== "upcoming" && cov.belowMinimum && (
-                        <span className="block text-xs font-normal text-problem">
-                          Below minimum
-                        </span>
-                      )}
-                    </td>
-                    <td data-label="OPD today" className="num">
-                      {!isAccepted(st) || shift.opd == null ? (
-                        <span className="text-ink-muted">—</span>
-                      ) : (
-                        shift.opd.toLocaleString("en")
-                      )}
-                    </td>
-                    <td data-label="Beds available" className="num">
-                      {isAccepted(st) ? shift.bedsAvailable : "—"} of {shift.bedsTotal}
-                    </td>
-                    <td data-label="Services down">
-                      {!isAccepted(st) || shift.phase === "upcoming" ? (
-                        <span className="text-xs text-ink-muted">Awaiting report</span>
-                      ) : down.length === 0 ? (
-                        <span className="text-xs text-ink-muted">All up</span>
-                      ) : (
-                        <span className="flex flex-wrap gap-1">
-                          {down.map((s) => (
-                            <Pill key={s} tone="problem">
-                              {s}
-                            </Pill>
-                          ))}
-                        </span>
-                      )}
-                    </td>
-                    <td data-label="Emergency" className="num">
-                      {ps ? ps.emergencyToday : "—"}
-                    </td>
-                    <td data-label="Admissions" className="num">
-                      {ps ? (
-                        <>
-                          {ps.admissionsToday}
-                          <span className="ml-1 text-xs text-ink-muted">
-                            ({ps.dischargesToday} disch.)
-                          </span>
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td data-label="Revenue" className="num">
-                      {bill ? `₨${formatPkr(bill.totalCollected)}` : "—"}
-                    </td>
-                    <td data-label="Report status">
-                      <StatusBadge status={st} short />
-                    </td>
+          <PaginatedRegister
+            items={sorted}
+            label="health facilities"
+            resetKey={JSON.stringify([role.id, filters, key, dir])}
+          >
+            {(pageRows) => (
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <SortTh id="name" active={key} dir={dir} onSort={toggle}>
+                      Facility
+                    </SortTh>
+                    <SortTh id="type" active={key} dir={dir} onSort={toggle}>
+                      Type
+                    </SortTh>
+                    <SortTh id="tehsil" active={key} dir={dir} onSort={toggle}>
+                      Tehsil
+                    </SortTh>
+                    <SortTh id="coverage" active={key} dir={dir} onSort={toggle} num>
+                      Shift coverage
+                    </SortTh>
+                    <SortTh id="opd" active={key} dir={dir} onSort={toggle} num>
+                      OPD today
+                    </SortTh>
+                    <SortTh id="beds" active={key} dir={dir} onSort={toggle} num>
+                      Beds available
+                    </SortTh>
+                    <SortTh id="down" active={key} dir={dir} onSort={toggle}>
+                      Services down
+                    </SortTh>
+                    <SortTh id="emergency" active={key} dir={dir} onSort={toggle} num>
+                      Emergency
+                    </SortTh>
+                    <SortTh id="admissions" active={key} dir={dir} onSort={toggle} num>
+                      Admissions
+                    </SortTh>
+                    <SortTh id="billing" active={key} dir={dir} onSort={toggle} num>
+                      Revenue
+                    </SortTh>
+                    <SortTh id="status" active={key} dir={dir} onSort={toggle}>
+                      Report status
+                    </SortTh>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {pageRows.map(({ f, st, shift, cov, down, ps, bill }) => (
+                    <tr key={f.id}>
+                      <td data-label="Facility">
+                        <Link
+                          to="/health/$id"
+                          params={{ id: f.id }}
+                          className="font-semibold text-dept hover:underline"
+                        >
+                          {f.name}
+                        </Link>
+                        <span className="block">
+                          <Code className="text-xs text-ink-muted">{f.code}</Code>
+                        </span>
+                      </td>
+                      <td data-label="Type">{f.healthType}</td>
+                      <td data-label="Tehsil">{f.tehsil}</td>
+                      <td
+                        data-label="Shift coverage"
+                        className={cn(
+                          "num",
+                          isAccepted(st) &&
+                            shift.phase !== "upcoming" &&
+                            cov.belowMinimum &&
+                            "font-semibold text-problem",
+                        )}
+                      >
+                        {isAccepted(st) && shift.phase !== "upcoming" ? cov.covered : "—"} of{" "}
+                        {cov.required} required
+                        {isAccepted(st) && shift.phase !== "upcoming" && cov.belowMinimum && (
+                          <span className="block text-xs font-normal text-problem">
+                            Below minimum
+                          </span>
+                        )}
+                      </td>
+                      <td data-label="OPD today" className="num">
+                        {!isAccepted(st) || shift.opd == null ? (
+                          <span className="text-ink-muted">—</span>
+                        ) : (
+                          shift.opd.toLocaleString("en")
+                        )}
+                      </td>
+                      <td data-label="Beds available" className="num">
+                        {isAccepted(st) ? shift.bedsAvailable : "—"} of {shift.bedsTotal}
+                      </td>
+                      <td data-label="Services down">
+                        {!isAccepted(st) || shift.phase === "upcoming" ? (
+                          <span className="text-xs text-ink-muted">Awaiting report</span>
+                        ) : down.length === 0 ? (
+                          <span className="text-xs text-ink-muted">All up</span>
+                        ) : (
+                          <span className="flex flex-wrap gap-1">
+                            {down.map((s) => (
+                              <Pill key={s} tone="problem">
+                                {s}
+                              </Pill>
+                            ))}
+                          </span>
+                        )}
+                      </td>
+                      <td data-label="Emergency" className="num">
+                        {ps ? ps.emergencyToday : "—"}
+                      </td>
+                      <td data-label="Admissions" className="num">
+                        {ps ? (
+                          <>
+                            {ps.admissionsToday}
+                            <span className="ml-1 text-xs text-ink-muted">
+                              ({ps.dischargesToday} disch.)
+                            </span>
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td data-label="Revenue" className="num">
+                        {bill ? `₨${formatPkr(bill.totalCollected)}` : "—"}
+                      </td>
+                      <td data-label="Report status">
+                        <StatusBadge status={st} short />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </PaginatedRegister>
         )}
       </Panel>
     </div>

@@ -1,3 +1,4 @@
+import { PaginatedRegister } from "@/components/dcms/paginated-register";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { CheckCircle2, CircleAlert, Clock3, Download } from "lucide-react";
@@ -251,59 +252,63 @@ function ComplaintWorkspace() {
       </Panel>
       <Panel title="Complaint register" aside="One record can cover multiple institutions">
         {list.length ? (
-          <table className="ledger">
-            <thead>
-              <tr>
-                <th scope="col">Complaint</th>
-                <th scope="col">Affected institutions</th>
-                <th scope="col">Priority</th>
-                <th scope="col">Assigned to</th>
-                <th scope="col">Status</th>
-                <th scope="col">Registered</th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((c) => {
-                const targets = scope.filter((f) => c.facilityIds.includes(f.id));
-                return (
-                  <tr key={c.id}>
-                    <td data-label="Complaint">
-                      <Link
-                        className="font-semibold text-dept hover:underline"
-                        to="/complaints"
-                        search={{ ...search, complaint: c.id }}
-                      >
-                        {c.title}
-                      </Link>
-                      <span className="mt-1 block text-xs text-ink-muted">
-                        <Code>{c.id}</Code> · {c.category}
-                      </span>
-                    </td>
-                    <td data-label="Affected institutions">
-                      <span className="font-semibold num">{targets.length}</span> in your scope
-                      <span className="block text-xs text-ink-muted">
-                        {[...new Set(targets.map((f) => f.tehsil))].join(", ")}
-                      </span>
-                      <span className="block max-w-xs text-xs text-ink-muted">
-                        {targets.map((f) => f.name).join("; ")}
-                      </span>
-                    </td>
-                    <td data-label="Priority">
-                      <Pill tone={SEVERITY_TONE[c.priority]!}>{c.priority}</Pill>
-                    </td>
-                    <td data-label="Assigned to">{c.owner}</td>
-                    <td data-label="Status">
-                      <ComplaintBadge status={c.status} />
-                    </td>
-                    <td data-label="Registered" className="num">
-                      {formatDate(c.createdDate)}
-                      <span className="block text-xs text-ink-muted">{hhmm(c.createdMin)}</span>
-                    </td>
+          <PaginatedRegister items={list} label="complaints" resetKey={JSON.stringify(effective)}>
+            {(pageRows) => (
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <th scope="col">Complaint</th>
+                    <th scope="col">Affected institutions</th>
+                    <th scope="col">Priority</th>
+                    <th scope="col">Assigned to</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Registered</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {pageRows.map((c) => {
+                    const targets = scope.filter((f) => c.facilityIds.includes(f.id));
+                    return (
+                      <tr key={c.id}>
+                        <td data-label="Complaint">
+                          <Link
+                            className="font-semibold text-dept hover:underline"
+                            to="/complaints"
+                            search={{ ...search, complaint: c.id }}
+                          >
+                            {c.title}
+                          </Link>
+                          <span className="mt-1 block text-xs text-ink-muted">
+                            <Code>{c.id}</Code> · {c.category}
+                          </span>
+                        </td>
+                        <td data-label="Affected institutions">
+                          <span className="font-semibold num">{targets.length}</span> in your scope
+                          <span className="block text-xs text-ink-muted">
+                            {[...new Set(targets.map((f) => f.tehsil))].join(", ")}
+                          </span>
+                          <span className="block max-w-xs text-xs text-ink-muted">
+                            {targets.map((f) => f.name).join("; ")}
+                          </span>
+                        </td>
+                        <td data-label="Priority">
+                          <Pill tone={SEVERITY_TONE[c.priority]!}>{c.priority}</Pill>
+                        </td>
+                        <td data-label="Assigned to">{c.owner}</td>
+                        <td data-label="Status">
+                          <ComplaintBadge status={c.status} />
+                        </td>
+                        <td data-label="Registered" className="num">
+                          {formatDate(c.createdDate)}
+                          <span className="block text-xs text-ink-muted">{hhmm(c.createdMin)}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </PaginatedRegister>
         ) : (
           <EmptyState
             title="No complaints match these filters"

@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { GraduationCap, HeartPulse, Search, UserRound } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { staffByFacility } from "@/data/mock";
@@ -8,21 +8,61 @@ import { useScopedFacilities } from "@/lib/app-state";
 import { StatusBadge } from "./status";
 import { useApp } from "@/lib/app-state";
 
+/** All entry points open the same dialog and share one keyboard shortcut. */
+export function SearchTrigger({
+  compact = false,
+  onOpen,
+}: {
+  compact?: boolean;
+  onOpen?: (() => void) | undefined;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        onOpen?.();
+        window.dispatchEvent(new Event("dcms:open-search"));
+      }}
+      className="global-search-trigger"
+      aria-label="Search facilities and staff"
+    >
+      <Search className="size-4" />
+      {!compact && (
+        <>
+          <span className="search-label">Search directory…</span>
+          <kbd>Ctrl K</kbd>
+        </>
+      )}
+    </button>
+  );
+}
+
 export function GlobalSearch() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const opener = useRef<Element | null>(null);
   const facilities = useScopedFacilities({ applyFilters: false });
   const { statusFor } = useApp();
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
+        if (!open) opener.current = document.activeElement;
         setOpen((value) => !value);
       }
     };
+    const onOpen = () => {
+      opener.current = document.activeElement;
+      setQuery("");
+      setOpen(true);
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+    window.addEventListener("dcms:open-search", onOpen);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("dcms:open-search", onOpen);
+    };
+  }, [open]);
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     return {
@@ -42,20 +82,18 @@ export function GlobalSearch() {
   }, [query, facilities]);
   return (
     <>
-      <button
-        onClick={() => {
-          setQuery("");
-          setOpen(true);
-        }}
-        className="global-search-trigger"
-        aria-label="Search facilities and staff"
-      >
-        <Search className="size-4" />
-        <span className="hidden xl:inline">Search facilities, staff…</span>
-        <kbd className="hidden xl:inline">Ctrl K</kbd>
-      </button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[620px]">
+        <DialogContent
+          className="gap-0 overflow-hidden p-0 sm:max-w-[620px]"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            if (opener.current instanceof HTMLElement && document.contains(opener.current)) {
+              opener.current.focus();
+            } else {
+              document.querySelector<HTMLButtonElement>('[aria-label="Open navigation"]')?.focus();
+            }
+          }}
+        >
           <div className="border-b border-line px-6 pb-4 pt-5">
             <DialogTitle className="text-lg">Find a facility or staff member</DialogTitle>
             <DialogDescription className="mt-1">
@@ -127,9 +165,21 @@ export function GlobalSearch() {
               </Link>
             ))}
             {!results.facilities.length && !results.staff.length && (
-              <p className="px-3 py-8 text-center text-ink-muted">
-                No results in your scope. Try a name, facility code or tehsil.
-              </p>
+              <div className="empty-state px-6 py-10 text-center">
+                <span className="empty-state-art" aria-hidden>
+                  <Search className="size-6" />
+                </span>
+                <p className="font-semibold text-ink">No matches just yet</p>
+                <p className="mt-2 text-sm text-ink-muted">
+                  Try another name, facility code or tehsil within your scope.
+                </p>
+                <button
+                  className="mt-4 rounded-md border border-line px-3 py-2 text-sm font-semibold text-dept hover:bg-subtle"
+                  onClick={() => setQuery("")}
+                >
+                  Clear search
+                </button>
+              </div>
             )}
           </div>
           <div className="border-t border-line bg-subtle px-6 py-3 text-xs text-ink-muted">

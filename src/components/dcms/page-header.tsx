@@ -17,16 +17,22 @@ export function PageHeader({
 }) {
   const { clockMin } = useApp();
   return (
-    <header className="page-header relative pb-4 after:absolute after:bottom-0 after:left-0 after:h-[3px] after:w-[72px] after:rounded-full after:bg-dept after:content-['']">
+    <header className="page-header">
+      <p className="page-eyebrow">
+        <span aria-hidden />
+        District intelligence · Bannu
+      </p>
       <div className="flex items-baseline justify-between gap-6">
-        <h1 className="text-[30px] font-bold leading-tight text-ink sm:text-[34px]">{title}</h1>
+        <h1 className="text-[30px] font-bold leading-tight tracking-tight text-ink sm:text-[36px]">
+          {title}
+        </h1>
         <p dir="rtl" lang="ur" className="font-urdu shrink-0 text-xl text-dept">
           {urdu}
         </p>
       </div>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-x-8 gap-y-3">
         <p className="max-w-[850px] text-sm text-ink-muted">{description}</p>
-        <div className="flex shrink-0 items-center gap-3 text-xs text-ink-muted">
+        <div className="page-dateline flex shrink-0 items-center gap-3 text-xs text-ink-muted">
           <span className="inline-flex items-center gap-1.5">
             <CalendarDays className="size-3.5" />
             {formatDate(TODAY, true)}

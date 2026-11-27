@@ -57,7 +57,12 @@ export function ReportingBoard({ facilities }: { facilities: Facility[] }) {
   const tehsils = TEHSILS.filter((t) => facilities.some((f) => f.tehsil === t));
   return (
     <TooltipProvider>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+      <div
+        className="reporting-board-scroll grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6"
+        role="region"
+        aria-label="Reporting board by tehsil"
+        tabIndex={0}
+      >
         {tehsils.map((t) => {
           const list = facilities.filter((f) => f.tehsil === t);
           const schools = list.filter((f) => f.kind === "school");

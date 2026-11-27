@@ -8,7 +8,7 @@ const STORAGE_KEY = "dcms-guide-dismissed";
 const STEPS = [
   {
     title: "Pick who you are",
-    body: "Use the name menu at the top right to switch between the Deputy Commissioner, the Education Officer, the Health Officer and the Assistant Commissioner. Every page then shows only that officer's facilities.",
+    body: "Use the profile menu at the bottom of the sidebar to switch between the Deputy Commissioner, the Education Officer, the Health Officer and the Assistant Commissioner. On phones, open the navigation menu first. Every page then shows only that officer's facilities.",
   },
   {
     title: "Start on the Overview",

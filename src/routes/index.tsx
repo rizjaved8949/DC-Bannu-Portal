@@ -161,10 +161,9 @@ function OverviewPage() {
         description={`A clear view of today's reporting, people and public services across ${role.scopeLabel === "Whole district" ? "District Bannu" : role.scopeLabel.toLowerCase()}.`}
       />
 
-      <HowToUse />
+      <FilterBar onExportCsv={exportCsv} />
 
       <DistrictRegister facilities={facilities} />
-      <FilterBar onExportCsv={exportCsv} />
 
       {critical.length > 0 && (
         <div className="overview-alert">
@@ -197,7 +196,7 @@ function OverviewPage() {
       )}
 
       {/* ── Key numbers bar ── */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="overview-metrics grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
         <KpiTile
           label="Reported today"
           value={s.reported}
@@ -251,6 +250,8 @@ function OverviewPage() {
           freshness="Checked against 23 Nov"
         />
       </div>
+
+      <HowToUse />
 
       {/* ── Department summaries side by side ── */}
       <div className={cn("grid gap-4", showSchools && showHealth && "lg:grid-cols-2")}>

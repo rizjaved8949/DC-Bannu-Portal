@@ -1,3 +1,5 @@
+import { ChevronDown, GraduationCap, ChartNoAxesCombined } from "lucide-react";
+import { PaginatedRegister } from "@/components/dcms/paginated-register";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
@@ -75,7 +77,7 @@ const GENDERS = [
 type GenderFilter = (typeof GENDERS)[number]["value"];
 
 function SchoolsPage() {
-  const { statusFor, reportFor, resetFilters, filters, schoolDayFor } = useApp();
+  const { statusFor, reportFor, resetFilters, filters, schoolDayFor, role } = useApp();
   const schools = useScopedFacilities({ kind: "school" });
   const [q, setQ] = useState("");
   const [level, setLevel] = useState<"All" | SchoolLevel>("All");
@@ -263,120 +265,149 @@ function SchoolsPage() {
         />
       </div>
 
-      {(() => {
-        const bioLogs = rows.flatMap((x) => biometricByFacility[x.f.id] ?? []);
-        const bioOnTime = bioLogs.filter((l) => l.status === "On time").length;
-        const bioLate = bioLogs.filter(
-          (l) => l.status === "Late" || l.status === "Very late",
-        ).length;
-        const absentStaff = rows.reduce((a, x) => {
-          if (x.staff.present == null) return a;
-          return a + (x.staff.total - x.staff.present);
-        }, 0);
-        return (
-          <>
-            <h2 className="mb-2 text-sm font-semibold text-ink">School register</h2>
-            <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-              <KpiTile
-                label="Schools"
-                value={rows.length}
-                sub={`${functional.length} functional`}
-                tone="neutral"
-                freshness="DEO(M) data, 26 Nov 2026"
-              />
-              <KpiTile
-                label="Non-functional & closed"
-                value={notFunctional}
-                sub={`${closed} closed, ${notFunctional - closed} non-functional`}
-                tone={notFunctional ? "problem" : "neutral"}
-                freshness="Male register + female NF list"
-              />
-              <KpiTile
-                label="Students enrolled"
-                value={regStudents.toLocaleString("en")}
-                sub={`in ${withCounts.length} schools with figures`}
-                tone="neutral"
-                freshness="No of Students column"
-              />
-              <KpiTile
-                label="Working teachers"
-                value={regTeachers.toLocaleString("en")}
-                sub={
-                  regTeachers
-                    ? `${(regStudents / regTeachers).toFixed(1)} students per teacher`
-                    : "No figures in this selection"
-                }
-                tone="neutral"
-                freshness="No of Working Teachers column"
-              />
-              <KpiTile
-                label="Functional, no teacher"
-                value={noTeacher}
-                sub="functional schools with 0 working teachers"
-                tone={noTeacher ? "problem" : "neutral"}
-                freshness="From the school register"
-              />
-              <KpiTile
-                label="Principal not recorded"
-                value={noPrincipal}
-                sub={`of ${withCounts.length} schools with figures`}
-                tone={noPrincipal ? "pending" : "neutral"}
-                freshness="Principal Name column blank"
-              />
-            </div>
-            <h2 className="mb-2 text-sm font-semibold text-ink">
-              Today's reporting{" "}
-              <span className="text-xs font-normal text-ink-muted">· live demo</span>
-            </h2>
-            <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-              <KpiTile
-                label="Reported today"
-                value={reported}
-                sub={`of ${functional.length} functional schools`}
-                tone={reported / Math.max(1, functional.length) > 0.7 ? "verified" : "pending"}
-                freshness="Demo: accepted by the district server"
-              />
-              <KpiTile
-                label="Staff present"
-                value={staffT ? `${pct(staffP, staffT)}%` : "No data"}
-                sub={`${staffP} of ${staffT} in reporting schools`}
-                tone="verified"
-                freshness={`Demo · ${reported} schools counted`}
-              />
-              <KpiTile
-                label="Students present"
-                value={stuT ? `${pct(stuP, stuT)}%` : "No data"}
-                sub={`${stuP.toLocaleString("en")} of ${stuT.toLocaleString("en")} enrolled`}
-                tone="verified"
-                freshness={`Demo · enrolment is real: ${stuEnrolledAll.toLocaleString("en")}`}
-              />
-              <KpiTile
-                label="No report yet"
-                value={functional.filter((x) => x.st === "none").length}
-                sub="functional schools without a report"
-                tone={functional.some((x) => x.st === "none") ? "problem" : "neutral"}
-                freshness="Demo · non-functional schools not expected"
-              />
-              <KpiTile
-                label="Staff absent"
-                value={absentStaff.toString()}
-                sub="absent without leave or on duty"
-                tone={absentStaff > 10 ? "problem" : "neutral"}
-                freshness="Demo · from accepted school reports"
-              />
-              <KpiTile
-                label="Biometric on time"
-                value={bioLogs.length ? `${pct(bioOnTime, bioLogs.length, 0)}%` : "—"}
-                sub={`${bioOnTime} on time · ${bioLate} late`}
-                tone={bioLate / Math.max(1, bioLogs.length) > 0.2 ? "pending" : "verified"}
-                freshness="Demo · fingerprint / NFC check-ins"
-              />
-            </div>
-          </>
-        );
-      })()}
+      <div className="directory-spotlight">
+        <span className="directory-spotlight-icon" aria-hidden>
+          <GraduationCap />
+        </span>
+        <div>
+          <span className="directory-spotlight-label">Education directory</span>
+          <h2>Every school. One clear view.</h2>
+          <p>Search, filter and browse the register in manageable pages.</p>
+        </div>
+        <div className="directory-spotlight-totals">
+          <strong className="num">{rows.length}</strong>
+          <span>schools in this view</span>
+        </div>
+      </div>
+      <details className="insights-disclosure">
+        <summary>
+          <span className="insights-icon" aria-hidden>
+            <ChartNoAxesCombined className="size-5" />
+          </span>
+          <span>
+            <strong>School insights</strong>
+            <small>Register totals, attendance and reporting</small>
+          </span>
+          <span className="insights-summary-count num">{reported} reported</span>
+          <ChevronDown className="insights-chevron size-4" aria-hidden />
+        </summary>
+        <div className="insights-content">
+          {(() => {
+            const bioLogs = rows.flatMap((x) => biometricByFacility[x.f.id] ?? []);
+            const bioOnTime = bioLogs.filter((l) => l.status === "On time").length;
+            const bioLate = bioLogs.filter(
+              (l) => l.status === "Late" || l.status === "Very late",
+            ).length;
+            const absentStaff = rows.reduce((a, x) => {
+              if (x.staff.present == null) return a;
+              return a + (x.staff.total - x.staff.present);
+            }, 0);
+            return (
+              <>
+                <h2 className="mb-2 text-sm font-semibold text-ink">School register</h2>
+                <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+                  <KpiTile
+                    label="Schools"
+                    value={rows.length}
+                    sub={`${functional.length} functional`}
+                    tone="neutral"
+                    freshness="DEO(M) data, 26 Nov 2026"
+                  />
+                  <KpiTile
+                    label="Non-functional & closed"
+                    value={notFunctional}
+                    sub={`${closed} closed, ${notFunctional - closed} non-functional`}
+                    tone={notFunctional ? "problem" : "neutral"}
+                    freshness="Male register + female NF list"
+                  />
+                  <KpiTile
+                    label="Students enrolled"
+                    value={regStudents.toLocaleString("en")}
+                    sub={`in ${withCounts.length} schools with figures`}
+                    tone="neutral"
+                    freshness="No of Students column"
+                  />
+                  <KpiTile
+                    label="Working teachers"
+                    value={regTeachers.toLocaleString("en")}
+                    sub={
+                      regTeachers
+                        ? `${(regStudents / regTeachers).toFixed(1)} students per teacher`
+                        : "No figures in this selection"
+                    }
+                    tone="neutral"
+                    freshness="No of Working Teachers column"
+                  />
+                  <KpiTile
+                    label="Functional, no teacher"
+                    value={noTeacher}
+                    sub="functional schools with 0 working teachers"
+                    tone={noTeacher ? "problem" : "neutral"}
+                    freshness="From the school register"
+                  />
+                  <KpiTile
+                    label="Principal not recorded"
+                    value={noPrincipal}
+                    sub={`of ${withCounts.length} schools with figures`}
+                    tone={noPrincipal ? "pending" : "neutral"}
+                    freshness="Principal Name column blank"
+                  />
+                </div>
+                <h2 className="mb-2 text-sm font-semibold text-ink">
+                  Today's reporting{" "}
+                  <span className="text-xs font-normal text-ink-muted">· live demo</span>
+                </h2>
+                <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+                  <KpiTile
+                    label="Reported today"
+                    value={reported}
+                    sub={`of ${functional.length} functional schools`}
+                    tone={reported / Math.max(1, functional.length) > 0.7 ? "verified" : "pending"}
+                    freshness="Demo: accepted by the district server"
+                  />
+                  <KpiTile
+                    label="Staff present"
+                    value={staffT ? `${pct(staffP, staffT)}%` : "No data"}
+                    sub={`${staffP} of ${staffT} in reporting schools`}
+                    tone="verified"
+                    freshness={`Demo · ${reported} schools counted`}
+                  />
+                  <KpiTile
+                    label="Students present"
+                    value={stuT ? `${pct(stuP, stuT)}%` : "No data"}
+                    sub={`${stuP.toLocaleString("en")} of ${stuT.toLocaleString("en")} enrolled`}
+                    tone="verified"
+                    freshness={`Demo · enrolment is real: ${stuEnrolledAll.toLocaleString("en")}`}
+                  />
+                  <KpiTile
+                    label="No report yet"
+                    value={functional.filter((x) => x.st === "none").length}
+                    sub="functional schools without a report"
+                    tone={functional.some((x) => x.st === "none") ? "problem" : "neutral"}
+                    freshness="Demo · non-functional schools not expected"
+                  />
+                  <KpiTile
+                    label="Staff absent"
+                    value={absentStaff.toString()}
+                    sub="absent without leave or on duty"
+                    tone={absentStaff > 10 ? "problem" : "neutral"}
+                    freshness="Demo · from accepted school reports"
+                  />
+                  <KpiTile
+                    label="Biometric on time"
+                    value={bioLogs.length ? `${pct(bioOnTime, bioLogs.length, 0)}%` : "—"}
+                    sub={`${bioOnTime} on time · ${bioLate} late`}
+                    tone={bioLate / Math.max(1, bioLogs.length) > 0.2 ? "pending" : "verified"}
+                    freshness="Demo · fingerprint / NFC check-ins"
+                  />
+                </div>
+              </>
+            );
+          })()}
+        </div>
+      </details>
 
-      <Panel title="Schools" aside={`${sorted.length} of ${schools.length} shown`}>
+      <Panel title="Schools" aside={`${sorted.length} of ${schools.length} match your filters`}>
         {sorted.length === 0 ? (
           <EmptyState
             title="No schools match these filters."
@@ -403,140 +434,160 @@ function SchoolsPage() {
             }
           />
         ) : (
-          <div className="overflow-x-auto">
-            <DemoNote>
-              EMIS to Principal are from the source files. Report today, Present today, Channel and
-              Last received are simulated to show how the live feed will look.
-            </DemoNote>
-            <table className="ledger">
-              <thead>
-                <tr>
-                  <SortTh id="name" active={key} dir={dir} onSort={toggle}>
-                    School
-                  </SortTh>
-                  <SortTh id="code" active={key} dir={dir} onSort={toggle}>
-                    EMIS
-                  </SortTh>
-                  <SortTh id="tehsil" active={key} dir={dir} onSort={toggle}>
-                    Tehsil
-                  </SortTh>
-                  <SortTh id="level" active={key} dir={dir} onSort={toggle}>
-                    Level
-                  </SortTh>
-                  <SortTh id="register" active={key} dir={dir} onSort={toggle}>
-                    Register
-                  </SortTh>
-                  <SortTh id="enrolled" active={key} dir={dir} onSort={toggle} num>
-                    Students
-                  </SortTh>
-                  <SortTh id="teachers" active={key} dir={dir} onSort={toggle} num>
-                    Teachers
-                  </SortTh>
-                  <SortTh id="principal" active={key} dir={dir} onSort={toggle}>
-                    Principal
-                  </SortTh>
-                  <SortTh id="status" active={key} dir={dir} onSort={toggle}>
-                    Report today
-                  </SortTh>
-                  <SortTh id="students" active={key} dir={dir} onSort={toggle} num>
-                    Present today
-                  </SortTh>
-                  <SortTh id="channel" active={key} dir={dir} onSort={toggle}>
-                    Channel
-                  </SortTh>
-                  <SortTh id="received" active={key} dir={dir} onSort={toggle} num>
-                    Last received
-                  </SortTh>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map(({ f, st, r, students }) => (
-                  <tr
-                    key={f.id}
-                    className={cn(
-                      !f.operational && "shadow-[inset_3px_0_0_var(--status-problem-fg)]",
-                    )}
-                  >
-                    <td data-label="School">
-                      <Link
-                        to="/schools/$id"
-                        params={{ id: f.id }}
-                        className="font-semibold text-dept hover:underline"
+          <PaginatedRegister
+            items={sorted}
+            label="schools"
+            resetKey={JSON.stringify([
+              role.id,
+              filters,
+              q,
+              level,
+              status,
+              register,
+              gender,
+              key,
+              dir,
+            ])}
+          >
+            {(pageRows) => (
+              <>
+                <DemoNote>
+                  EMIS to Principal are from the source files. Report today, Present today, Channel
+                  and Last received are simulated to show how the live feed will look.
+                </DemoNote>
+                <table className="ledger">
+                  <thead>
+                    <tr>
+                      <SortTh id="name" active={key} dir={dir} onSort={toggle}>
+                        School
+                      </SortTh>
+                      <SortTh id="code" active={key} dir={dir} onSort={toggle}>
+                        EMIS
+                      </SortTh>
+                      <SortTh id="tehsil" active={key} dir={dir} onSort={toggle}>
+                        Tehsil
+                      </SortTh>
+                      <SortTh id="level" active={key} dir={dir} onSort={toggle}>
+                        Level
+                      </SortTh>
+                      <SortTh id="register" active={key} dir={dir} onSort={toggle}>
+                        Register
+                      </SortTh>
+                      <SortTh id="enrolled" active={key} dir={dir} onSort={toggle} num>
+                        Students
+                      </SortTh>
+                      <SortTh id="teachers" active={key} dir={dir} onSort={toggle} num>
+                        Teachers
+                      </SortTh>
+                      <SortTh id="principal" active={key} dir={dir} onSort={toggle}>
+                        Principal
+                      </SortTh>
+                      <SortTh id="status" active={key} dir={dir} onSort={toggle}>
+                        Report today
+                      </SortTh>
+                      <SortTh id="students" active={key} dir={dir} onSort={toggle} num>
+                        Present today
+                      </SortTh>
+                      <SortTh id="channel" active={key} dir={dir} onSort={toggle}>
+                        Channel
+                      </SortTh>
+                      <SortTh id="received" active={key} dir={dir} onSort={toggle} num>
+                        Last received
+                      </SortTh>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pageRows.map(({ f, st, r, students }) => (
+                      <tr
+                        key={f.id}
+                        className={cn(
+                          !f.operational && "shadow-[inset_3px_0_0_var(--status-problem-fg)]",
+                        )}
                       >
-                        {f.name}
-                      </Link>
-                      <span className="block text-xs text-ink-muted">{f.typeLabel}</span>
-                    </td>
-                    <td data-label="EMIS">
-                      {f.source?.emis ? (
-                        <Code>{f.source.emis}</Code>
-                      ) : (
-                        <span className="text-xs text-ink-muted">Not given</span>
-                      )}
-                    </td>
-                    <td data-label="Tehsil">
-                      {f.tehsil}
-                      <span
-                        className="block max-w-[180px] truncate text-xs text-ink-muted"
-                        title={f.village}
-                      >
-                        {f.village}
-                      </span>
-                    </td>
-                    <td data-label="Level">{f.level}</td>
-                    <td data-label="Register">
-                      <SchoolRegisterStatus f={f} />
-                      {f.source?.reason && (
-                        <span className="mt-0.5 block max-w-[200px] text-xs text-ink-muted">
-                          {f.source.reason}
-                        </span>
-                      )}
-                    </td>
-                    <td data-label="Students" className="num">
-                      {f.source?.students ?? <span className="text-ink-muted">Not given</span>}
-                    </td>
-                    <td data-label="Teachers" className="num">
-                      {f.source?.teachers ?? <span className="text-ink-muted">Not given</span>}
-                    </td>
-                    <td data-label="Principal" className="text-xs">
-                      {f.source?.principal ?? <span className="text-ink-muted">Not recorded</span>}
-                    </td>
-                    <td data-label="Report today">
-                      {f.operational ? (
-                        <StatusBadge status={st} short />
-                      ) : (
-                        <span className="text-xs text-ink-muted">Not expected</span>
-                      )}
-                    </td>
-                    <td data-label="Present today" className="num">
-                      {!f.operational ? (
-                        <span className="text-ink-muted">—</span>
-                      ) : students.present == null ? (
-                        <span className="text-ink-muted">— of {students.enrolled}</span>
-                      ) : (
-                        <>
-                          {students.present} of {students.enrolled}
-                          <span className="ml-1.5 text-xs text-ink-muted">
-                            {pct(students.present, students.enrolled)}%
+                        <td data-label="School">
+                          <Link
+                            to="/schools/$id"
+                            params={{ id: f.id }}
+                            className="font-semibold text-dept hover:underline"
+                          >
+                            {f.name}
+                          </Link>
+                          <span className="block text-xs text-ink-muted">{f.typeLabel}</span>
+                        </td>
+                        <td data-label="EMIS">
+                          {f.source?.emis ? (
+                            <Code>{f.source.emis}</Code>
+                          ) : (
+                            <span className="text-xs text-ink-muted">Not given</span>
+                          )}
+                        </td>
+                        <td data-label="Tehsil">
+                          {f.tehsil}
+                          <span
+                            className="block max-w-[180px] truncate text-xs text-ink-muted"
+                            title={f.village}
+                          >
+                            {f.village}
                           </span>
-                        </>
-                      )}
-                    </td>
-                    <td data-label="Channel">
-                      <ChannelLabel channel={r?.channel ?? f.channel} />
-                    </td>
-                    <td data-label="Last received" className="num">
-                      {r?.receivedAt != null ? (
-                        hhmm(r.receivedAt)
-                      ) : (
-                        <span className="text-ink-muted">Not yet</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                        <td data-label="Level">{f.level}</td>
+                        <td data-label="Register">
+                          <SchoolRegisterStatus f={f} />
+                          {f.source?.reason && (
+                            <span className="mt-0.5 block max-w-[200px] text-xs text-ink-muted">
+                              {f.source.reason}
+                            </span>
+                          )}
+                        </td>
+                        <td data-label="Students" className="num">
+                          {f.source?.students ?? <span className="text-ink-muted">Not given</span>}
+                        </td>
+                        <td data-label="Teachers" className="num">
+                          {f.source?.teachers ?? <span className="text-ink-muted">Not given</span>}
+                        </td>
+                        <td data-label="Principal" className="text-xs">
+                          {f.source?.principal ?? (
+                            <span className="text-ink-muted">Not recorded</span>
+                          )}
+                        </td>
+                        <td data-label="Report today">
+                          {f.operational ? (
+                            <StatusBadge status={st} short />
+                          ) : (
+                            <span className="text-xs text-ink-muted">Not expected</span>
+                          )}
+                        </td>
+                        <td data-label="Present today" className="num">
+                          {!f.operational ? (
+                            <span className="text-ink-muted">—</span>
+                          ) : students.present == null ? (
+                            <span className="text-ink-muted">— of {students.enrolled}</span>
+                          ) : (
+                            <>
+                              {students.present} of {students.enrolled}
+                              <span className="ml-1.5 text-xs text-ink-muted">
+                                {pct(students.present, students.enrolled)}%
+                              </span>
+                            </>
+                          )}
+                        </td>
+                        <td data-label="Channel">
+                          <ChannelLabel channel={r?.channel ?? f.channel} />
+                        </td>
+                        <td data-label="Last received" className="num">
+                          {r?.receivedAt != null ? (
+                            hhmm(r.receivedAt)
+                          ) : (
+                            <span className="text-ink-muted">Not yet</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </PaginatedRegister>
         )}
       </Panel>
     </div>

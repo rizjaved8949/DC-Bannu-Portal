@@ -1,6 +1,12 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Moon,
+  Sun,
+  ChevronRight,
   ChevronDown,
   Check,
   LayoutDashboard,
@@ -15,7 +21,7 @@ import {
   MapPin,
   MessageSquareWarning,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import {
   DropdownMenu,
@@ -27,12 +33,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { facilityById } from "@/data/mock";
 import { inRoleScope, ROLES, useApp, type RoleId } from "@/lib/app-state";
 import { cn } from "@/lib/utils";
 import { WorkspaceControls } from "./workspace-controls";
-import { GlobalSearch } from "./global-search";
+import { GlobalSearch, SearchTrigger } from "./global-search";
 
 /** `department` marks a tab that only applies to officers holding that portfolio. */
 const TABS = [
@@ -83,28 +96,49 @@ function useOpenReviewCount() {
   };
 }
 
-function TopBar() {
-  const { role, setRole, lastSync } = useApp();
+function TopBar({
+  mobileNav,
+  theme,
+  toggleTheme,
+}: {
+  mobileNav: ReactNode;
+  theme: string;
+  toggleTheme: () => void;
+}) {
+  const { role, lastSync } = useApp();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const current = TABS.find((tab) =>
+    tab.to === "/" ? pathname === "/" : pathname.startsWith(tab.to),
+  );
   const { critical } = useOpenReviewCount();
   return (
-    <div className="no-print bg-topbar text-topbar-foreground">
-      <div className="mx-auto flex h-[76px] max-w-[1600px] items-center gap-3 px-4 lg:px-8">
-        <Link to="/" className="flex min-w-0 items-center gap-3 rounded-sm">
-          <Emblem />
-          <span className="min-w-0 leading-tight">
-            <span className="block text-lg font-bold">
-              DCMS Bannu
-              <span className="ml-2 hidden border-l border-topbar-muted/40 pl-2 text-xs font-normal text-topbar-muted sm:inline">
-                District Administration
-              </span>
-            </span>
-            <span className="hidden truncate text-2xs text-topbar-muted sm:block">
-              District Centralized Monitoring System
-            </span>
-          </span>
-        </Link>
+    <div className="workspace-topbar no-print">
+      <div className="flex h-[76px] items-center gap-3 px-4 lg:px-8">
+        {mobileNav}
+        <div
+          className="workspace-breadcrumb hidden min-w-0 items-center gap-2 text-xs text-ink-muted sm:flex"
+          aria-label="Breadcrumb"
+        >
+          <span className="hidden xl:inline">District workspace</span>
+          <ChevronRight className="hidden size-3.5 xl:block" aria-hidden />
+          <span className="truncate font-semibold text-ink">{current?.label ?? "Overview"}</span>
+          {pathname.split("/").filter(Boolean).length > 1 && (
+            <>
+              <ChevronRight className="size-3.5" aria-hidden />
+              <span>Record</span>
+            </>
+          )}
+        </div>
         <div className="ml-auto flex items-center gap-1 sm:gap-3">
-          <GlobalSearch />
+          <SearchTrigger compact />
+          <button
+            className="topbar-icon"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+          >
+            {theme === "dark" ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
+          </button>
           <WorkspaceControls />
           <span
             className="hidden items-center gap-1.5 text-xs text-topbar-muted md:inline-flex"
@@ -156,151 +190,311 @@ function TopBar() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className="flex items-center gap-2 rounded-sm px-2 py-1 hover:bg-topbar-raised"
-              aria-label="User menu and role"
-            >
-              <span className="flex size-7 items-center justify-center rounded-full bg-topbar-raised text-xs font-bold">
-                {role.person
-                  .split(" ")
-                  .filter((p) => !p.endsWith("."))
-                  .slice(0, 2)
-                  .map((p) => p[0])
-                  .join("")}
-              </span>
-              <span className="hidden text-left leading-tight lg:block">
-                <span className="block text-xs font-semibold">{role.person}</span>
-                <span className="block text-2xs text-topbar-muted">{role.label}</span>
-              </span>
-              <ChevronDown className="size-4 text-topbar-muted" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72">
-              <DropdownMenuLabel className="text-xs text-ink-muted">
-                View the system as
-              </DropdownMenuLabel>
-              <DropdownMenuRadioGroup value={role.id} onValueChange={(v) => setRole(v as RoleId)}>
-                {ROLES.map((r) => (
-                  <DropdownMenuRadioItem
-                    key={r.id}
-                    value={r.id}
-                    className="flex flex-col items-start py-1.5"
-                  >
-                    <span className="text-sm font-semibold text-ink">{r.label}</span>
-                    <span className="text-xs text-ink-muted">
-                      {r.person}, {r.scopeLabel.toLowerCase()}
-                    </span>
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-              <DropdownMenuSeparator />
-              <div className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-ink-muted">
-                <Check className="size-3.5" />
-                Switching role filters every page
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </div>
     </div>
   );
 }
 
-function TabRow() {
+function RoleMenu() {
+  const { role, setRole } = useApp();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className="flex items-center gap-2 rounded-sm px-2 py-1 hover:bg-topbar-raised"
+        aria-label="User menu and role"
+      >
+        <span className="flex size-7 items-center justify-center rounded-full bg-topbar-raised text-xs font-bold">
+          {role.person
+            .split(" ")
+            .filter((p) => !p.endsWith("."))
+            .slice(0, 2)
+            .map((p) => p[0])
+            .join("")}
+        </span>
+        <span className="hidden text-left leading-tight lg:block">
+          <span className="block text-xs font-semibold">{role.person}</span>
+          <span className="block text-2xs text-topbar-muted">{role.label}</span>
+        </span>
+        <ChevronDown className="size-4 text-topbar-muted" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-72">
+        <DropdownMenuLabel className="text-xs text-ink-muted">View the system as</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={role.id} onValueChange={(v) => setRole(v as RoleId)}>
+          {ROLES.map((r) => (
+            <DropdownMenuRadioItem
+              key={r.id}
+              value={r.id}
+              className="flex flex-col items-start py-1.5"
+            >
+              <span className="text-sm font-semibold text-ink">{r.label}</span>
+              <span className="text-xs text-ink-muted">
+                {r.person}, {r.scopeLabel.toLowerCase()}
+              </span>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
+        <div className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-ink-muted">
+          <Check className="size-3.5" />
+          Switching role filters every page
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+const GROUPS = [
+  { label: "Workspace", paths: ["/", "/map"] },
+  { label: "District directory", paths: ["/schools", "/health", "/staff"] },
+  { label: "Daily operations", paths: ["/inbox", "/review", "/complaints", "/field-app"] },
+];
+
+function SideNavigation({
+  collapsed = false,
+  onNavigate,
+}: {
+  collapsed?: boolean;
+  onNavigate?: () => void;
+}) {
   const { open } = useOpenReviewCount();
-  const { role } = useApp();
-  // An officer with one portfolio has no facilities on the other department's
-  // page, so the tab would only lead to an empty list.
+  const { role, lastSync } = useApp();
   const tabs = TABS.filter(
     (t) => !("department" in t) || !role.department || t.department === role.department,
   );
   return (
-    <nav aria-label="Main" className="no-print border-b border-line bg-surface">
-      <div className="mx-auto flex h-[54px] max-w-[1600px] items-stretch gap-1 overflow-x-auto px-2 lg:px-6 [scrollbar-width:none]">
-        {tabs.map((t) => (
-          <Link
-            key={t.to}
-            to={t.to}
-            data-dept={"dept" in t ? t.dept : undefined}
-            activeOptions={{ exact: "exact" in t ? t.exact : false }}
-            className="nav-tab flex shrink-0 items-center gap-2 whitespace-nowrap px-3.5 text-sm text-ink-muted hover:bg-subtle hover:text-ink"
-            activeProps={{ className: "tab-active font-semibold", "aria-current": "page" }}
-          >
-            <t.icon className="size-[17px]" strokeWidth={1.7} />
-            {t.label}
-            {t.to === "/review" && open > 0 && (
-              <span className="rounded-sm bg-pending-tint px-1.5 text-xs font-semibold tabular-nums text-pending">
-                {open}
-              </span>
-            )}
-          </Link>
-        ))}
+    <div className={cn("side-navigation", collapsed && "is-collapsed")}>
+      <Link to="/" className="sidebar-brand" onClick={onNavigate} aria-label="DCMS Bannu home">
+        <Emblem />
+        <span className="sidebar-label">
+          <strong>
+            DCMS <span>Bannu</span>
+          </strong>
+          <small>District monitoring system</small>
+        </span>
+      </Link>
+      <div className="sidebar-search">
+        <SearchTrigger compact={collapsed} onOpen={onNavigate} />
       </div>
-    </nav>
-  );
-}
-
-function RouteSkeleton() {
-  return (
-    <div aria-busy="true" aria-label="Loading page" className="space-y-4">
-      <Skeleton className="h-9 w-72 rounded-sm bg-line/60" />
-      <Skeleton className="h-4 w-96 rounded-sm bg-line/50" />
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-24 rounded-lg bg-line/40" />
+      <nav aria-label="Main" className="sidebar-nav">
+        {GROUPS.map((group) => (
+          <div className="nav-group" key={group.label}>
+            <p className="nav-group-label">
+              {collapsed ? <span aria-hidden>—</span> : group.label}
+            </p>
+            {tabs
+              .filter((t) => group.paths.includes(t.to))
+              .map((t) => (
+                <Tooltip key={t.to}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to={t.to}
+                      onClick={onNavigate}
+                      data-dept={"dept" in t ? t.dept : undefined}
+                      activeOptions={{ exact: "exact" in t ? t.exact : false }}
+                      className="sidebar-link"
+                      aria-label={t.label}
+                      activeProps={{ className: "is-active", "aria-current": "page" }}
+                    >
+                      <t.icon className="size-[19px] shrink-0" strokeWidth={1.7} />
+                      <span className="sidebar-label">{t.label}</span>
+                      {t.to === "/review" && open > 0 && (
+                        <span className="sidebar-count">{open}</span>
+                      )}
+                    </Link>
+                  </TooltipTrigger>
+                  {collapsed && <TooltipContent side="right">{t.label}</TooltipContent>}
+                </Tooltip>
+              ))}
+          </div>
         ))}
+      </nav>
+      <div className="sidebar-bottom">
+        <div className="sidebar-note sidebar-label">
+          <ShieldCheck className="size-5" aria-hidden />
+          <div>
+            <strong>Every report matters.</strong>
+            <p>Better visibility. Better public services.</p>
+          </div>
+        </div>
+        <div className="sidebar-sync sidebar-label">
+          <span className="sync-dot" aria-hidden />
+          Register updated at {lastSync}
+        </div>
+        <div className="sidebar-profile">
+          <RoleMenu />
+        </div>
       </div>
-      <Skeleton className="h-72 rounded-lg bg-line/40" />
     </div>
   );
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const first = useRef(true);
-  const [loading, setLoading] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [theme, setTheme] = useState("light");
   useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
+    try {
+      setCollapsed(localStorage.getItem("dcms-sidebar-collapsed") === "true");
+      const savedTheme = localStorage.getItem("dcms-theme") === "dark" ? "dark" : "light";
+      setTheme(savedTheme);
+      document.documentElement.classList.toggle("dark", savedTheme === "dark");
+    } catch {
+      /* The workspace also works without browser storage. */
     }
-    setLoading(true);
-    const t = window.setTimeout(() => setLoading(false), 200);
-    return () => window.clearTimeout(t);
+  }, []);
+  useEffect(() => {
+    setMobileOpen(false);
   }, [pathname]);
-
-  return (
-    <div className="dcms-app-shell flex min-h-screen flex-col bg-canvas">
-      <a href="#main-content" className="skip-link">
-        Skip to content
-      </a>
-      <TopBar />
-      <TabRow />
-      <main
-        id="main-content"
-        tabIndex={-1}
-        data-dept={deptForPath(pathname)}
-        className={cn("mx-auto w-full max-w-[1600px] min-w-0 flex-1 px-4 pb-10 pt-7 lg:px-8")}
+  useEffect(() => {
+    let openedForPrint: HTMLDetailsElement[] = [];
+    const before = () => {
+      openedForPrint = Array.from(
+        document.querySelectorAll<HTMLDetailsElement>(".insights-disclosure:not([open])"),
+      );
+      openedForPrint.forEach((section) => {
+        section.open = true;
+      });
+    };
+    const after = () => {
+      openedForPrint.forEach((section) => {
+        section.open = false;
+      });
+      openedForPrint = [];
+    };
+    window.addEventListener("beforeprint", before);
+    window.addEventListener("afterprint", after);
+    return () => {
+      window.removeEventListener("beforeprint", before);
+      window.removeEventListener("afterprint", after);
+    };
+  }, []);
+  useEffect(() => {
+    const closeForSearch = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") setMobileOpen(false);
+    };
+    window.addEventListener("keydown", closeForSearch);
+    return () => window.removeEventListener("keydown", closeForSearch);
+  }, []);
+  useEffect(() => {
+    if (
+      !window.IntersectionObserver ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    )
+      return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries)
+          if (entry.isIntersecting) {
+            entry.target.animate(
+              [
+                { opacity: 0.5, transform: "translateY(10px)" },
+                { opacity: 1, transform: "translateY(0)" },
+              ],
+              { duration: 360, easing: "cubic-bezier(.2,.7,.2,1)" },
+            );
+            observer.unobserve(entry.target);
+          }
+      },
+      { threshold: 0.06 },
+    );
+    document
+      .querySelectorAll("#main-content .panel:not(.kpi-tile), #main-content .district-register")
+      .forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [pathname]);
+  const toggleSidebar = () => {
+    setCollapsed((value) => {
+      try {
+        localStorage.setItem("dcms-sidebar-collapsed", String(!value));
+      } catch {
+        /* optional preference */
+      }
+      return !value;
+    });
+  };
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    document.documentElement.classList.toggle("dark", next === "dark");
+    try {
+      localStorage.setItem("dcms-theme", next);
+    } catch {
+      /* optional preference */
+    }
+  };
+  const mobileNav = (
+    <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+      <SheetTrigger asChild>
+        <button className="topbar-icon lg:hidden" aria-label="Open navigation">
+          <Menu className="size-5" />
+        </button>
+      </SheetTrigger>
+      <SheetContent
+        side="left"
+        className="mobile-navigation w-[288px] max-w-[88vw] p-0"
+        aria-describedby="mobile-nav-description"
       >
-        {loading ? <RouteSkeleton /> : children}
-      </main>
-      <footer className="border-t border-line bg-surface">
-        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-2 px-4 py-4 text-xs text-ink-muted lg:px-8">
-          <p className="inline-flex items-center gap-2">
-            <ShieldCheck className="size-4 text-kurram" /> District Administration Bannu{" "}
-            <span className="text-line">/</span> Khyber Pakhtunkhwa
-          </p>
-          <p>
-            Education & health monitoring.{" "}
-            <span className="ml-2">
-              English /{" "}
+        <SheetTitle className="sr-only">District workspace navigation</SheetTitle>
+        <SheetDescription id="mobile-nav-description" className="sr-only">
+          Navigate sections, search the directory, or change your role.
+        </SheetDescription>
+        <SideNavigation onNavigate={() => setMobileOpen(false)} />
+      </SheetContent>
+    </Sheet>
+  );
+  return (
+    <TooltipProvider delayDuration={150}>
+      <GlobalSearch />
+      <div
+        className={cn("dcms-app-shell min-h-screen bg-canvas", collapsed && "sidebar-collapsed")}
+      >
+        <a href="#main-content" className="skip-link">
+          Skip to content
+        </a>
+        <aside className="desktop-sidebar no-print">
+          <SideNavigation collapsed={collapsed} />
+          <button
+            onClick={toggleSidebar}
+            className="sidebar-collapse"
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="size-4" />
+            ) : (
+              <PanelLeftClose className="size-4" />
+            )}
+          </button>
+        </aside>
+        <div className="workspace-frame">
+          <TopBar mobileNav={mobileNav} theme={theme} toggleTheme={toggleTheme} />
+          <main
+            id="main-content"
+            tabIndex={-1}
+            data-dept={deptForPath(pathname)}
+            data-section={pathname.split("/").filter(Boolean)[0] ?? "overview"}
+            className="workspace-main"
+          >
+            <div className="route-content">{children}</div>
+          </main>
+          <footer className="workspace-footer">
+            <p>
+              <ShieldCheck className="size-4 text-kurram" />
+              District Administration Bannu{" "}
+              <span className="hidden sm:inline">· Khyber Pakhtunkhwa</span>
+            </p>
+            <p>
+              Built around public service <span className="footer-divider" /> English /{" "}
               <span lang="ur" dir="rtl" className="font-urdu">
                 اردو
               </span>
-            </span>
-          </p>
+            </p>
+          </footer>
         </div>
-      </footer>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

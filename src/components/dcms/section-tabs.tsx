@@ -24,10 +24,26 @@ export function SectionTabs<T extends string>({
   label: string;
 }) {
   return (
-    <div className="no-print sticky top-0 z-30 -mx-4 border-y border-line bg-surface px-4 lg:-mx-8 lg:px-8">
+    <div className="record-section-tabs no-print sticky top-[76px] z-30 border-y border-line bg-surface px-2">
       <div
         role="tablist"
         aria-label={label}
+        onKeyDown={(event) => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+          event.preventDefault();
+          const index = options.findIndex((option) => option.value === value);
+          const next =
+            event.key === "Home"
+              ? 0
+              : event.key === "End"
+                ? options.length - 1
+                : (index + (event.key === "ArrowRight" ? 1 : -1) + options.length) % options.length;
+          const option = options[next];
+          if (option) {
+            onChange(option.value);
+            event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+          }
+        }}
         className="flex items-stretch gap-1 overflow-x-auto [scrollbar-width:none]"
       >
         {options.map((o) => {
@@ -38,6 +54,7 @@ export function SectionTabs<T extends string>({
               type="button"
               role="tab"
               aria-selected={active}
+              tabIndex={active ? 0 : -1}
               onClick={() => onChange(o.value)}
               className={cn(
                 "flex shrink-0 items-center gap-2 whitespace-nowrap px-3.5 py-3 text-sm transition-colors",
