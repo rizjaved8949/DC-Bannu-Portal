@@ -141,7 +141,6 @@ function InboxPage() {
     <div>
       <PageHeader
         title="Reports inbox"
-        urdu="موصولہ رپورٹس"
         description="Every report that reached the district today, by app or SMS, with its checks and lifecycle. Click a row to inspect it."
       />
       <div className="mt-4">

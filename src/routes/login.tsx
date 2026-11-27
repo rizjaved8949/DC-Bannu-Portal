@@ -59,8 +59,8 @@ function DemoLoginPage() {
     <div className="login-page">
       <aside className="login-story" aria-label="About DCMS Bannu">
         <a href="/login" className="login-brand" aria-label="DCMS Bannu welcome">
-          <span className="login-brand-mark font-urdu" aria-hidden>
-            ب
+          <span className="login-brand-mark" aria-hidden>
+            <Building2 className="size-6" />
           </span>
           <span>
             <strong>
@@ -136,14 +136,10 @@ function DemoLoginPage() {
             <Sparkles className="size-3.5" />
             Interactive demo
           </span>
-          <span lang="ur" dir="rtl" className="font-urdu">
-            عوامی خدمت، بہتر انداز میں
-          </span>
         </div>
         <div className="login-form-wrap">
           <PageHeader
             title="Welcome to DCMS"
-            urdu="خوش آمدید"
             description="Choose a view and explore the district. No account or password needed."
           />
           <form onSubmit={enter}>
@@ -192,12 +188,7 @@ function DemoLoginPage() {
         </div>
         <footer className="login-entry-footer">
           <span>Designed for better public service.</span>
-          <span>
-            English /{" "}
-            <span lang="ur" dir="rtl" className="font-urdu">
-              اردو
-            </span>
-          </span>
+          <span>English</span>
         </footer>
       </main>
     </div>

@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
+  Building2,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
@@ -52,9 +53,9 @@ function Emblem() {
   return (
     <span
       aria-hidden
-      className="civic-emblem font-urdu flex size-11 shrink-0 items-center justify-center rounded-full bg-kurram text-[23px] leading-none text-topbar-foreground ring-1 ring-topbar-muted/50"
+      className="civic-emblem flex size-11 shrink-0 items-center justify-center rounded-full bg-kurram text-[23px] leading-none text-topbar-foreground ring-1 ring-topbar-muted/50"
     >
-      <span className="-mt-1.5">ب</span>
+      <Building2 className="size-6" />
     </span>
   );
 }
@@ -473,10 +474,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <span className="hidden sm:inline">· Khyber Pakhtunkhwa</span>
               </p>
               <p>
-                Built around public service <span className="footer-divider" /> English /{" "}
-                <span lang="ur" dir="rtl" className="font-urdu">
-                  اردو
-                </span>
+                Built around public service <span className="footer-divider" /> English
               </p>
             </footer>
           </div>

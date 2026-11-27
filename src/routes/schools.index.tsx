@@ -183,7 +183,6 @@ function SchoolsPage() {
     <div>
       <PageHeader
         title="Schools"
-        urdu="اسکول"
         description="North Waziristan school register from the DEO's files, with today's school-day reporting shown as a live demo."
       />
       <div className="mt-4">

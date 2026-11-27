@@ -103,7 +103,6 @@ function SchoolDetailPage() {
         <BackLink to="/schools" label="All schools" />
         <PageHeader
           title={f.name}
-          urdu="اسکول"
           description={`${f.typeLabel}, ${f.village}, ${f.tehsil}. ${!f.operational ? `${f.source?.status ?? "Non-functional"} per the school register.` : accepted ? "Today's report is in." : "Today's report has not been accepted yet."}`}
         >
           <FacilityHeaderMeta f={f} report={r} />

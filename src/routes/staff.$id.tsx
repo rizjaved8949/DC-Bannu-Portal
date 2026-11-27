@@ -102,7 +102,6 @@ function StaffDetailPage() {
         <BackLink to="/staff" label="Staff directory" />
         <PageHeader
           title={s.name}
-          urdu="عملہ"
           description={`${s.designation}, BPS-${s.bps}, ${s.employment.toLowerCase()}. Posted at ${f.name}, ${f.tehsil}.`}
         >
           <div className="panel mt-5 flex flex-wrap items-center gap-4 px-5 py-5">

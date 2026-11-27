@@ -67,11 +67,11 @@ type Mark = "P" | "A" | "L" | "OD";
 
 const CONNECTION_META: Record<
   Connection,
-  { label: string; urdu: string; icon: ReactNode; tone: "verified" | "pending" | "problem" }
+  { label: string; icon: ReactNode; tone: "verified" | "pending" | "problem" }
 > = {
-  online: { label: "Online", urdu: "آن لائن", icon: <Wifi />, tone: "verified" },
-  sms: { label: "SMS only", urdu: "صرف ایس ایم ایس", icon: <SignalLow />, tone: "pending" },
-  none: { label: "No signal", urdu: "سگنل نہیں", icon: <SignalZero />, tone: "problem" },
+  online: { label: "Online", icon: <Wifi />, tone: "verified" },
+  sms: { label: "SMS only", icon: <SignalLow />, tone: "pending" },
+  none: { label: "No signal", icon: <SignalZero />, tone: "problem" },
 };
 
 function FieldAppPage() {
@@ -120,7 +120,6 @@ function FieldAppPage() {
     <div className={cn("space-y-5", search.view === "app" && "field-focused")}>
       <PageHeader
         title="Field app"
-        urdu="فیلڈ ایپ"
         description="Submit institution attendance and shift reports, keep work safe without a signal, and track receipt by the district."
       >
         <div className="flex flex-wrap items-center gap-3">
@@ -235,14 +234,12 @@ function FieldAppPage() {
 function Phone({
   n,
   title,
-  urdu,
   conn,
   children,
   footer,
 }: {
   n: number;
   title: string;
-  urdu: string;
   conn: Connection;
   children: ReactNode;
   footer?: ReactNode;
@@ -273,13 +270,6 @@ function Phone({
         <div className="flex items-start justify-between gap-2 border-b border-line bg-dept px-4 py-2.5 text-primary-foreground">
           <div>
             <div className="text-md font-bold leading-tight">{title}</div>
-            <div
-              dir="rtl"
-              lang="ur"
-              className="font-urdu text-left text-[16px] leading-[1.8] text-primary-foreground/85"
-            >
-              {urdu}
-            </div>
           </div>
           <span
             className={cn(
@@ -326,12 +316,10 @@ function Phone({
 
 function PrimaryButton({
   children,
-  urdu,
   disabled,
   onClick,
 }: {
   children: ReactNode;
-  urdu: string;
   disabled?: boolean;
   onClick?: () => void;
 }) {
@@ -343,13 +331,6 @@ function PrimaryButton({
       className="flex w-full flex-col items-center rounded-md bg-dept px-4 py-2 text-primary-foreground disabled:opacity-50"
     >
       <span className="text-sm font-semibold">{children}</span>
-      <span
-        dir="rtl"
-        lang="ur"
-        className="font-urdu text-[16px] leading-[1.8] text-primary-foreground/85"
-      >
-        {urdu}
-      </span>
     </button>
   );
 }
@@ -359,7 +340,6 @@ function Steps({
 }: {
   steps: {
     label: string;
-    urdu?: string;
     state: "done" | "active" | "waiting" | "blocked";
     time?: string;
   }[];
@@ -393,15 +373,6 @@ function Steps({
             >
               {s.label}
             </span>
-            {s.urdu && (
-              <span
-                dir="rtl"
-                lang="ur"
-                className="font-urdu block text-left text-[16px] leading-[1.8] text-ink-muted"
-              >
-                {s.urdu}
-              </span>
-            )}
           </span>
           {s.time && <span className="text-xs tabular-nums text-ink-muted">{s.time}</span>}
         </li>
@@ -533,13 +504,8 @@ function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
         <Phone
           n={1}
           title="Today"
-          urdu="آج"
           conn={conn}
-          footer={
-            <PrimaryButton urdu="آج کی رپورٹ شروع کریں" onClick={() => goToScreen(2)}>
-              Start today's report
-            </PrimaryButton>
-          }
+          footer={<PrimaryButton onClick={() => goToScreen(2)}>Start today's report</PrimaryButton>}
         >
           <div className="space-y-3">
             <div className="rounded-md border border-line p-3">
@@ -592,7 +558,6 @@ function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
         <Phone
           n={2}
           title="Staff attendance"
-          urdu="عملے کی حاضری"
           conn={conn}
           footer={
             <div className="space-y-2">
@@ -680,10 +645,9 @@ function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
         <Phone
           n={3}
           title="Class totals"
-          urdu="جماعت وار تعداد"
           conn={conn}
           footer={
-            <PrimaryButton urdu="آگے" onClick={() => goToScreen(4)} disabled={invalid.length > 0}>
+            <PrimaryButton onClick={() => goToScreen(4)} disabled={invalid.length > 0}>
               Continue
             </PrimaryButton>
           }
@@ -742,20 +706,14 @@ function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
         <Phone
           n={4}
           title="Send"
-          urdu="بھیجیں"
           conn={conn}
           footer={
             conn === "none" ? (
-              <PrimaryButton
-                urdu="فون پر محفوظ کریں"
-                onClick={submit}
-                disabled={saved || invalid.length > 0}
-              >
+              <PrimaryButton onClick={submit} disabled={saved || invalid.length > 0}>
                 {saved ? "Saved on phone" : "Save on phone"}
               </PrimaryButton>
             ) : (
               <PrimaryButton
-                urdu={conn === "sms" ? "ایس ایم ایس سے بھیجیں" : "رپورٹ بھیجیں"}
                 onClick={submit}
                 disabled={
                   sent ||
@@ -779,13 +737,6 @@ function SchoolFlow({ conn, f }: { conn: Connection; f: Facility }) {
               <>
                 <div className="rounded-md border border-pending/40 bg-pending-tint px-3 py-2 text-sm text-pending">
                   <div className="font-semibold">No internet. Send by SMS?</div>
-                  <div
-                    dir="rtl"
-                    lang="ur"
-                    className="font-urdu text-left text-[16px] leading-[1.8]"
-                  >
-                    انٹرنیٹ نہیں۔ ایس ایم ایس سے بھیجیں؟
-                  </div>
                 </div>
                 <div>
                   <div className="mb-1 text-xs text-ink-muted">Coded SMS preview</div>
@@ -928,13 +879,8 @@ function HospitalFlow({ conn, f }: { conn: Connection; f: Facility }) {
         <Phone
           n={1}
           title="Select shift"
-          urdu="شفٹ منتخب کریں"
           conn={conn}
-          footer={
-            <PrimaryButton urdu="شفٹ رپورٹ کھولیں" onClick={() => goToScreen(2)}>
-              Open shift report
-            </PrimaryButton>
-          }
+          footer={<PrimaryButton onClick={() => goToScreen(2)}>Open shift report</PrimaryButton>}
         >
           <div className="mb-3 rounded-md border border-line p-3">
             <div className="text-xs text-ink-muted">Facility</div>
@@ -1003,7 +949,6 @@ function HospitalFlow({ conn, f }: { conn: Connection; f: Facility }) {
         <Phone
           n={2}
           title="Roster vs actual"
-          urdu="روسٹر بمقابلہ حاضری"
           conn={conn}
           footer={
             <div className="space-y-2 text-xs">
@@ -1020,9 +965,7 @@ function HospitalFlow({ conn, f }: { conn: Connection; f: Facility }) {
                     .join(" · ")}
                 </span>
               )}
-              <PrimaryButton urdu="آگے" onClick={() => goToScreen(3)}>
-                Continue
-              </PrimaryButton>
+              <PrimaryButton onClick={() => goToScreen(3)}>Continue</PrimaryButton>
             </div>
           }
         >
@@ -1077,14 +1020,9 @@ function HospitalFlow({ conn, f }: { conn: Connection; f: Facility }) {
         <Phone
           n={3}
           title="OPD, beds and services"
-          urdu="او پی ڈی، بستر اور خدمات"
           conn={conn}
           footer={
-            <PrimaryButton
-              urdu="آگے"
-              onClick={() => goToScreen(4)}
-              disabled={invalidBeds || invalidOpd}
-            >
+            <PrimaryButton onClick={() => goToScreen(4)} disabled={invalidBeds || invalidOpd}>
               Continue
             </PrimaryButton>
           }
@@ -1236,11 +1174,9 @@ function HospitalFlow({ conn, f }: { conn: Connection; f: Facility }) {
         <Phone
           n={4}
           title="Handover"
-          urdu="چارج کی منتقلی"
           conn={conn}
           footer={
             <PrimaryButton
-              urdu={conn === "none" ? "فون پر محفوظ کریں" : "شفٹ رپورٹ بھیجیں"}
               onClick={submit}
               disabled={
                 shift.phase === "upcoming" ||

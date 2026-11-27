@@ -153,7 +153,6 @@ function OverviewPage() {
     <div className="space-y-5">
       <PageHeader
         title="Overview"
-        urdu="ضلعی جائزہ"
         description={`A clear view of today's reporting, people and public services ${role.department === "Health" ? "across public health facilities" : role.department === "Education" ? "across schools" : role.tehsil ? `across ${role.tehsil} tehsil` : "across District Bannu"}.`}
       />
 

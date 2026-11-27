@@ -90,7 +90,6 @@ function MapPage() {
     <div>
       <PageHeader
         title="Facilities & map"
-        urdu="مراکز اور نقشہ"
         description="Where every school and health facility is, what state it reported today, and which infrastructure items need maintenance."
       />
       <div className="mt-4">

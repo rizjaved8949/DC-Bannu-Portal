@@ -147,7 +147,6 @@ function ReviewPage() {
     <div>
       <PageHeader
         title="Review queue"
-        urdu="جانچ طلب امور"
         description="Missing or unusual reports are flagged for review. They are not treated as staff misconduct."
       />
       <div className="mt-4">

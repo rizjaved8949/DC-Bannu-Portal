@@ -81,13 +81,12 @@ export function FilterBar({
             </SelectContent>
           </Select>
         </Field>
-        <div
-          className="inline-flex h-8 items-center gap-2 rounded-sm border border-line bg-subtle px-3 text-xs text-ink-muted"
-          title="Current reporting day"
-        >
-          <CalendarDays className="size-3.5" />
-          <span>Reporting day</span>
-          <span className="font-semibold text-ink">{formatDate(TODAY)}</span>
+        <div className="reporting-day-field">
+          <span className="filter-field-label">Reporting day</span>
+          <div className="reporting-day-value" title="Current reporting day">
+            <CalendarDays className="size-3.5 shrink-0" aria-hidden />
+            <span>{formatDate(TODAY)}</span>
+          </div>
         </div>
         {showShift && (
           <Field label="Shift">
@@ -115,7 +114,7 @@ export function FilterBar({
             Reset filters
           </Button>
         )}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="filter-actions ml-auto flex items-center gap-2">
           {onExportCsv && (
             <Button variant="outline" size="sm" onClick={onExportCsv}>
               <Download />

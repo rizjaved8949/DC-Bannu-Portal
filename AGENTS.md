@@ -35,7 +35,7 @@ use the editor.
 - Never call `Date.now()`/`new Date()` for "now" or `Math.random()` in render code; use `TODAY`, `NOW_MIN` and seeded helpers from mock.ts. Why: avoids hydration mismatches.
 - Session state (role scope, filter bar, live report feed, report status overrides, review item edits) lives in `src/lib/app-state.tsx`; pages read it with `useApp()` and `useScopedFacilities()`. Why: switching role must filter every page.
 - Report status always renders through `StatusGlyph`/`StatusBadge` in `src/components/dcms/status.tsx` (glyph + word + colour). Why: status must never be colour alone.
-- Every page starts with `PageHeader` (English title + Nastaliq Urdu title + one-line description). Why: bilingual header is the product's signature.
+- Every page starts with `PageHeader` (English title + one-line description). All interface copy is English, per the user's preference.
 - Tables use the `ledger` utility with `data-label` on each `<td>` so they stack on phones; figures get class `num`. Why: one responsive table pattern.
 - Leaflet is browser-only: load the map component with `React.lazy` behind a client-only gate, never import `leaflet` from a route module. Why: SSR runs on workerd without `window`.
 - Colours come from tokens in `src/styles.css` (canvas, surface, line, ink, ink-muted, kurram, topbar, wheat, and status pairs verified/sent/pending/problem/neutral with `-tint`). No raw colour classes, gradients or shadows on panels.

@@ -95,7 +95,6 @@ function StaffPage() {
     <div>
       <PageHeader
         title="Staff"
-        urdu="عملہ"
         description="Who is posted where, which posts are vacant, and whose attendance needs a second look. Marked by facility administrators, approved by supervisors."
       >
         <Segmented

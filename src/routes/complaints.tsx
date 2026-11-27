@@ -146,7 +146,6 @@ function ComplaintWorkspace() {
     <div className="space-y-5">
       <PageHeader
         title="Complaints"
-        urdu="شکایات"
         description="Raise and track institution complaints, including joint action across schools and health facilities in an area."
       >
         <ComplaintForm />

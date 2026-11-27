@@ -140,7 +140,6 @@ function HealthPage() {
     <div>
       <PageHeader
         title="Health facilities"
-        urdu="صحت کے مراکز"
         description="Patients seen, emergency load, beds, shift coverage and revenue collected, by facility. Open any facility for its daybook, doctors and billing."
       />
       <div className="mt-4">

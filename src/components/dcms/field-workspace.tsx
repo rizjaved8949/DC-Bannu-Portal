@@ -183,18 +183,15 @@ export function FieldWorkspace({
             </div>
             <div className="mt-4 flex items-center gap-3">
               <span
-                className="flex size-11 shrink-0 items-center justify-center rounded-full border border-topbar-muted/40 font-urdu text-2xl"
+                className="flex size-11 shrink-0 items-center justify-center rounded-full border border-topbar-muted/40"
                 aria-hidden
               >
-                ب
+                <Building2 className="size-6" />
               </span>
               <div>
                 <p className="font-bold text-lg">DCMS Field</p>
                 <p className="text-xs text-topbar-muted">
-                  {f.district === "Bannu" ? "District Bannu" : "North Waziristan"} ·{" "}
-                  <span lang="ur" dir="rtl" className="font-urdu text-sm">
-                    فیلڈ رپورٹنگ
-                  </span>
+                  {f.district === "Bannu" ? "District Bannu" : "North Waziristan"}
                 </p>
               </div>
             </div>

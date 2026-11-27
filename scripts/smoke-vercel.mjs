@@ -67,7 +67,7 @@ for (const [path, title] of pages) {
     html.includes(`<h1`) && html.includes(title),
     `${path} must include server-rendered page content`,
   );
-  assert.ok(html.includes('lang="ur"'), `${path} must include the Urdu header`);
+  assert.ok(!html.includes('lang="ur"'), `${path} must use English interface text`);
   assert.doesNotMatch(
     html,
     /window is not defined|Something went wrong on our end|This page didn't load/,

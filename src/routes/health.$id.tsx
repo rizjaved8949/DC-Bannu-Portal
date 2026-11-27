@@ -140,7 +140,6 @@ function HealthDetailPage() {
         <BackLink to="/health" label="All health facilities" />
         <PageHeader
           title={f.name}
-          urdu="صحت کے مراکز"
           description={`${f.typeLabel}, ${f.village}. ${staffList.length} staff on roster ${f.rosterVersion}. Use the tabs below for patients, doctors, billing and attendance.`}
         >
           <FacilityHeaderMeta f={f} report={r} />

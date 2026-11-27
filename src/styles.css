@@ -16,7 +16,6 @@
 @theme inline {
   --font-sans: "Manrope", "Atkinson Hyperlegible Next", system-ui, sans-serif;
   --font-mono: "Atkinson Hyperlegible Mono", ui-monospace, monospace;
-  --font-urdu: "Noto Nastaliq Urdu", serif;
 
   --text-2xs: 12px;
   --text-xs: 14px;
@@ -211,17 +210,6 @@
   table {
     font-variant-numeric: tabular-nums;
   }
-  [dir="rtl"].urdu,
-  .urdu {
-    font-family: var(--font-urdu);
-    line-height: 2.1;
-    font-size: max(16px, 1em);
-  }
-}
-
-@utility font-urdu {
-  font-family: var(--font-urdu);
-  line-height: 2.1;
 }
 
 @utility code {
@@ -530,9 +518,6 @@ button:not(:disabled),
   }
   .page-header h1 {
     overflow-wrap: anywhere;
-  }
-  .page-header [lang="ur"] {
-    font-size: 20px;
   }
   .panel-heading input {
     width: 100%;
@@ -1456,9 +1441,6 @@ textarea[aria-invalid="true"] {
 .page-header h1 {
   letter-spacing: -1.3px;
 }
-.page-header [lang="ur"] {
-  font-size: 26px;
-}
 .page-header > div:nth-of-type(2) {
   margin-top: 12px;
 }
@@ -1476,7 +1458,42 @@ textarea[aria-invalid="true"] {
   border-radius: var(--radius-lg);
 }
 .filter-toolbar > div {
+  align-items: flex-end;
   column-gap: 12px;
+}
+.filter-toolbar > div > svg {
+  margin-bottom: 8px;
+}
+.reporting-day-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 148px;
+}
+.filter-field-label {
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+.reporting-day-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding-inline: 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--subtle);
+  color: var(--ink);
+  font-size: 14px;
+  white-space: nowrap;
+}
+.reporting-day-value > svg {
+  color: var(--ink-muted);
+}
+.filter-actions {
+  align-self: flex-end;
 }
 .filter-toolbar label {
   flex-direction: column;
@@ -1938,9 +1955,6 @@ textarea[aria-invalid="true"] {
     font-size: 30px;
     letter-spacing: -1px;
   }
-  .page-header [lang="ur"] {
-    font-size: 19px;
-  }
   .page-eyebrow {
     font-size: 11px;
     letter-spacing: 1.2px;
@@ -1962,8 +1976,12 @@ textarea[aria-invalid="true"] {
     align-items: flex-end;
     gap: 12px;
   }
-  .filter-toolbar > div > label {
+  .filter-toolbar > div > label,
+  .reporting-day-field {
     flex: 1 1 110px;
+  }
+  .reporting-day-value {
+    min-height: 38px;
   }
   .filter-toolbar [role="combobox"] {
     width: 100%;
@@ -2725,7 +2743,6 @@ textarea[aria-invalid="true"] {
   border-radius: 15px;
   font-size: 26px;
   background: var(--topbar-raised);
-  padding-bottom: 7px;
 }
 .login-brand strong {
   display: block;
@@ -2944,9 +2961,6 @@ textarea[aria-invalid="true"] {
 .login-entry .page-header > div:first-of-type {
   flex-wrap: wrap;
   gap: 8px 14px;
-}
-.login-entry .page-header [lang="ur"] {
-  font-size: 21px;
 }
 .login-entry .page-eyebrow,
 .login-entry .page-dateline {
@@ -3436,9 +3450,6 @@ textarea[aria-invalid="true"] {
   .login-entry .page-header h1 {
     font-size: 27px;
     letter-spacing: -1px;
-  }
-  .login-entry .page-header [lang="ur"] {
-    font-size: 18px;
   }
   .login-role {
     padding: 12px;
