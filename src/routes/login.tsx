@@ -13,9 +13,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/dcms/page-header";
+import { Segmented } from "@/components/dcms/segmented";
 import { Button } from "@/components/ui/button";
-import { facilities } from "@/data/mock";
-import { ROLES, useApp, type RoleId } from "@/lib/app-state";
+import { facilities, type Section } from "@/data/mock";
+import { ROLES, useApp, type RoleId, type RoleMeta } from "@/lib/app-state";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -31,12 +32,35 @@ export const Route = createFileRoute("/login")({
   component: DemoLoginPage,
 });
 
-const ROLE_ICONS = { dc: Building2, deo: GraduationCap, dho: HeartPulse, "ac-domel": MapPinned };
+const ROLE_ICONS: Record<RoleId, typeof Building2> = {
+  dc: Building2,
+  "deo-m": GraduationCap,
+  "deo-f": GraduationCap,
+  "dho-m": HeartPulse,
+  "dho-f": HeartPulse,
+  "ac-domel-m": MapPinned,
+  "ac-domel-f": MapPinned,
+};
 
 function DemoLoginPage() {
   const { setRole } = useApp();
   const navigate = useNavigate();
+  const [section, setSection] = useState<Section>("Male");
   const [selected, setSelected] = useState<RoleId>("dc");
+  const sectionRoles = ROLES.filter((r) => r.section === section);
+  const districtRoles = ROLES.filter((r) => !r.section);
+  const chooseSection = (next: Section) => {
+    setSection(next);
+    // Keep the district view if chosen; otherwise move to the same post in the other section.
+    const current = ROLES.find((r) => r.id === selected);
+    if (current?.section && current.section !== next) {
+      const twin = ROLES.find(
+        (r) =>
+          r.section === next && r.department === current.department && r.tehsil === current.tehsil,
+      );
+      if (twin) setSelected(twin.id);
+    }
+  };
   const [entering, setEntering] = useState(false);
   const schools = facilities.filter((facility) => facility.kind === "school").length;
   const health = facilities.filter((facility) => facility.kind === "health").length;
@@ -143,32 +167,31 @@ function DemoLoginPage() {
             description="Choose a view and explore the district. No account or password needed."
           />
           <form onSubmit={enter}>
+            <div className="login-section-switch">
+              <span>Officers</span>
+              <Segmented
+                label="Officer section"
+                value={section}
+                onChange={chooseSection}
+                options={[
+                  { value: "Male", label: "Male officers" },
+                  { value: "Female", label: "Female officers" },
+                ]}
+              />
+            </div>
             <fieldset className="login-role-options" disabled={entering}>
-              <legend>Explore as</legend>
-              {ROLES.map((role) => {
-                const Icon = ROLE_ICONS[role.id];
-                return (
-                  <label key={role.id} className="login-role" data-selected={selected === role.id}>
-                    <input
-                      type="radio"
-                      name="demo-role"
-                      value={role.id}
-                      checked={selected === role.id}
-                      onChange={() => setSelected(role.id)}
-                    />
-                    <span className="login-role-icon" aria-hidden>
-                      <Icon />
-                    </span>
-                    <span className="login-role-copy">
-                      <strong>{role.label}</strong>
-                      <small>{role.scopeLabel}</small>
-                    </span>
-                    <span className="login-radio-mark" aria-hidden>
-                      {selected === role.id && <Check className="size-3" />}
-                    </span>
-                  </label>
-                );
-              })}
+              <legend>
+                {section === "Male"
+                  ? "Male section · boys' schools and general health facilities"
+                  : "Female section · girls' schools and women's health facilities"}
+              </legend>
+              {sectionRoles.map((role) => (
+                <RoleOption key={role.id} role={role} selected={selected} onSelect={setSelected} />
+              ))}
+              <p className="login-role-group">District oversight · both sections</p>
+              {districtRoles.map((role) => (
+                <RoleOption key={role.id} role={role} selected={selected} onSelect={setSelected} />
+              ))}
             </fieldset>
             <Button
               type="submit"
@@ -192,5 +215,38 @@ function DemoLoginPage() {
         </footer>
       </main>
     </div>
+  );
+}
+
+function RoleOption({
+  role,
+  selected,
+  onSelect,
+}: {
+  role: RoleMeta;
+  selected: RoleId;
+  onSelect: (id: RoleId) => void;
+}) {
+  const Icon = ROLE_ICONS[role.id];
+  return (
+    <label className="login-role" data-selected={selected === role.id}>
+      <input
+        type="radio"
+        name="demo-role"
+        value={role.id}
+        checked={selected === role.id}
+        onChange={() => onSelect(role.id)}
+      />
+      <span className="login-role-icon" aria-hidden>
+        <Icon />
+      </span>
+      <span className="login-role-copy">
+        <strong>{role.label}</strong>
+        <small>{role.scopeLabel}</small>
+      </span>
+      <span className="login-radio-mark" aria-hidden>
+        {selected === role.id && <Check className="size-3" />}
+      </span>
+    </label>
   );
 }

@@ -30,6 +30,7 @@ import {
   codedSmsBudget,
   type Department,
   type Facility,
+  type Section,
   type Report,
   type ReportStatus,
   type ReviewItem,
@@ -53,7 +54,16 @@ import {
   type SubmissionData,
 } from "./workspace-storage";
 
-export type RoleId = "dc" | "deo" | "dho" | "ac-domel";
+export type RoleId = "dc" | "deo-m" | "deo-f" | "dho-m" | "dho-f" | "ac-domel-m" | "ac-domel-f";
+export const ROLE_IDS = [
+  "dc",
+  "deo-m",
+  "deo-f",
+  "dho-m",
+  "dho-f",
+  "ac-domel-m",
+  "ac-domel-f",
+] as const satisfies readonly RoleId[];
 export interface RoleMeta {
   id: RoleId;
   label: string;
@@ -61,34 +71,63 @@ export interface RoleMeta {
   scopeLabel: string;
   department?: Department;
   tehsil?: Tehsil;
+  /** Male and female officers see only their own section's schools and health facilities. */
+  section?: Section;
 }
 export const ROLES: RoleMeta[] = [
   {
     id: "dc",
     label: "Deputy Commissioner",
     person: "Shah Saud Marwat",
-    scopeLabel: "Whole district",
+    scopeLabel: "Whole district · male and female",
   },
   {
-    id: "deo",
-    label: "District Education Officer",
+    id: "deo-m",
+    label: "District Education Officer (Male)",
     person: "Fazal Rahim Khattak",
-    scopeLabel: "Schools only",
+    scopeLabel: "Boys' schools only",
     department: "Education",
+    section: "Male",
   },
   {
-    id: "dho",
-    label: "District Health Officer",
+    id: "deo-f",
+    label: "District Education Officer (Female)",
+    person: "Naheed Akhtar",
+    scopeLabel: "Girls' schools only",
+    department: "Education",
+    section: "Female",
+  },
+  {
+    id: "dho-m",
+    label: "District Health Officer (Male)",
     person: "Dr. Amjad Ali Wazir",
-    scopeLabel: "Health only",
+    scopeLabel: "General health facilities only",
     department: "Health",
+    section: "Male",
   },
   {
-    id: "ac-domel",
-    label: "Assistant Commissioner Domel",
+    id: "dho-f",
+    label: "District Health Officer (Female)",
+    person: "Dr. Samina Gul",
+    scopeLabel: "Women's health facilities only",
+    department: "Health",
+    section: "Female",
+  },
+  {
+    id: "ac-domel-m",
+    label: "Assistant Commissioner Domel (Male)",
     person: "Liaqat Ali Bangash",
-    scopeLabel: "Domel tehsil",
+    scopeLabel: "Domel tehsil · male section",
     tehsil: "Domel",
+    section: "Male",
+  },
+  {
+    id: "ac-domel-f",
+    label: "Assistant Commissioner Domel (Female)",
+    person: "Saima Bibi",
+    scopeLabel: "Domel tehsil · female section",
+    tehsil: "Domel",
+    section: "Female",
   },
 ];
 export const roleById = Object.fromEntries(ROLES.map((r) => [r.id, r])) as Record<RoleId, RoleMeta>;
@@ -1114,7 +1153,8 @@ export function useApp() {
 export function inRoleScope(role: RoleMeta, f: Facility) {
   return (
     !(role.department && f.department !== role.department) &&
-    !(role.tehsil && f.tehsil !== role.tehsil)
+    !(role.tehsil && f.tehsil !== role.tehsil) &&
+    !(role.section && f.section !== role.section)
   );
 }
 export function useScopedFacilities(

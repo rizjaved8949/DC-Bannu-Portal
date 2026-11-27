@@ -33,6 +33,6 @@ describe("Demo entry", () => {
     fireEvent.click(screen.getByRole("radio", { name: /District Health Officer/ }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }));
-    expect(screen.getByTestId("current-role")).toHaveTextContent("dho");
+    expect(screen.getByTestId("current-role")).toHaveTextContent("dho-m");
   });
 });

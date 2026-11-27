@@ -124,7 +124,7 @@ export interface StoredWorkspace {
   complaints: Complaint[];
   version: 3;
   referenceDate: string;
-  roleId: "dc" | "deo" | "dho" | "ac-domel";
+  roleId: "dc" | "deo-m" | "deo-f" | "dho-m" | "dho-f" | "ac-domel-m" | "ac-domel-f";
   filters: {
     department: "All" | "Education" | "Health";
     tehsil: "All" | Tehsil;
@@ -175,7 +175,7 @@ const workspace = z.object({
   complaints: z.array(complaintSchema).max(1000).default(baseComplaints),
   version: z.literal(3),
   referenceDate: z.literal(TODAY),
-  roleId: z.enum(["dc", "deo", "dho", "ac-domel"]),
+  roleId: z.enum(["dc", "deo-m", "deo-f", "dho-m", "dho-f", "ac-domel-m", "ac-domel-f"]),
   filters: z.object({
     department: z.enum(["All", "Education", "Health"]),
     tehsil: z.enum(["All", ...TEHSILS]),

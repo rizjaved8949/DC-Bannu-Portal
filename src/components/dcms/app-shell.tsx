@@ -96,7 +96,11 @@ function TopBar({
         </div>
         <div className="ml-auto flex items-center gap-1 sm:gap-3">
           <SearchTrigger compact />
-          <Link to="/login" className="demo-entry-link" aria-label="Open sign-in and role selection">
+          <Link
+            to="/login"
+            className="demo-entry-link"
+            aria-label="Open sign-in and role selection"
+          >
             <LogIn className="size-4" />
             <span>Sign in</span>
           </Link>
@@ -190,7 +194,8 @@ function RoleMenu() {
       <DropdownMenuContent align="end" className="w-72">
         <DropdownMenuLabel className="text-xs text-ink-muted">View the system as</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={role.id} onValueChange={(v) => setRole(v as RoleId)}>
-          {ROLES.map((r) => (
+          {/* Male and female officers sign in separately; only the district view crosses sections. */}
+          {ROLES.filter((r) => !role.section || r.section === role.section).map((r) => (
             <DropdownMenuRadioItem
               key={r.id}
               value={r.id}
@@ -206,7 +211,9 @@ function RoleMenu() {
         <DropdownMenuSeparator />
         <div className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-ink-muted">
           <Check className="size-3.5" />
-          Switching role filters every page
+          {role.section
+            ? `${role.section} section only · sign in again for the other section`
+            : "Switching role filters every page"}
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>

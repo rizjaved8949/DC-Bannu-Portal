@@ -68,7 +68,7 @@ describe("Institution complaints", () => {
   });
   it("enforces department and area scope for creation and joint complaint updates", () => {
     const { result } = renderHook(useApp, { wrapper: AppStateProvider });
-    act(() => result.current.setRole("deo"));
+    act(() => result.current.setRole("deo-m"));
     expect(() => act(() => result.current.createComplaint(input))).toThrow();
     expect(() =>
       act(() =>
@@ -85,7 +85,7 @@ describe("Institution complaints", () => {
         facilityIds: [DEMO_SCHOOLS.complaintA, DEMO_SCHOOLS.complaintB],
       }),
     );
-    act(() => result.current.setRole("ac-domel"));
+    act(() => result.current.setRole("ac-domel-m"));
     expect(() =>
       act(() =>
         result.current.createComplaint({ ...input, facilityIds: [DEMO_SCHOOLS.complaintA] }),
@@ -133,11 +133,11 @@ describe("Institution complaints", () => {
   });
   it("upgrades saved workspaces without losing prior report or review edits", () => {
     const { result } = renderHook(useApp, { wrapper: AppStateProvider });
-    act(() => result.current.setRole("dho"));
+    act(() => result.current.setRole("dho-m"));
     const saved = JSON.parse(window.localStorage.getItem(WORKSPACE_STORAGE_KEY)!);
     delete saved.complaints;
     const restored = restoreWorkspace(JSON.stringify(saved));
-    expect(restored?.roleId).toBe("dho");
+    expect(restored?.roleId).toBe("dho-m");
     expect(restored?.complaints).toEqual(complaints);
     act(() => result.current.resetWorkspace());
     expect(result.current.complaints).toEqual(complaints);

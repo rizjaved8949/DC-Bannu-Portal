@@ -33,15 +33,15 @@ describe("Understandable daily reporting", () => {
       </AppStateProvider>,
     );
     expect(screen.getByRole("heading", { level: 3 })).toHaveTextContent(
-      "352 of 478 facilities have reported",
+      "357 of 483 facilities have reported",
     );
     expect(
       screen.getByRole("img", { name: "74% of expected facilities have reported" }),
     ).toBeInTheDocument();
     const accepted = screen.getByRole("link", { name: /Accepted by the server/ });
-    expect(within(accepted).getByText("320")).toBeInTheDocument();
+    expect(within(accepted).getByText("325")).toBeInTheDocument();
     expect(
-      within(accepted).getByText(/132 of these still need officer verification/),
+      within(accepted).getByText(/134 of these still need officer verification/),
     ).toBeInTheDocument();
     expect(
       within(screen.getByRole("link", { name: /Need correction/ })).getByText("32"),

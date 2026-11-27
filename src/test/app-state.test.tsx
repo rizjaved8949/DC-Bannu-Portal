@@ -20,17 +20,40 @@ describe("District workspace", () => {
   it("keeps department and tehsil restrictions when filters are reset", () => {
     const { result } = renderHook(useWorkspace, { wrapper: AppStateProvider });
     expect(result.current.scope).toHaveLength(facilities.length);
-    act(() => result.current.app.setRole("deo"));
+    act(() => result.current.app.setRole("deo-m"));
     expect(result.current.scope.length).toBeGreaterThan(0);
     expect(result.current.scope.every((f) => f.department === "Education")).toBe(true);
     act(() => result.current.app.setFilter("tehsil", "Kakki"));
     expect(result.current.scope.every((f) => f.tehsil === "Kakki")).toBe(true);
     act(() => result.current.app.resetFilters());
     expect(result.current.scope.every((f) => f.department === "Education")).toBe(true);
-    act(() => result.current.app.setRole("ac-domel"));
+    act(() => result.current.app.setRole("ac-domel-m"));
     act(() => result.current.app.resetFilters());
     expect(result.current.scope.length).toBeGreaterThan(0);
     expect(result.current.scope.every((f) => f.tehsil === "Domel")).toBe(true);
+  });
+
+  it("shows male and female officers only their own section's schools and health facilities", () => {
+    const { result } = renderHook(useWorkspace, { wrapper: AppStateProvider });
+    const counts: Record<string, number> = {};
+    for (const id of ["deo-m", "deo-f", "dho-m", "dho-f", "ac-domel-m", "ac-domel-f"] as const) {
+      act(() => result.current.app.setRole(id));
+      const section = id.endsWith("-f") ? "Female" : "Male";
+      counts[id] = result.current.scope.length;
+      expect(result.current.scope.length).toBeGreaterThan(0);
+      expect(result.current.scope.every((f) => f.section === section)).toBe(true);
+    }
+    expect(counts["deo-m"]! + counts["deo-f"]!).toBe(
+      facilities.filter((f) => f.kind === "school").length,
+    );
+    expect(counts["dho-m"]! + counts["dho-f"]!).toBe(
+      facilities.filter((f) => f.kind === "health").length,
+    );
+    // Girls' schools are female; boys' schools are male.
+    act(() => result.current.app.setRole("deo-f"));
+    expect(result.current.scope.every((f) => f.gender === "Girls")).toBe(true);
+    act(() => result.current.app.setRole("dc"));
+    expect(result.current.scope).toHaveLength(facilities.length);
   });
 
   it("applies report verification to all consumers and records the verification time", () => {

@@ -73,7 +73,7 @@ describe("SMS fallback and automatic admin intake", () => {
     expect(JSON.parse(decodeURIComponent(payload.split("|N:")[1]!))).toEqual(shift.handover);
     expect(result.current.smsEntries[0]!.segments).toBe(codedSmsBudget(payload).segments);
     expect(result.current.smsEntries[0]!.segments).toBeGreaterThan(1);
-    act(() => result.current.setRole("deo"));
+    act(() => result.current.setRole("deo-m"));
     act(() => vi.advanceTimersByTime(1800));
     expect(result.current.shiftFor("HF203", "M")?.handover).toEqual(shift.handover);
     expect(result.current.facilityFor("HF203")?.equipment.ok).toBe(false);

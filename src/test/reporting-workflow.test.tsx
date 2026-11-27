@@ -186,7 +186,7 @@ describe("Connected reporting workflow", () => {
     expect(
       result.current.reviewItems.filter((r) => r.detected === `Resend requested for ${report.id}.`),
     ).toHaveLength(1);
-    act(() => result.current.setRole("dho"));
+    act(() => result.current.setRole("dho-m"));
     expect(() =>
       result.current.submitReport({
         facilityId: school.id,

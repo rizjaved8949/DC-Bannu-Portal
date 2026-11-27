@@ -136,6 +136,9 @@ export type Department = "Education" | "Health";
 export type SchoolLevel = "Primary" | "Middle" | "High" | "Higher Secondary";
 export type Gender = "Boys" | "Girls";
 export type HealthType = "DHQ" | "WCH" | "RHC" | "BHU";
+/** Male and female sections are run by separate officers and see only their own institutions. */
+export type Section = "Male" | "Female";
+export const SECTIONS: Section[] = ["Male", "Female"];
 
 export const INFRA_KEYS = ["water", "electricity", "toilets", "boundaryWall", "ramp"] as const;
 export type InfraKey = (typeof INFRA_KEYS)[number];
@@ -158,6 +161,8 @@ export interface Facility {
   name: string;
   kind: "school" | "health";
   department: Department;
+  /** Boys' schools and general facilities are Male; girls' schools and women's facilities are Female. */
+  section: Section;
   district: "Bannu" | "North Waziristan";
   tehsil: Tehsil;
   village: string;
@@ -512,6 +517,7 @@ const schools: Facility[] = SCHOOL_SOURCE.map((src) => {
     name: src.name,
     kind: "school",
     department: "Education",
+    section: src.gender === "Girls" ? "Female" : "Male",
     district: "North Waziristan",
     tehsil: src.tehsil ?? TEHSIL_NOT_STATED,
     village: src.village ?? "Location not stated",
@@ -565,9 +571,24 @@ export const DEMO_SCHOOLS = {
   ver.rosterVersion = "RV04";
 }
 
-const HEALTH_PLAN: { name: string; type: HealthType; tehsil: BannuTehsil; village: string }[] = [
+const HEALTH_PLAN: {
+  name: string;
+  type: HealthType;
+  tehsil: BannuTehsil;
+  village: string;
+  /** Women's facilities belong to the female section. Default: Male. */
+  section?: Section;
+  /** Overrides the type label, e.g. for mother and child health centres sized like a BHU. */
+  label?: string;
+}[] = [
   { name: "DHQ Teaching Hospital Bannu", type: "DHQ", tehsil: "Bannu", village: "Bannu City" },
-  { name: "Women & Children Hospital Bannu", type: "WCH", tehsil: "Bannu", village: "Township" },
+  {
+    name: "Women & Children Hospital Bannu",
+    type: "WCH",
+    tehsil: "Bannu",
+    village: "Township",
+    section: "Female",
+  },
   { name: "RHC Domel", type: "RHC", tehsil: "Domel", village: "Domel" },
   { name: "RHC Kakki", type: "RHC", tehsil: "Kakki", village: "Kakki" },
   { name: "RHC Miryan", type: "RHC", tehsil: "Miryan", village: "Miryan" },
@@ -580,6 +601,47 @@ const HEALTH_PLAN: { name: string; type: HealthType; tehsil: BannuTehsil; villag
   { name: "BHU Jani Khel", type: "BHU", tehsil: "Baka Khel", village: "Jani Khel" },
   { name: "BHU Ghoriwala", type: "BHU", tehsil: "Wazir", village: "Ghoriwala" },
   { name: "BHU Township", type: "BHU", tehsil: "Bannu", village: "Township" },
+  // Female section (simulated): women's wing and mother and child health centres.
+  {
+    name: "Women's Wing, DHQ Teaching Hospital Bannu",
+    type: "RHC",
+    tehsil: "Bannu",
+    village: "Bannu City",
+    section: "Female",
+    label: "Hospital women's wing",
+  },
+  {
+    name: "MCH Centre Domel",
+    type: "BHU",
+    tehsil: "Domel",
+    village: "Domel",
+    section: "Female",
+    label: "Mother and child health centre",
+  },
+  {
+    name: "MCH Centre Kakki",
+    type: "BHU",
+    tehsil: "Kakki",
+    village: "Kakki",
+    section: "Female",
+    label: "Mother and child health centre",
+  },
+  {
+    name: "MCH Centre Miryan",
+    type: "BHU",
+    tehsil: "Miryan",
+    village: "Miryan",
+    section: "Female",
+    label: "Mother and child health centre",
+  },
+  {
+    name: "MCH Centre Baka Khel",
+    type: "BHU",
+    tehsil: "Baka Khel",
+    village: "Baka Khel",
+    section: "Female",
+    label: "Mother and child health centre",
+  },
 ];
 const HEALTH_TYPE_LABEL: Record<HealthType, string> = {
   DHQ: "District headquarters hospital",
@@ -597,6 +659,7 @@ const healthFacilities: Facility[] = HEALTH_PLAN.map((h, i) => {
     name: h.name,
     kind: "health",
     department: "Health",
+    section: h.section ?? "Male",
     district: "Bannu",
     operational: true,
     tehsil: h.tehsil,
@@ -613,8 +676,8 @@ const healthFacilities: Facility[] = HEALTH_PLAN.map((h, i) => {
       updated: addDays(TODAY, -rand(0, 8)),
     },
     healthType: h.type,
-    typeLabel: HEALTH_TYPE_LABEL[h.type],
-    headName: personName("M"),
+    typeLabel: h.label ?? HEALTH_TYPE_LABEL[h.type],
+    headName: personName(h.section === "Female" ? "F" : "M"),
     phoneMasked: `03••-•••${rand(1000, 9899)}`,
   };
 });
@@ -778,6 +841,8 @@ const TEACHING_MIX: Record<SchoolLevel, SchoolDesignation[]> = {
         if (desig === "Women Medical Officer" || desig === "LHV") gender = "F";
         else if (desig === "Charge Nurse") gender = chance(0.7) ? "F" : "M";
         else gender = chance(0.2) ? "F" : "M";
+        // Women's facilities are staffed by women.
+        if (f.section === "Female") gender = "F";
         const name = personName(gender);
         const shiftEligibility = shuffle(["M", "E", "N"] as ShiftKey[]).slice(
           0,

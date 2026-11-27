@@ -85,7 +85,7 @@ describe("Navigation context and record deep links", () => {
     location.search = {};
     render(
       <AppStateProvider>
-        <ScopedBreadcrumb role="deo" />
+        <ScopedBreadcrumb role="deo-m" />
       </AppStateProvider>,
     );
     fireEvent.click(screen.getByRole("button", { name: "Switch scope" }));
