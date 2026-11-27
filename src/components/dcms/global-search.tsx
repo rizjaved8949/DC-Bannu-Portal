@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Building2, Search, UserRound } from "lucide-react";
+import { GraduationCap, HeartPulse, Search, UserRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -85,8 +85,15 @@ export function GlobalSearch() {
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-3 rounded-sm px-3 py-3 hover:bg-subtle focus-visible:bg-subtle"
               >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-sm border border-line bg-subtle text-kurram">
-                  <Building2 className="size-4" />
+                <span
+                  data-dept={f.kind === "school" ? "edu" : "health"}
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full bg-dept-tint text-dept"
+                >
+                  {f.kind === "school" ? (
+                    <GraduationCap className="size-4" />
+                  ) : (
+                    <HeartPulse className="size-4" />
+                  )}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold">{f.name}</span>
@@ -110,7 +117,7 @@ export function GlobalSearch() {
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-3 rounded-sm px-3 py-3 hover:bg-subtle focus-visible:bg-subtle"
               >
-                <UserRound className="size-5 shrink-0 text-kurram" />
+                <UserRound className="size-5 shrink-0 text-dept" />
                 <span>
                   <span className="block font-semibold">{s.name}</span>
                   <span className="text-xs text-ink-muted">

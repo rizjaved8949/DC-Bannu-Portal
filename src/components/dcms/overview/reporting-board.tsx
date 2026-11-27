@@ -76,7 +76,7 @@ export function ReportingBoard({ facilities }: { facilities: Facility[] }) {
               </div>
               <div className="mt-2 h-[3px] overflow-hidden rounded-full bg-line" aria-hidden>
                 <div
-                  className="h-full bg-kurram"
+                  className="h-full bg-dept"
                   style={{ width: `${(reported / list.length) * 100}%` }}
                 />
               </div>

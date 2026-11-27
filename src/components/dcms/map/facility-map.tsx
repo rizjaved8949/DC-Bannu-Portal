@@ -65,20 +65,23 @@ export default function FacilityMap({
         const status = statusFor(f.id);
         const colour = TONE_VAR[STATUS_TONE[status]];
         const selected = f.id === selectedId;
+        // Fill shows the department, the ring shows today's report status.
+        const deptFill = f.kind === "school" ? "var(--edu)" : "var(--health)";
+        // Non-functional schools send no report: hollow, dashed problem ring.
+        const hollow = !f.operational || !f.coordsVerified;
+        const ring = !f.operational ? "var(--status-problem-fg)" : colour;
         return (
           <CircleMarker
             key={f.id}
             center={[f.lat, f.lng]}
             radius={selected ? 9 : f.kind === "health" ? 7 : 5.5}
             pathOptions={{
-              color: selected ? "var(--wheat)" : "white",
-              weight: selected ? 3 : 2,
-              fillColor: colour,
-              fillOpacity: f.coordsVerified ? 1 : 0,
+              color: selected ? "var(--wheat)" : ring,
+              weight: selected ? 3.5 : 2.5,
+              fillColor: deptFill,
+              fillOpacity: hollow ? 0.12 : 1,
               opacity: 1,
-              ...(f.coordsVerified
-                ? {}
-                : { color: colour, weight: selected ? 3 : 2, dashArray: "2 2" }),
+              ...(hollow ? { dashArray: "2 2" } : {}),
             }}
             eventHandlers={{ click: () => onSelect(f.id) }}
           >
@@ -104,7 +107,7 @@ export default function FacilityMap({
                 </dl>
                 <a
                   href={f.kind === "school" ? `/schools/${f.id}` : `/health/${f.id}`}
-                  className="mt-1.5 inline-block text-xs font-semibold text-kurram hover:underline"
+                  className="mt-1.5 inline-block text-xs font-semibold text-dept hover:underline"
                 >
                   Open facility page
                 </a>

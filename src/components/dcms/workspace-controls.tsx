@@ -98,16 +98,17 @@ export function WorkspaceControls() {
               <Link
                 to="/field-app"
                 search={{ facility: school.id }}
+                data-dept="edu"
                 onClick={() => setOpen(false)}
                 className="rounded-lg border border-line p-4 hover:bg-subtle"
               >
-                <GraduationCap className="mb-3 size-5 text-kurram" />
+                <GraduationCap className="mb-3 size-5 text-edu" />
                 <span className="block font-semibold">School reporting journey</span>
                 <span className="mt-1 block text-sm text-ink-muted">
                   Mark the full roster, record class attendance and send a report from {school.name}
                   .
                 </span>
-                <span className="mt-3 block text-xs font-semibold text-kurram">
+                <span className="mt-3 block text-xs font-semibold text-dept">
                   Open school workspace
                 </span>
               </Link>
@@ -116,16 +117,17 @@ export function WorkspaceControls() {
               <Link
                 to="/field-app"
                 search={{ facility: hospital.id }}
+                data-dept="health"
                 onClick={() => setOpen(false)}
                 className="rounded-lg border border-line p-4 hover:bg-subtle"
               >
-                <HeartPulse className="mb-3 size-5 text-kurram" />
+                <HeartPulse className="mb-3 size-5 text-health" />
                 <span className="block font-semibold">Hospital shift journey</span>
                 <span className="mt-1 block text-sm text-ink-muted">
                   Review staffing, record service availability and hand over the shift at{" "}
                   {hospital.name}.
                 </span>
-                <span className="mt-3 block text-xs font-semibold text-kurram">
+                <span className="mt-3 block text-xs font-semibold text-dept">
                   Open hospital workspace
                 </span>
               </Link>
@@ -134,7 +136,7 @@ export function WorkspaceControls() {
           <section className="rounded-lg border border-line">
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <h3 className="inline-flex items-center gap-2 font-semibold">
-                <Signal className="size-4 text-kurram" />
+                <Signal className="size-4 text-dept" />
                 Queued reports
               </h3>
               <span className="text-xs text-ink-muted">{pendingOutbox.length} waiting</span>
@@ -166,7 +168,7 @@ export function WorkspaceControls() {
               </ul>
             ) : (
               <div className="flex gap-3 p-4 text-sm text-ink-muted">
-                <ClipboardCheck className="size-5 shrink-0 text-kurram" />
+                <ClipboardCheck className="size-5 shrink-0 text-dept" />
                 <p>
                   No submissions are waiting. Reports saved without a signal and SMS submissions
                   will appear here.

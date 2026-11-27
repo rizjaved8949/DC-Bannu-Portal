@@ -108,7 +108,7 @@ function StaffDetailPage() {
           <div className="panel mt-5 flex flex-wrap items-center gap-4 px-5 py-5">
             <span
               aria-hidden
-              className="flex size-14 items-center justify-center rounded-full bg-kurram text-lg font-bold text-topbar-foreground"
+              className="flex size-14 items-center justify-center rounded-full bg-dept text-lg font-bold text-topbar-foreground"
             >
               {s.initials}
             </span>
@@ -125,7 +125,7 @@ function StaffDetailPage() {
                   <Link
                     to={f.kind === "school" ? "/schools/$id" : "/health/$id"}
                     params={{ id: f.id }}
-                    className="text-kurram hover:underline"
+                    className="text-dept hover:underline"
                   >
                     {f.name}
                   </Link>
@@ -333,7 +333,7 @@ function StaffDetailPage() {
                   <td data-label="Date" className="font-semibold">
                     {formatDate(d.date, true)}
                     {d.date === TODAY && (
-                      <span className="ml-2 rounded-sm bg-kurram-soft px-1.5 py-0.5 text-xs text-kurram">
+                      <span className="ml-2 rounded-sm bg-dept-tint px-1.5 py-0.5 text-xs text-dept">
                         Today
                       </span>
                     )}
@@ -373,7 +373,9 @@ function StaffDetailPage() {
               </div>
               <div>
                 <div className="text-2xs text-ink-muted">Check-out</div>
-                <div className="text-sm font-bold tabular-nums">{bio.checkOut ? hhmm(bio.checkOut) : "Still on site"}</div>
+                <div className="text-sm font-bold tabular-nums">
+                  {bio.checkOut ? hhmm(bio.checkOut) : "Still on site"}
+                </div>
               </div>
               <div>
                 <div className="text-2xs text-ink-muted">Method</div>
@@ -381,7 +383,15 @@ function StaffDetailPage() {
               </div>
               <div>
                 <div className="text-2xs text-ink-muted">Punctuality</div>
-                <Pill tone={bio.status === "On time" ? "verified" : bio.status === "Late" ? "pending" : "problem"}>
+                <Pill
+                  tone={
+                    bio.status === "On time"
+                      ? "verified"
+                      : bio.status === "Late"
+                        ? "pending"
+                        : "problem"
+                  }
+                >
                   {bio.status}
                 </Pill>
               </div>
@@ -428,37 +438,70 @@ function StaffDetailPage() {
               </div>
             </Panel>
             {logs.length > 0 && (
-              <Panel title="Today's treatment log" aside={`${logs.length} patients · ₨${formatPkr(totalBilled)} billed · ${waivedCount} waived`}>
+              <Panel
+                title="Today's treatment log"
+                aside={`${logs.length} patients · ₨${formatPkr(totalBilled)} billed · ${waivedCount} waived`}
+              >
                 <div className="max-h-[400px] overflow-auto">
                   <table className="ledger">
                     <thead>
                       <tr>
                         <th scope="col">Time</th>
                         <th scope="col">Patient</th>
-                        <th scope="col" className="num">Age</th>
+                        <th scope="col" className="num">
+                          Age
+                        </th>
                         <th scope="col">Complaint</th>
                         <th scope="col">Diagnosis</th>
                         <th scope="col">Treatment</th>
                         <th scope="col">Outcome</th>
-                        <th scope="col" className="num">Billing</th>
+                        <th scope="col" className="num">
+                          Billing
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {logs.map((t) => (
                         <tr key={t.id}>
-                          <td data-label="Time" className="num whitespace-nowrap">{hhmm(t.timeMin)}</td>
-                          <td data-label="Patient" className="font-semibold">{t.patientName}</td>
-                          <td data-label="Age" className="num">{t.age}</td>
-                          <td data-label="Complaint" className="max-w-[140px] text-xs">{t.complaint}</td>
-                          <td data-label="Diagnosis" className="max-w-[140px] text-xs">{t.diagnosis}</td>
-                          <td data-label="Treatment" className="max-w-[140px] text-xs">{t.treatment}</td>
+                          <td data-label="Time" className="num whitespace-nowrap">
+                            {hhmm(t.timeMin)}
+                          </td>
+                          <td data-label="Patient" className="font-semibold">
+                            {t.patientName}
+                          </td>
+                          <td data-label="Age" className="num">
+                            {t.age}
+                          </td>
+                          <td data-label="Complaint" className="max-w-[140px] text-xs">
+                            {t.complaint}
+                          </td>
+                          <td data-label="Diagnosis" className="max-w-[140px] text-xs">
+                            {t.diagnosis}
+                          </td>
+                          <td data-label="Treatment" className="max-w-[140px] text-xs">
+                            {t.treatment}
+                          </td>
                           <td data-label="Outcome">
-                            <Pill tone={t.outcome === "Discharged" ? "verified" : t.outcome === "Follow-up advised" ? "sent" : t.outcome === "Referred" ? "pending" : "neutral"}>
+                            <Pill
+                              tone={
+                                t.outcome === "Discharged"
+                                  ? "verified"
+                                  : t.outcome === "Follow-up advised"
+                                    ? "sent"
+                                    : t.outcome === "Referred"
+                                      ? "pending"
+                                      : "neutral"
+                              }
+                            >
                               {t.outcome}
                             </Pill>
                           </td>
                           <td data-label="Billing" className="num">
-                            {t.waived ? <span className="text-ink-muted">Waived</span> : <span className="font-semibold">₨{t.billingPkr}</span>}
+                            {t.waived ? (
+                              <span className="text-ink-muted">Waived</span>
+                            ) : (
+                              <span className="font-semibold">₨{t.billingPkr}</span>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -472,9 +515,9 @@ function StaffDetailPage() {
       })()}
 
       <p className="inline-flex items-center gap-2 text-xs text-ink-muted">
-        <ShieldCheck className="size-4 shrink-0 text-kurram" />
-        Attendance is marked by the facility administrator and approved by the supervisor.
-        Check-in times come from the facility's biometric gate.
+        <ShieldCheck className="size-4 shrink-0 text-dept" />
+        Attendance is marked by the facility administrator and approved by the supervisor. Check-in
+        times come from the facility's biometric gate.
       </p>
     </div>
   );

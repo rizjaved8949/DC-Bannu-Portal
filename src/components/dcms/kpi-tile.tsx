@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { TONE_RULE, type Tone } from "./status";
+import type { Tone } from "./status";
 import {
   Activity,
   Building2,
@@ -29,7 +29,20 @@ const iconFor = (label: string) =>
                 ? Building2
                 : Activity;
 
-/** White panel, 3px left rule, muted label, 30px value, one plain sub-line, optional freshness. */
+/**
+ * Rule and icon-chip colours per tone. "neutral" and "kurram" carry no good/bad judgement,
+ * so they take the page's section accent (indigo on schools, teal on health, green elsewhere).
+ */
+const TONE_ACCENT: Record<Tone | "kurram", { rule: string; chip: string }> = {
+  verified: { rule: "before:bg-verified", chip: "bg-verified-tint text-verified" },
+  sent: { rule: "before:bg-sent", chip: "bg-sent-tint text-sent" },
+  pending: { rule: "before:bg-pending", chip: "bg-pending-tint text-pending" },
+  problem: { rule: "before:bg-problem", chip: "bg-problem-tint text-problem" },
+  neutral: { rule: "before:bg-dept", chip: "bg-dept-tint text-dept" },
+  kurram: { rule: "before:bg-dept", chip: "bg-dept-tint text-dept" },
+};
+
+/** White panel, 3px top rule, label with a tinted icon chip, 32px value, sub-line, optional freshness. */
 export function KpiTile({
   label,
   value,
@@ -46,13 +59,29 @@ export function KpiTile({
   className?: string;
 }) {
   const Icon = iconFor(label);
+  const accent = TONE_ACCENT[tone];
   return (
-    <div className={cn("kpi-tile panel border-l-[3px] px-4 py-4", TONE_RULE[tone], className)}>
+    <div
+      className={cn(
+        "kpi-tile panel relative overflow-hidden px-4 pb-4 pt-[18px]",
+        "before:absolute before:inset-x-0 before:top-0 before:h-[3px] before:content-['']",
+        accent.rule,
+        className,
+      )}
+    >
       <div className="flex items-center justify-between gap-2 text-xs text-ink-muted">
         <span>{label}</span>
-        <Icon className="size-4 shrink-0" strokeWidth={1.6} />
+        <span
+          className={cn(
+            "flex size-7 shrink-0 items-center justify-center rounded-full",
+            accent.chip,
+          )}
+          aria-hidden
+        >
+          <Icon className="size-[15px]" strokeWidth={1.9} />
+        </span>
       </div>
-      <div className="mb-1 mt-2 text-[32px] font-bold leading-tight tabular-nums text-ink">
+      <div className="mb-1 mt-1.5 text-[32px] font-bold leading-tight tabular-nums text-ink">
         {value}
       </div>
       <div className="text-xs text-ink">{sub}</div>

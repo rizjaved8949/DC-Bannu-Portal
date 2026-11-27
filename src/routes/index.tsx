@@ -64,14 +64,12 @@ export const Route = createFileRoute("/")({
       { title: "Overview · DCMS Bannu" },
       {
         name: "description",
-        content:
-          "Today's reporting board, incoming reports and district indicators for Bannu.",
+        content: "Today's reporting board, incoming reports and district indicators for Bannu.",
       },
       { property: "og:title", content: "Overview · DCMS Bannu" },
       {
         property: "og:description",
-        content:
-          "Today's reporting board, incoming reports and district indicators for Bannu.",
+        content: "Today's reporting board, incoming reports and district indicators for Bannu.",
       },
     ],
   }),
@@ -79,26 +77,15 @@ export const Route = createFileRoute("/")({
 });
 
 function OverviewPage() {
-  const {
-    statusFor,
-    reviewItems,
-    role,
-    lastSync,
-    clockMin,
-    reports,
-    schoolDayFor,
-    shiftFor,
-  } = useApp();
+  const { statusFor, reviewItems, role, lastSync, clockMin, reports, schoolDayFor, shiftFor } =
+    useApp();
   const facilities = useScopedFacilities();
   const s = districtSummary(facilities, statusFor, { schoolDayFor, shiftFor });
   const ids = new Set(facilities.map((f) => f.id));
   const critical = reviewItems.filter(
-    (r) =>
-      r.severity === "Critical" && r.status !== "Closed" && ids.has(r.facilityId),
+    (r) => r.severity === "Critical" && r.status !== "Closed" && ids.has(r.facilityId),
   );
-  const openItems = reviewItems.filter(
-    (r) => r.status !== "Closed" && ids.has(r.facilityId),
-  );
+  const openItems = reviewItems.filter((r) => r.status !== "Closed" && ids.has(r.facilityId));
   const lastReceivedMin = reports
     .filter((r) => ids.has(r.facilityId) && r.receivedAt != null)
     .reduce((m, r) => Math.max(m, r.receivedAt ?? 0), 0);
@@ -123,9 +110,9 @@ function OverviewPage() {
   const ps = patientSummary(healthIds);
   const bs = budgetSummary(role.department);
 
-  const schoolsReported = schoolFacilities.filter((f) =>
-    isAccepted(statusFor(f.id)),
-  ).length;
+  // Non-functional and closed schools are not expected to report.
+  const reportingSchools = schoolFacilities.filter((f) => f.operational);
+  const schoolsReported = reportingSchools.filter((f) => isAccepted(statusFor(f.id))).length;
   // Enrolment across every school, for the district total.
   const enrolmentOnRecord = schoolFacilities.reduce((sum, f) => {
     const c = schoolStudentCounts(f, statusFor(f.id), schoolDayFor(f.id));
@@ -160,15 +147,11 @@ function OverviewPage() {
         Tehsil: f.tehsil,
         Status: STATUS_LABEL[statusFor(f.id)],
         Channel: reportForChannel(f.id),
-        Received: hhmm(
-          reports.find((r) => r.facilityId === f.id)?.receivedAt,
-        ),
+        Received: hhmm(reports.find((r) => r.facilityId === f.id)?.receivedAt),
       })),
     );
   const reportForChannel = (id: string) =>
-    reports.find((r) => r.facilityId === id)?.channel ??
-    facilityById[id]?.channel ??
-    "";
+    reports.find((r) => r.facilityId === id)?.channel ?? facilityById[id]?.channel ?? "";
 
   return (
     <div className="space-y-5">
@@ -188,8 +171,7 @@ function OverviewPage() {
           <TriangleAlert className="size-5 text-pending" />
           <div>
             <p className="text-sm font-semibold text-ink">
-              {critical.length} critical{" "}
-              {critical.length === 1 ? "item needs" : "items need"} your
+              {critical.length} critical {critical.length === 1 ? "item needs" : "items need"} your
               attention
             </p>
             <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-muted">
@@ -198,10 +180,9 @@ function OverviewPage() {
                   key={c.id}
                   to="/review"
                   search={{ item: c.id }}
-                  className="underline decoration-pending/30 underline-offset-3 hover:text-kurram"
+                  className="underline decoration-pending/30 underline-offset-3 hover:text-dept"
                 >
-                  {facilityById[c.facilityId]?.name}:{" "}
-                  {c.detected.replace(/\.$/, "")}
+                  {facilityById[c.facilityId]?.name}: {c.detected.replace(/\.$/, "")}
                 </Link>
               ))}
             </div>
@@ -221,18 +202,12 @@ function OverviewPage() {
           label="Reported today"
           value={s.reported}
           sub={`of ${s.total} ${facilityWord}`}
-          tone={
-            s.reported / Math.max(1, s.total) > 0.7 ? "verified" : "pending"
-          }
+          tone={s.reported / Math.max(1, s.total) > 0.7 ? "verified" : "pending"}
           freshness={`Received up to ${lastReceived}`}
         />
         <KpiTile
           label="Staff present"
-          value={
-            s.staffTotal
-              ? `${pct(s.staffPresent, s.staffTotal)}%`
-              : "No data"
-          }
+          value={s.staffTotal ? `${pct(s.staffPresent, s.staffTotal)}%` : "No data"}
           sub={`${s.staffPresent} of ${s.staffTotal} in reporting ${facilityWord}`}
           tone="verified"
           freshness={
@@ -244,11 +219,7 @@ function OverviewPage() {
         {showHealth && (
           <KpiTile
             label="Shift coverage"
-            value={
-              s.shiftRequired
-                ? `${pct(s.shiftOnSite, s.shiftRequired, 0)}%`
-                : "No data"
-            }
+            value={s.shiftRequired ? `${pct(s.shiftOnSite, s.shiftRequired, 0)}%` : "No data"}
             sub={`${s.shiftOnSite} of ${s.shiftRequired} required posts on site`}
             tone={s.shiftsBelow > 0 ? "pending" : "verified"}
             freshness={`Morning shift, observed 08:00 to ${hhmm(clockMin)}`}
@@ -264,11 +235,7 @@ function OverviewPage() {
         <KpiTile
           label="Critical issues"
           value={critical.length}
-          sub={
-            critical.length === 1
-              ? "open critical item"
-              : "open critical items"
-          }
+          sub={critical.length === 1 ? "open critical item" : "open critical items"}
           tone={critical.length ? "problem" : "neutral"}
           freshness={
             critical.length
@@ -291,7 +258,7 @@ function OverviewPage() {
           <Panel
             title={
               <span className="flex items-center gap-2">
-                <HeartPulse className="size-[18px] text-kurram" />
+                <HeartPulse className="size-[18px] text-health" />
                 Health facilities — today's snapshot
               </span>
             }
@@ -317,16 +284,8 @@ function OverviewPage() {
                 value={`${ps.bedsOccupied} / ${ps.bedsTotal}`}
                 sub={`${pct(ps.bedsOccupied, ps.bedsTotal, 0)}% occupancy`}
               />
-              <StatBox
-                label="Admissions"
-                value={ps.admissionsTotal.toString()}
-                sub="today"
-              />
-              <StatBox
-                label="Discharges"
-                value={ps.dischargesToday.toString()}
-                sub="today"
-              />
+              <StatBox label="Admissions" value={ps.admissionsTotal.toString()} sub="today" />
+              <StatBox label="Discharges" value={ps.dischargesToday.toString()} sub="today" />
               <StatBox
                 label="Referrals out"
                 value={ps.referralsTotal.toString()}
@@ -338,22 +297,20 @@ function OverviewPage() {
                 <AlertTriangle
                   className={cn(
                     "size-4 shrink-0",
-                    ps.icuOccupied / ps.icuTotal > 0.85
-                      ? "text-problem"
-                      : "text-ink-muted",
+                    ps.icuOccupied / ps.icuTotal > 0.85 ? "text-problem" : "text-ink-muted",
                   )}
                 />
                 <span>
-                  ICU: <strong>{ps.icuOccupied}</strong> of{" "}
-                  <strong>{ps.icuTotal}</strong> beds occupied (
-                  {pct(ps.icuOccupied, ps.icuTotal, 0)}%)
+                  ICU: <strong>{ps.icuOccupied}</strong> of <strong>{ps.icuTotal}</strong> beds
+                  occupied ({pct(ps.icuOccupied, ps.icuTotal, 0)}%)
                 </span>
               </div>
             )}
             <div className="mt-3 text-right">
               <Link
                 to="/health"
-                className="text-xs font-semibold text-kurram hover:underline"
+                data-dept="health"
+                className="text-xs font-semibold text-dept hover:underline"
               >
                 View all health facilities →
               </Link>
@@ -365,7 +322,7 @@ function OverviewPage() {
           <Panel
             title={
               <span className="flex items-center gap-2">
-                <GraduationCap className="size-[18px] text-kurram" />
+                <GraduationCap className="size-[18px] text-edu" />
                 Schools — today's snapshot
               </span>
             }
@@ -376,8 +333,8 @@ function OverviewPage() {
               <StatBox
                 icon={<Building2 className="size-4" />}
                 label="Schools reported"
-                value={`${schoolsReported} / ${schoolFacilities.length}`}
-                sub={`${pct(schoolsReported, schoolFacilities.length, 0)}% coverage`}
+                value={`${schoolsReported} / ${reportingSchools.length}`}
+                sub={`${pct(schoolsReported, reportingSchools.length, 0)}% of functional schools`}
               />
               <StatBox
                 icon={<UsersRound className="size-4" />}
@@ -401,26 +358,21 @@ function OverviewPage() {
               />
               <StatBox
                 label="Staff attendance"
-                value={
-                  schoolStaffTotal
-                    ? `${pct(schoolStaffPresent, schoolStaffTotal, 0)}%`
-                    : "—"
-                }
+                value={schoolStaffTotal ? `${pct(schoolStaffPresent, schoolStaffTotal, 0)}%` : "—"}
                 sub="teachers & support"
               />
               <StatBox
                 label="No report yet"
-                value={(
-                  schoolFacilities.length - schoolsReported
-                ).toString()}
-                sub="awaiting report"
-                warn={schoolFacilities.length - schoolsReported > 5}
+                value={(reportingSchools.length - schoolsReported).toString()}
+                sub="functional schools awaiting report"
+                warn={reportingSchools.length - schoolsReported > 5}
               />
             </div>
             <div className="mt-3 text-right">
               <Link
                 to="/schools"
-                className="text-xs font-semibold text-kurram hover:underline"
+                data-dept="edu"
+                className="text-xs font-semibold text-dept hover:underline"
               >
                 View all schools →
               </Link>
@@ -433,18 +385,14 @@ function OverviewPage() {
       <Panel
         title={
           <span className="flex items-center gap-2">
-            <Wallet className="size-[18px] text-kurram" />
+            <Wallet className="size-[18px] text-dept" />
             Budget & expenditure — FY 2026-27
           </span>
         }
         aside="Year to date (Jul–Nov)"
         bodyClassName="p-4"
       >
-        <BudgetOverview
-          showSchools={showSchools}
-          showHealth={showHealth}
-          budget={bs}
-        />
+        <BudgetOverview showSchools={showSchools} showHealth={showHealth} budget={bs} />
       </Panel>
 
       {/* ── Reporting board + feed ── */}
@@ -453,15 +401,14 @@ function OverviewPage() {
           className="flex flex-col xl:col-span-8"
           title={
             <span className="flex items-center gap-2">
-              <MapPinned className="size-[18px] text-kurram" />
+              <MapPinned className="size-[18px] text-dept" />
               Today's reporting board
             </span>
           }
           aside={
             <span className="inline-flex items-center gap-1.5">
-              <ShieldCheck className="size-3.5 text-kurram" />
-              Synced{" "}
-              <span className="tabular-nums text-ink">{lastSync}</span>
+              <ShieldCheck className="size-3.5 text-dept" />
+              Synced <span className="tabular-nums text-ink">{lastSync}</span>
             </span>
           }
           bodyClassName="flex-1 px-5 py-5"
@@ -473,9 +420,7 @@ function OverviewPage() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold">
-                {facilityWord.charAt(0).toUpperCase() +
-                  facilityWord.slice(1)}{" "}
-                reported today
+                {facilityWord.charAt(0).toUpperCase() + facilityWord.slice(1)} reported today
               </p>
               <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-ink-muted">
                 <span className="inline-flex items-center gap-1">
@@ -531,7 +476,7 @@ function OverviewPage() {
         <Panel
           title={
             <span className="flex items-center gap-2">
-              <Activity className="size-[18px] text-kurram" />
+              <Activity className="size-[18px] text-dept" />
               Staff attendance
             </span>
           }
@@ -565,7 +510,7 @@ function OverviewPage() {
       {/* ── Quick navigation ── */}
       <div className="panel grid overflow-hidden md:grid-cols-4">
         {showSchools && (
-          <Link to="/schools" className="overview-shortcut">
+          <Link to="/schools" data-dept="edu" className="overview-shortcut">
             <span className="overview-shortcut-icon">
               <GraduationCap className="size-5" />
             </span>
@@ -578,17 +523,13 @@ function OverviewPage() {
           </Link>
         )}
         {showHealth && (
-          <Link to="/health" className="overview-shortcut">
+          <Link to="/health" data-dept="health" className="overview-shortcut">
             <span className="overview-shortcut-icon">
               <HeartPulse className="size-5" />
             </span>
             <span>
-              <span className="block text-sm font-semibold">
-                Public health
-              </span>
-              <span className="text-xs text-ink-muted">
-                {s.healthCount} facilities in scope
-              </span>
+              <span className="block text-sm font-semibold">Public health</span>
+              <span className="text-xs text-ink-muted">{s.healthCount} facilities in scope</span>
             </span>
           </Link>
         )}
@@ -598,9 +539,7 @@ function OverviewPage() {
           </span>
           <span>
             <span className="block text-sm font-semibold">Review queue</span>
-            <span className="text-xs text-ink-muted">
-              {openItems.length} items to follow up
-            </span>
+            <span className="text-xs text-ink-muted">{openItems.length} items to follow up</span>
           </span>
         </Link>
         <Link to="/field-app" className="overview-shortcut">
@@ -608,12 +547,8 @@ function OverviewPage() {
             <Smartphone className="size-5" />
           </span>
           <span>
-            <span className="block text-sm font-semibold">
-              Field reporting
-            </span>
-            <span className="text-xs text-ink-muted">
-              Explore the offline app
-            </span>
+            <span className="block text-sm font-semibold">Field reporting</span>
+            <span className="text-xs text-ink-muted">Explore the offline app</span>
           </span>
         </Link>
       </div>
@@ -646,10 +581,7 @@ function StatBox({
         {label}
       </div>
       <div
-        className={cn(
-          "mt-1 text-lg font-bold tabular-nums",
-          warn ? "text-pending" : "text-ink",
-        )}
+        className={cn("mt-1 text-lg font-bold tabular-nums", warn ? "text-pending" : "text-ink")}
       >
         {value}
       </div>
@@ -695,31 +627,23 @@ function BudgetOverview({
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-md border border-line p-3">
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-ink">
-              <GraduationCap className="size-4 text-kurram" />
+              <GraduationCap className="size-4 text-edu" />
               Education budget
             </div>
-            <BudgetBar
-              allocated={eduBudget.allocated}
-              spent={eduBudget.spent}
-            />
+            <BudgetBar allocated={eduBudget.allocated} spent={eduBudget.spent} />
             <div className="mt-1 text-2xs text-ink-muted">
-              PKR {formatPkr(eduBudget.spent)} spent of PKR{" "}
-              {formatPkr(eduBudget.allocated)} (
+              PKR {formatPkr(eduBudget.spent)} spent of PKR {formatPkr(eduBudget.allocated)} (
               {pct(eduBudget.spent, eduBudget.allocated, 0)}%)
             </div>
           </div>
           <div className="rounded-md border border-line p-3">
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-ink">
-              <HeartPulse className="size-4 text-kurram" />
+              <HeartPulse className="size-4 text-health" />
               Health budget
             </div>
-            <BudgetBar
-              allocated={healthBudget.allocated}
-              spent={healthBudget.spent}
-            />
+            <BudgetBar allocated={healthBudget.allocated} spent={healthBudget.spent} />
             <div className="mt-1 text-2xs text-ink-muted">
-              PKR {formatPkr(healthBudget.spent)} spent of PKR{" "}
-              {formatPkr(healthBudget.allocated)} (
+              PKR {formatPkr(healthBudget.spent)} spent of PKR {formatPkr(healthBudget.allocated)} (
               {pct(healthBudget.spent, healthBudget.allocated, 0)}%)
             </div>
           </div>
@@ -727,7 +651,7 @@ function BudgetOverview({
       )}
 
       <details className="text-sm">
-        <summary className="cursor-pointer text-xs font-semibold text-kurram hover:underline">
+        <summary className="cursor-pointer text-xs font-semibold text-dept hover:underline">
           View budget breakdown by category
         </summary>
         <div className="mt-2 overflow-x-auto">
@@ -782,24 +706,14 @@ function BudgetOverview({
   );
 }
 
-function BudgetBar({
-  allocated,
-  spent,
-}: {
-  allocated: number;
-  spent: number;
-}) {
+function BudgetBar({ allocated, spent }: { allocated: number; spent: number }) {
   const pctVal = Math.min(100, (spent / Math.max(1, allocated)) * 100);
   return (
     <div className="h-2.5 overflow-hidden rounded-full bg-subtle">
       <div
         className={cn(
           "h-full rounded-full transition-all",
-          pctVal > 80
-            ? "bg-problem"
-            : pctVal > 60
-              ? "bg-pending"
-              : "bg-verified",
+          pctVal > 80 ? "bg-problem" : pctVal > 60 ? "bg-pending" : "bg-verified",
         )}
         style={{ width: `${pctVal}%` }}
       />

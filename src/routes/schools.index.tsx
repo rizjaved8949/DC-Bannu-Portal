@@ -30,6 +30,7 @@ import { downloadCsv } from "@/lib/csv";
 import { useApp, useScopedFacilities } from "@/lib/app-state";
 import { pct, schoolStaffCounts, schoolStudentCounts } from "@/lib/metrics";
 import { useSort } from "@/lib/use-sort";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/schools/")({
   head: () => ({
@@ -65,6 +66,13 @@ type Col =
 const LEVELS: ("All" | SchoolLevel)[] = ["All", "Primary", "Middle", "High", "Higher Secondary"];
 const REGISTER = ["All", "Functional", "Non-functional", "Closed"] as const;
 type Register = (typeof REGISTER)[number];
+/** Male schools come from the DEO(M) sheet, female schools from the female NF list. */
+const GENDERS = [
+  { value: "All", label: "All" },
+  { value: "Boys", label: "Male" },
+  { value: "Girls", label: "Female" },
+] as const;
+type GenderFilter = (typeof GENDERS)[number]["value"];
 
 function SchoolsPage() {
   const { statusFor, reportFor, resetFilters, filters, schoolDayFor } = useApp();
@@ -73,6 +81,7 @@ function SchoolsPage() {
   const [level, setLevel] = useState<"All" | SchoolLevel>("All");
   const [status, setStatus] = useState<"All" | ReportStatus>("All");
   const [register, setRegister] = useState<Register>("All");
+  const [gender, setGender] = useState<GenderFilter>("All");
 
   const rows = useMemo(
     () =>
@@ -84,6 +93,7 @@ function SchoolsPage() {
           const students = schoolStudentCounts(f, st, schoolDayFor(f.id));
           return { f, st, r, staff, students };
         })
+        .filter((x) => (gender === "All" ? true : x.f.gender === gender))
         .filter((x) => (level === "All" ? true : x.f.level === level))
         .filter((x) => (register === "All" ? true : x.f.source?.status === register))
         .filter((x) => (status === "All" ? true : x.st === status))
@@ -97,7 +107,7 @@ function SchoolsPage() {
             (x.f.source?.principal ?? "").toLowerCase().includes(s)
           );
         }),
-    [schools, statusFor, reportFor, schoolDayFor, level, status, register, q],
+    [schools, statusFor, reportFor, schoolDayFor, gender, level, status, register, q],
   );
 
   const { sorted, key, dir, toggle } = useSort<(typeof rows)[number], Col>(
@@ -180,6 +190,21 @@ function SchoolsPage() {
           onExportCsv={exportCsv}
           extra={
             <>
+              <label className="flex items-center gap-2 text-xs text-ink-muted">
+                Schools
+                <Select value={gender} onValueChange={(v) => setGender(v as GenderFilter)}>
+                  <SelectTrigger className="h-8 w-[110px]" aria-label="Male or female schools">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GENDERS.map((g) => (
+                      <SelectItem key={g.value} value={g.value}>
+                        {g.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
               <label className="flex items-center gap-2 text-xs text-ink-muted">
                 Level
                 <Select value={level} onValueChange={(v) => setLevel(v as "All" | SchoolLevel)}>
@@ -366,7 +391,9 @@ function SchoolsPage() {
                 size="sm"
                 onClick={() => {
                   resetFilters();
+                  setGender("All");
                   setLevel("All");
+                  setRegister("All");
                   setStatus("All");
                   setQ("");
                 }}
@@ -424,12 +451,17 @@ function SchoolsPage() {
               </thead>
               <tbody>
                 {sorted.map(({ f, st, r, students }) => (
-                  <tr key={f.id}>
+                  <tr
+                    key={f.id}
+                    className={cn(
+                      !f.operational && "shadow-[inset_3px_0_0_var(--status-problem-fg)]",
+                    )}
+                  >
                     <td data-label="School">
                       <Link
                         to="/schools/$id"
                         params={{ id: f.id }}
-                        className="font-semibold text-ink hover:text-kurram hover:underline"
+                        className="font-semibold text-dept hover:underline"
                       >
                         {f.name}
                       </Link>

@@ -233,7 +233,7 @@ function ReviewPage() {
                       aria-current={active ? "true" : undefined}
                       className={cn(
                         "flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-subtle",
-                        active && "bg-kurram-soft hover:bg-kurram-soft",
+                        active && "bg-dept-tint hover:bg-dept-tint",
                       )}
                     >
                       <Pill
@@ -362,7 +362,7 @@ function ReviewDetail({
             <Link
               to={f.kind === "school" ? "/schools/$id" : "/health/$id"}
               params={{ id: f.id }}
-              className="text-md font-semibold text-ink hover:text-kurram hover:underline"
+              className="text-md font-semibold text-ink hover:text-dept hover:underline"
             >
               {f.name}
             </Link>
@@ -419,7 +419,7 @@ function ReviewDetail({
               <li key={`${ev.at}-${i}`} className="relative pb-2.5 last:pb-0">
                 <span
                   aria-hidden
-                  className="absolute -left-[26.5px] top-1 size-3 rounded-full border-2 border-kurram bg-surface"
+                  className="absolute -left-[26.5px] top-1 size-3 rounded-full border-2 border-dept bg-surface"
                 />
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3">
                   <span>

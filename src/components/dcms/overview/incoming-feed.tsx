@@ -55,7 +55,7 @@ export function IncomingFeed() {
                     <Link
                       to={f.kind === "school" ? "/schools/$id" : "/health/$id"}
                       params={{ id: f.id }}
-                      className="truncate text-sm font-semibold text-ink hover:text-kurram hover:underline"
+                      className="truncate text-sm font-semibold text-ink hover:text-dept hover:underline"
                     >
                       {f.name}
                     </Link>
@@ -78,7 +78,7 @@ export function IncomingFeed() {
       )}
       <Link
         to="/inbox"
-        className="flex items-center justify-center gap-2 border-t border-line bg-subtle px-4 py-3 text-sm font-semibold text-kurram hover:bg-kurram-soft"
+        className="flex items-center justify-center gap-2 border-t border-line bg-subtle px-4 py-3 text-sm font-semibold text-dept hover:bg-dept-tint"
       >
         <Inbox className="size-4" />
         View reports inbox

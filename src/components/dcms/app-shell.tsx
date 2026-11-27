@@ -37,8 +37,14 @@ import { GlobalSearch } from "./global-search";
 /** `department` marks a tab that only applies to officers holding that portfolio. */
 const TABS = [
   { to: "/", label: "Overview", icon: LayoutDashboard, exact: true },
-  { to: "/schools", label: "Schools", icon: GraduationCap, department: "Education" },
-  { to: "/health", label: "Health facilities", icon: HeartPulse, department: "Health" },
+  { to: "/schools", label: "Schools", icon: GraduationCap, department: "Education", dept: "edu" },
+  {
+    to: "/health",
+    label: "Health facilities",
+    icon: HeartPulse,
+    department: "Health",
+    dept: "health",
+  },
   { to: "/staff", label: "Staff", icon: UsersRound },
   { to: "/map", label: "Facilities & map", icon: MapPinned },
   { to: "/inbox", label: "Reports inbox", icon: Inbox },
@@ -46,6 +52,13 @@ const TABS = [
   { to: "/complaints", label: "Complaints", icon: MessageSquareWarning },
   { to: "/field-app", label: "Field app", icon: Smartphone },
 ] as const;
+
+/** Section accent for a route: indigo for schools, teal for health, brand green elsewhere. */
+function deptForPath(pathname: string): "edu" | "health" | undefined {
+  if (pathname.startsWith("/schools")) return "edu";
+  if (pathname.startsWith("/health")) return "health";
+  return undefined;
+}
 
 function Emblem() {
   return (
@@ -208,6 +221,7 @@ function TabRow() {
           <Link
             key={t.to}
             to={t.to}
+            data-dept={"dept" in t ? t.dept : undefined}
             activeOptions={{ exact: "exact" in t ? t.exact : false }}
             className="nav-tab flex shrink-0 items-center gap-2 whitespace-nowrap px-3.5 text-sm text-ink-muted hover:bg-subtle hover:text-ink"
             activeProps={{ className: "tab-active font-semibold", "aria-current": "page" }}
@@ -265,6 +279,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main
         id="main-content"
         tabIndex={-1}
+        data-dept={deptForPath(pathname)}
         className={cn("mx-auto w-full max-w-[1600px] min-w-0 flex-1 px-4 pb-10 pt-7 lg:px-8")}
       >
         {loading ? <RouteSkeleton /> : children}

@@ -47,7 +47,18 @@ export const Route = createFileRoute("/health/")({
   component: HealthPage,
 });
 
-type Col = "name" | "type" | "tehsil" | "coverage" | "opd" | "beds" | "down" | "status" | "emergency" | "admissions" | "billing";
+type Col =
+  | "name"
+  | "type"
+  | "tehsil"
+  | "coverage"
+  | "opd"
+  | "beds"
+  | "down"
+  | "status"
+  | "emergency"
+  | "admissions"
+  | "billing";
 
 function HealthPage() {
   const { statusFor, reportFor, filters, resetFilters, shiftFor } = useApp();
@@ -262,7 +273,7 @@ function HealthPage() {
                       <Link
                         to="/health/$id"
                         params={{ id: f.id }}
-                        className="font-semibold text-ink hover:text-kurram hover:underline"
+                        className="font-semibold text-dept hover:underline"
                       >
                         {f.name}
                       </Link>
@@ -326,7 +337,9 @@ function HealthPage() {
                             ({ps.dischargesToday} disch.)
                           </span>
                         </>
-                      ) : "—"}
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td data-label="Revenue" className="num">
                       {bill ? `₨${formatPkr(bill.totalCollected)}` : "—"}

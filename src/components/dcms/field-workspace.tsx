@@ -140,7 +140,7 @@ export function FieldWorkspace({
             <Link
               to={f.kind === "school" ? "/schools/$id" : "/health/$id"}
               params={{ id: f.id }}
-              className="block border-t border-line pt-3 text-sm font-semibold text-kurram hover:underline"
+              className="block border-t border-line pt-3 text-sm font-semibold text-dept hover:underline"
             >
               Open district institution record
             </Link>
@@ -290,7 +290,7 @@ export function FieldWorkspace({
                       {issues.slice(0, 3).map((item) => (
                         <li key={item.id} className="p-3">
                           <Link
-                            className="text-sm font-semibold text-kurram hover:underline"
+                            className="text-sm font-semibold text-dept hover:underline"
                             to="/review"
                             search={{ item: item.id }}
                           >
@@ -339,7 +339,7 @@ export function FieldWorkspace({
                 </div>
                 <button
                   type="button"
-                  className="text-sm font-semibold text-kurram underline"
+                  className="text-sm font-semibold text-dept underline"
                   onClick={() => setJourney(!journey)}
                 >
                   {journey ? "Use step-by-step app" : "Show full journey"}
@@ -400,7 +400,7 @@ export function FieldWorkspace({
                           <Link
                             to="/complaints"
                             search={{ complaint: c.id, facility: f.id }}
-                            className="font-semibold text-kurram hover:underline"
+                            className="font-semibold text-dept hover:underline"
                           >
                             {c.title}
                           </Link>
@@ -420,7 +420,7 @@ export function FieldWorkspace({
                 <Link
                   to="/complaints"
                   search={{ facility: f.id }}
-                  className="inline-block text-sm font-semibold text-kurram underline"
+                  className="inline-block text-sm font-semibold text-dept underline"
                 >
                   Open full complaint register
                 </Link>
@@ -554,7 +554,7 @@ function FieldReports({ facility: f, conn }: { facility: Facility; conn: FieldCo
                 <button
                   type="button"
                   aria-expanded={expanded === r.id}
-                  className="text-sm font-semibold text-kurram underline"
+                  className="text-sm font-semibold text-dept underline"
                   onClick={() => setExpanded(expanded === r.id ? null : r.id)}
                 >
                   {expanded === r.id ? "Hide receipt details" : "View receipt details"}
@@ -621,7 +621,7 @@ function ReportReceiptDetails({ report: r }: { report: Report }) {
       </ol>
       {r.smsPayload && (
         <details>
-          <summary className="cursor-pointer text-sm font-semibold text-kurram">
+          <summary className="cursor-pointer text-sm font-semibold text-dept">
             Coded SMS payload
           </summary>
           <p className="mt-2 break-all rounded border border-line bg-subtle p-3 font-mono text-xs">
@@ -632,7 +632,7 @@ function ReportReceiptDetails({ report: r }: { report: Report }) {
       <Link
         to="/inbox"
         search={{ report: r.id }}
-        className="inline-block text-sm font-semibold text-kurram underline"
+        className="inline-block text-sm font-semibold text-dept underline"
       >
         Open district report record
       </Link>
@@ -713,7 +713,7 @@ function FieldInstitution({ facility: f }: { facility: Facility }) {
                 <Link
                   to="/staff/$id"
                   params={{ id: s.id }}
-                  className="text-sm font-semibold text-kurram hover:underline"
+                  className="text-sm font-semibold text-dept hover:underline"
                 >
                   {s.name}
                 </Link>

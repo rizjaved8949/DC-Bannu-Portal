@@ -287,11 +287,11 @@ function Directory({ rows }: { rows: Row[] }) {
                       <Link
                         to="/staff/$id"
                         params={{ id: s.id }}
-                        className="inline-flex items-center gap-2 font-semibold text-ink hover:text-kurram hover:underline"
+                        className="inline-flex items-center gap-2 font-semibold text-ink hover:text-dept hover:underline"
                       >
                         <span
                           aria-hidden
-                          className="flex size-7 items-center justify-center rounded-full bg-kurram-soft text-xs font-bold text-kurram"
+                          className="flex size-7 items-center justify-center rounded-full bg-dept-tint text-xs font-bold text-dept"
                         >
                           {s.initials}
                         </span>
@@ -312,7 +312,7 @@ function Directory({ rows }: { rows: Row[] }) {
                       <Link
                         to={f.kind === "school" ? "/schools/$id" : "/health/$id"}
                         params={{ id: f.id }}
-                        className="hover:text-kurram hover:underline"
+                        className="hover:text-dept hover:underline"
                       >
                         {f.name}
                       </Link>
@@ -460,7 +460,7 @@ function PostsAndVacancies({ facilities }: { facilities: Facility[] }) {
                     <Link
                       to={x.f.kind === "school" ? "/schools/$id" : "/health/$id"}
                       params={{ id: x.f.id }}
-                      className="font-semibold text-ink hover:text-kurram hover:underline"
+                      className="font-semibold text-ink hover:text-dept hover:underline"
                     >
                       {x.f.name}
                     </Link>
@@ -644,7 +644,7 @@ function Exceptions({ rows }: { rows: Row[] }) {
                     <Link
                       to="/staff/$id"
                       params={{ id: x.s.id }}
-                      className="font-semibold text-ink hover:text-kurram hover:underline"
+                      className="font-semibold text-ink hover:text-dept hover:underline"
                     >
                       {x.s.name}
                     </Link>

@@ -141,7 +141,7 @@ export function AttendanceTrend({
             type="monotone"
             dataKey="schools"
             name="Schools"
-            stroke={TONE_VAR.verified}
+            stroke="var(--edu)"
             strokeWidth={2}
             dot={false}
             connectNulls={false}
@@ -153,7 +153,7 @@ export function AttendanceTrend({
             type="monotone"
             dataKey="health"
             name="Health facilities"
-            stroke={TONE_VAR.sent}
+            stroke="var(--health)"
             strokeWidth={2}
             dot={false}
           />

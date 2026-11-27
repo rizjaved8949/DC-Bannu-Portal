@@ -43,7 +43,7 @@ export function SmsStatus({ entry }: { entry: SmsEntry }) {
 export function SmsEntryLink({ entry }: { entry: SmsEntry }) {
   return entry.kind === "report" ? (
     <Link
-      className="text-sm font-semibold text-kurram underline"
+      className="text-sm font-semibold text-dept underline"
       to="/inbox"
       search={{ report: entry.referenceId }}
     >
@@ -51,7 +51,7 @@ export function SmsEntryLink({ entry }: { entry: SmsEntry }) {
     </Link>
   ) : (
     <Link
-      className="text-sm font-semibold text-kurram underline"
+      className="text-sm font-semibold text-dept underline"
       to="/complaints"
       search={{ complaint: entry.referenceId }}
     >
@@ -135,7 +135,7 @@ export function SmsAdminIntake() {
     <Panel
       title={
         <span className="inline-flex items-center gap-2">
-          <MessageSquareText className="size-4 text-kurram" />
+          <MessageSquareText className="size-4 text-dept" />
           SMS reporting intake
         </span>
       }

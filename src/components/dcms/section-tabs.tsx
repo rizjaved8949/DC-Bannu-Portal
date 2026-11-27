@@ -52,7 +52,7 @@ export function SectionTabs<T extends string>({
                 <span
                   className={cn(
                     "rounded-sm px-1.5 text-2xs font-semibold tabular-nums",
-                    active ? "bg-kurram-soft text-kurram" : "bg-subtle text-ink-muted",
+                    active ? "bg-dept-tint text-dept" : "bg-subtle text-ink-muted",
                   )}
                 >
                   {o.count}

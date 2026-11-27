@@ -151,7 +151,7 @@ export function InstitutionRecord({ facility: f }: { facility: Facility }) {
       <Panel
         title={
           <span className="inline-flex items-center gap-2">
-            <Building2 className="size-4 text-kurram" />
+            <Building2 className="size-4 text-dept" />
             Institution record
           </span>
         }
@@ -225,7 +225,7 @@ export function InstitutionRecord({ facility: f }: { facility: Facility }) {
             {!src && (
               <div className="grid gap-3 border-t border-line bg-subtle p-5 sm:grid-cols-3">
                 <div className="flex items-center gap-3">
-                  <UsersRound className="size-5 text-kurram" />
+                  <UsersRound className="size-5 text-dept" />
                   <div>
                     <p className="text-sm font-semibold">{staff.length} staff on record</p>
                     <p className="text-xs text-ink-muted">
@@ -234,7 +234,7 @@ export function InstitutionRecord({ facility: f }: { facility: Facility }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <PackageCheck className="size-5 text-kurram" />
+                  <PackageCheck className="size-5 text-dept" />
                   <div>
                     <p className="text-sm font-semibold">
                       {profile.assets.length} asset categories
@@ -243,7 +243,7 @@ export function InstitutionRecord({ facility: f }: { facility: Facility }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <CalendarCheck className="size-5 text-kurram" />
+                  <CalendarCheck className="size-5 text-dept" />
                   <div>
                     <p className="text-sm font-semibold">
                       Next visit {formatDate(profile.nextInspection)}
@@ -333,7 +333,7 @@ export function InstitutionRecord({ facility: f }: { facility: Facility }) {
                       {item.id} · {item.owner} · {item.status}
                     </span>
                   </span>
-                  <span className="text-xs text-kurram">Open record</span>
+                  <span className="text-xs text-dept">Open record</span>
                 </Link>
               ))
             ) : (

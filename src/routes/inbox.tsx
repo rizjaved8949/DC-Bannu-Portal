@@ -281,7 +281,7 @@ function InboxPage() {
                     }}
                     className={cn(
                       "cursor-pointer",
-                      selected?.id === r.id && "bg-kurram-soft hover:bg-kurram-soft",
+                      selected?.id === r.id && "bg-dept-tint hover:bg-dept-tint",
                     )}
                   >
                     <td data-label="Received" className="num">
@@ -570,7 +570,7 @@ function ReportDrawer({
                   <Link
                     to={f.kind === "school" ? "/schools/$id" : "/health/$id"}
                     params={{ id: f.id }}
-                    className="text-kurram hover:underline"
+                    className="text-dept hover:underline"
                   >
                     Facility page
                   </Link>

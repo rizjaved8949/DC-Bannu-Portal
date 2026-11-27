@@ -34,7 +34,7 @@ export const TONE_RULE: Record<Tone | "kurram", string> = {
   pending: "border-l-pending",
   problem: "border-l-problem",
   neutral: "border-l-neutral",
-  kurram: "border-l-kurram",
+  kurram: "border-l-dept",
 };
 /** CSS colour values for charts and map markers. */
 export const TONE_VAR: Record<Tone, string> = {
@@ -57,7 +57,15 @@ export const TONE_TINT_VAR: Record<Tone, string> = {
  * Draft empty ring, Sent quarter, Received half, Pending three-quarters,
  * Verified full with check, Rejected ring with cross, No report dashed ring.
  */
-export function StatusGlyph({ status, size = 14, className }: { status: ReportStatus; size?: number; className?: string }) {
+export function StatusGlyph({
+  status,
+  size = 14,
+  className,
+}: {
+  status: ReportStatus;
+  size?: number;
+  className?: string;
+}) {
   const tone = STATUS_TONE[status];
   const c = TONE_VAR[tone];
   const label = STATUS_LABEL[status];
@@ -72,11 +80,26 @@ export function StatusGlyph({ status, size = 14, className }: { status: ReportSt
     >
       <title>{label}</title>
       {status === "none" ? (
-        <circle cx="7" cy="7" r="5.75" fill="none" stroke={c} strokeWidth="1.5" strokeDasharray="2.2 1.8" />
+        <circle
+          cx="7"
+          cy="7"
+          r="5.75"
+          fill="none"
+          stroke={c}
+          strokeWidth="1.5"
+          strokeDasharray="2.2 1.8"
+        />
       ) : status === "verified" ? (
         <>
           <circle cx="7" cy="7" r="6.5" fill={c} />
-          <path d="M4.2 7.2 6.1 9 9.9 5.2" fill="none" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d="M4.2 7.2 6.1 9 9.9 5.2"
+            fill="none"
+            stroke="white"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </>
       ) : (
         <>
@@ -85,7 +108,12 @@ export function StatusGlyph({ status, size = 14, className }: { status: ReportSt
           {status === "received" && <path d="M7 7 L7 1.25 A5.75 5.75 0 0 1 7 12.75 Z" fill={c} />}
           {status === "pending" && <path d="M7 7 L7 1.25 A5.75 5.75 0 1 1 1.25 7 Z" fill={c} />}
           {status === "rejected" && (
-            <path d="M4.8 4.8 9.2 9.2 M9.2 4.8 4.8 9.2" stroke={c} strokeWidth="1.6" strokeLinecap="round" />
+            <path
+              d="M4.8 4.8 9.2 9.2 M9.2 4.8 4.8 9.2"
+              stroke={c}
+              strokeWidth="1.6"
+              strokeLinecap="round"
+            />
           )}
         </>
       )}
@@ -94,7 +122,15 @@ export function StatusGlyph({ status, size = 14, className }: { status: ReportSt
 }
 
 /** Glyph + word + tint. Use everywhere a report status appears. */
-export function StatusBadge({ status, className, short }: { status: ReportStatus; className?: string; short?: boolean }) {
+export function StatusBadge({
+  status,
+  className,
+  short,
+}: {
+  status: ReportStatus;
+  className?: string;
+  short?: boolean;
+}) {
   const tone = STATUS_TONE[status];
   return (
     <span
@@ -111,7 +147,17 @@ export function StatusBadge({ status, className, short }: { status: ReportStatus
 }
 
 /** Generic tinted pill (staff statuses, OK/Problem/Stale, severities). */
-export function Pill({ tone, icon, children, className }: { tone: Tone; icon?: ReactNode; children: ReactNode; className?: string }) {
+export function Pill({
+  tone,
+  icon,
+  children,
+  className,
+}: {
+  tone: Tone;
+  icon?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <span
       className={cn(
@@ -147,11 +193,22 @@ export const SEVERITY_TONE: Record<string, Tone> = {
   Low: "neutral",
 };
 
-export const LEGEND_ORDER: ReportStatus[] = ["draft", "sent", "received", "pending", "verified", "rejected", "none"];
+export const LEGEND_ORDER: ReportStatus[] = [
+  "draft",
+  "sent",
+  "received",
+  "pending",
+  "verified",
+  "rejected",
+  "none",
+];
 
 export function StatusLegend({ className }: { className?: string }) {
   return (
-    <ul className={cn("flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-ink-muted", className)} aria-label="Report status legend">
+    <ul
+      className={cn("flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-ink-muted", className)}
+      aria-label="Report status legend"
+    >
       {LEGEND_ORDER.map((s) => (
         <li key={s} className="inline-flex items-center gap-1.5">
           <StatusGlyph status={s} size={13} />

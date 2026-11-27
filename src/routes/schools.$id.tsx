@@ -130,7 +130,7 @@ function SchoolDetailPage() {
             {st === "none" && (
               <>
                 A review task was opened at 10:00.{" "}
-                <Link to="/review" className="text-kurram hover:underline">
+                <Link to="/review" className="text-dept hover:underline">
                   Open the review queue
                 </Link>
                 .
@@ -274,7 +274,7 @@ function SchoolDetailPage() {
                           <Link
                             to="/staff/$id"
                             params={{ id: s.id }}
-                            className="font-semibold text-ink hover:text-kurram hover:underline"
+                            className="font-semibold text-ink hover:text-dept hover:underline"
                           >
                             {s.name}
                           </Link>
@@ -545,7 +545,7 @@ function StudentDirectory({ facilityId }: { facilityId: string }) {
       {filtered.length > 15 && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full border-t border-line px-4 py-2 text-xs font-semibold text-kurram hover:bg-subtle"
+          className="w-full border-t border-line px-4 py-2 text-xs font-semibold text-dept hover:bg-subtle"
         >
           {expanded ? "Show fewer" : `Show all ${filtered.length} students`}
         </button>
@@ -904,7 +904,7 @@ function SchoolRegisterPanel({ f }: { f: Facility }) {
       <Panel title="DEO review remark" aside="Non-functional schools review">
         <div className="px-5 py-4 text-sm">
           {src.deoRemark ? (
-            <blockquote className="border-l-[3px] border-l-kurram pl-3 text-ink">
+            <blockquote className="border-l-[3px] border-l-dept pl-3 text-ink">
               {src.deoRemark}
             </blockquote>
           ) : (

@@ -213,216 +213,233 @@ function HealthDetailPage() {
         value={section}
         onChange={setSection}
         options={[
-          { value: "shift", label: "Shift & staffing", icon: Users, count: shift.assignments.length },
-          { value: "patients", label: "Patients", icon: Stethoscope, count: (daybookByFacility[f.id] ?? []).length },
-          { value: "doctors", label: "Doctors", icon: UserRound, count: (doctorsByFacility[f.id] ?? []).length },
+          {
+            value: "shift",
+            label: "Shift & staffing",
+            icon: Users,
+            count: shift.assignments.length,
+          },
+          {
+            value: "patients",
+            label: "Patients",
+            icon: Stethoscope,
+            count: (daybookByFacility[f.id] ?? []).length,
+          },
+          {
+            value: "doctors",
+            label: "Doctors",
+            icon: UserRound,
+            count: (doctorsByFacility[f.id] ?? []).length,
+          },
           { value: "billing", label: "Billing", icon: Wallet },
-          { value: "attendance", label: "Attendance", icon: Fingerprint, count: (biometricByFacility[f.id] ?? []).length },
+          {
+            value: "attendance",
+            label: "Attendance",
+            icon: Fingerprint,
+            count: (biometricByFacility[f.id] ?? []).length,
+          },
           { value: "record", label: "Institution record", icon: FileText },
         ]}
       />
 
       {section === "shift" && (
-      <>
-      <div className="grid gap-4 xl:grid-cols-5">
-        <Panel
-          className="xl:col-span-2"
-          title="Roster vs actual by role"
-          aside="Against the shift minimum"
-        >
-          <table className="ledger">
-            <thead>
-              <tr>
-                <th scope="col">Role</th>
-                <th scope="col" className="num">
-                  Minimum
-                </th>
-                <th scope="col" className="num">
-                  Rostered
-                </th>
-                <th scope="col" className="num">
-                  On site
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {cov.byRole.map((x) => (
-                <tr key={x.role}>
-                  <td data-label="Role">{x.role}</td>
-                  <td data-label="Minimum" className="num">
-                    {x.min}
-                  </td>
-                  <td data-label="Rostered" className="num">
-                    {x.rostered}
-                  </td>
-                  <td
-                    data-label="On site"
-                    className={cn("num", x.short > 0 && "font-semibold text-problem")}
-                  >
-                    {confirmed ? x.actual : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {confirmed && shortLines.length > 0 && (
-            <ul className="border-t border-line px-4 py-2.5 text-sm text-problem">
-              {shortLines.map((x) => (
-                <li key={x.role}>
-                  Short by {x.short} {x.role}
-                  {x.short > 1 ? "s" : ""}
-                </li>
-              ))}
-            </ul>
-          )}
-          {confirmed && shortLines.length === 0 && (
-            <p className="border-t border-line px-4 py-2.5 text-sm text-verified">
-              Every role meets its minimum.
-            </p>
-          )}
-        </Panel>
-
-        <Panel
-          className="xl:col-span-3"
-          title="Staff on this shift"
-          aside={`${shift.assignments.length} entries`}
-        >
-          <div className="overflow-x-auto">
-            <table className="ledger">
-              <thead>
-                <tr>
-                  <th scope="col">Name</th>
-                  <th scope="col">Role</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Note</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedAssignments.map((a) => {
-                  const s = staffById[a.staffId]!;
-                  const replaces = a.replacesStaffId ? staffById[a.replacesStaffId] : undefined;
-                  return (
-                    <tr key={a.staffId}>
-                      <td data-label="Name">
-                        <Link
-                          to="/staff/$id"
-                          params={{ id: s.id }}
-                          className="font-semibold text-ink hover:text-kurram hover:underline"
-                        >
-                          {s.name}
-                        </Link>
-                        <span className="block">
-                          <Code className="text-xs text-ink-muted">{s.personalNoMasked}</Code>
-                        </span>
+        <>
+          <div className="grid gap-4 xl:grid-cols-5">
+            <Panel
+              className="xl:col-span-2"
+              title="Roster vs actual by role"
+              aside="Against the shift minimum"
+            >
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <th scope="col">Role</th>
+                    <th scope="col" className="num">
+                      Minimum
+                    </th>
+                    <th scope="col" className="num">
+                      Rostered
+                    </th>
+                    <th scope="col" className="num">
+                      On site
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cov.byRole.map((x) => (
+                    <tr key={x.role}>
+                      <td data-label="Role">{x.role}</td>
+                      <td data-label="Minimum" className="num">
+                        {x.min}
                       </td>
-                      <td data-label="Role">{a.role}</td>
-                      <td data-label="Status">
-                        <Pill tone={STAFF_STATUS_TONE[a.status] ?? "neutral"}>
-                          {confirmed ? a.status : "Scheduled"}
-                        </Pill>
+                      <td data-label="Rostered" className="num">
+                        {x.rostered}
                       </td>
-                      <td data-label="Note" className="text-xs text-ink-muted">
-                        {a.status === "Replacement" && replaces
-                          ? `Covering for ${replaces.name}`
-                          : a.status === "On-call"
-                            ? "Reachable by phone, not on site"
-                            : (a.note ?? "")}
+                      <td
+                        data-label="On site"
+                        className={cn("num", x.short > 0 && "font-semibold text-problem")}
+                      >
+                        {confirmed ? x.actual : "—"}
                       </td>
                     </tr>
+                  ))}
+                </tbody>
+              </table>
+              {confirmed && shortLines.length > 0 && (
+                <ul className="border-t border-line px-4 py-2.5 text-sm text-problem">
+                  {shortLines.map((x) => (
+                    <li key={x.role}>
+                      Short by {x.short} {x.role}
+                      {x.short > 1 ? "s" : ""}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {confirmed && shortLines.length === 0 && (
+                <p className="border-t border-line px-4 py-2.5 text-sm text-verified">
+                  Every role meets its minimum.
+                </p>
+              )}
+            </Panel>
+
+            <Panel
+              className="xl:col-span-3"
+              title="Staff on this shift"
+              aside={`${shift.assignments.length} entries`}
+            >
+              <div className="overflow-x-auto">
+                <table className="ledger">
+                  <thead>
+                    <tr>
+                      <th scope="col">Name</th>
+                      <th scope="col">Role</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Note</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedAssignments.map((a) => {
+                      const s = staffById[a.staffId]!;
+                      const replaces = a.replacesStaffId ? staffById[a.replacesStaffId] : undefined;
+                      return (
+                        <tr key={a.staffId}>
+                          <td data-label="Name">
+                            <Link
+                              to="/staff/$id"
+                              params={{ id: s.id }}
+                              className="font-semibold text-ink hover:text-dept hover:underline"
+                            >
+                              {s.name}
+                            </Link>
+                            <span className="block">
+                              <Code className="text-xs text-ink-muted">{s.personalNoMasked}</Code>
+                            </span>
+                          </td>
+                          <td data-label="Role">{a.role}</td>
+                          <td data-label="Status">
+                            <Pill tone={STAFF_STATUS_TONE[a.status] ?? "neutral"}>
+                              {confirmed ? a.status : "Scheduled"}
+                            </Pill>
+                          </td>
+                          <td data-label="Note" className="text-xs text-ink-muted">
+                            {a.status === "Replacement" && replaces
+                              ? `Covering for ${replaces.name}`
+                              : a.status === "On-call"
+                                ? "Reachable by phone, not on site"
+                                : (a.note ?? "")}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Panel>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <Panel
+              title="Services and equipment"
+              aside={`${avail.length - down.length} of ${avail.length} up`}
+            >
+              <ul className="grid grid-cols-2 divide-y divide-line sm:grid-cols-3 sm:divide-y-0">
+                {avail.map((s) => {
+                  const up = shift.services[s] !== false;
+                  return (
+                    <li key={s} className="flex items-center gap-2 px-4 py-2.5 text-sm">
+                      {up ? (
+                        <Check className="size-4 text-verified" aria-label="Up" />
+                      ) : (
+                        <X className="size-4 text-problem" aria-label="Down" />
+                      )}
+                      <span className={cn(!up && "font-semibold text-problem")}>{s}</span>
+                      <span className="ml-auto text-xs text-ink-muted">{up ? "Up" : "Down"}</span>
+                    </li>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Panel
-          title="Services and equipment"
-          aside={`${avail.length - down.length} of ${avail.length} up`}
-        >
-          <ul className="grid grid-cols-2 divide-y divide-line sm:grid-cols-3 sm:divide-y-0">
-            {avail.map((s) => {
-              const up = shift.services[s] !== false;
-              return (
-                <li key={s} className="flex items-center gap-2 px-4 py-2.5 text-sm">
-                  {up ? (
+                <li className="flex items-center gap-2 px-4 py-2.5 text-sm">
+                  {f.equipment.ok ? (
                     <Check className="size-4 text-verified" aria-label="Up" />
                   ) : (
                     <X className="size-4 text-problem" aria-label="Down" />
                   )}
-                  <span className={cn(!up && "font-semibold text-problem")}>{s}</span>
-                  <span className="ml-auto text-xs text-ink-muted">{up ? "Up" : "Down"}</span>
+                  <span className={cn(!f.equipment.ok && "font-semibold text-problem")}>
+                    {f.equipment.label}
+                  </span>
+                  <span className="ml-auto text-xs text-ink-muted">
+                    {f.equipment.ok ? "Working" : "Fault"}
+                  </span>
                 </li>
-              );
-            })}
-            <li className="flex items-center gap-2 px-4 py-2.5 text-sm">
-              {f.equipment.ok ? (
-                <Check className="size-4 text-verified" aria-label="Up" />
-              ) : (
-                <X className="size-4 text-problem" aria-label="Down" />
-              )}
-              <span className={cn(!f.equipment.ok && "font-semibold text-problem")}>
-                {f.equipment.label}
-              </span>
-              <span className="ml-auto text-xs text-ink-muted">
-                {f.equipment.ok ? "Working" : "Fault"}
-              </span>
-            </li>
-          </ul>
-        </Panel>
+              </ul>
+            </Panel>
 
-        <Panel
-          title="Handover"
-          aside={
-            shift.phase === "completed"
-              ? "To the incoming morning shift"
-              : upcoming
-                ? "Shift not yet started"
-                : "In progress"
-          }
-        >
-          <div className="space-y-3 px-4 py-3 text-sm">
-            <HandoverList
-              title="Unresolved faults"
-              items={shift.handover.faults}
-              none="No faults reported"
-            />
-            <HandoverList
-              title="Stock-outs"
-              items={shift.handover.stockOuts}
-              none="No stock-outs reported"
-            />
-            <HandoverList
-              title="Service interruptions"
-              items={shift.handover.interruptions}
-              none="No interruptions reported"
-            />
-            <div
-              className={cn(
-                "rounded-sm border px-3 py-2 text-xs",
-                shift.handover.acknowledgedAt != null
-                  ? "border-verified/30 bg-verified-tint text-verified"
-                  : "border-line bg-subtle text-ink-muted",
-              )}
+            <Panel
+              title="Handover"
+              aside={
+                shift.phase === "completed"
+                  ? "To the incoming morning shift"
+                  : upcoming
+                    ? "Shift not yet started"
+                    : "In progress"
+              }
             >
-              {shift.handover.acknowledgedAt != null
-                ? `Acknowledged by incoming shift at ${hhmm(shift.handover.acknowledgedAt)} (${shift.handover.acknowledgedBy})`
-                : shift.phase === "completed"
-                  ? "Not yet acknowledged by the incoming shift"
-                  : "Handover is acknowledged when the next shift begins"}
-            </div>
+              <div className="space-y-3 px-4 py-3 text-sm">
+                <HandoverList
+                  title="Unresolved faults"
+                  items={shift.handover.faults}
+                  none="No faults reported"
+                />
+                <HandoverList
+                  title="Stock-outs"
+                  items={shift.handover.stockOuts}
+                  none="No stock-outs reported"
+                />
+                <HandoverList
+                  title="Service interruptions"
+                  items={shift.handover.interruptions}
+                  none="No interruptions reported"
+                />
+                <div
+                  className={cn(
+                    "rounded-sm border px-3 py-2 text-xs",
+                    shift.handover.acknowledgedAt != null
+                      ? "border-verified/30 bg-verified-tint text-verified"
+                      : "border-line bg-subtle text-ink-muted",
+                  )}
+                >
+                  {shift.handover.acknowledgedAt != null
+                    ? `Acknowledged by incoming shift at ${hhmm(shift.handover.acknowledgedAt)} (${shift.handover.acknowledgedBy})`
+                    : shift.phase === "completed"
+                      ? "Not yet acknowledged by the incoming shift"
+                      : "Handover is acknowledged when the next shift begins"}
+                </div>
+              </div>
+            </Panel>
           </div>
-        </Panel>
-      </div>
-
-      </>
+        </>
       )}
 
-      {section === "patients" && (
-        <PatientDaybook facilityId={f.id} confirmed={confirmed} />
-      )}
+      {section === "patients" && <PatientDaybook facilityId={f.id} confirmed={confirmed} />}
 
       {section === "doctors" && (
         <>
@@ -442,7 +459,11 @@ function HealthDetailPage() {
             <Panel title="Facility checklist" aside="Older than 3 days is stale">
               <InfraChecklist f={f} />
             </Panel>
-            <Panel title="Last 14 days of submissions" aside="Today ringed" bodyClassName="px-4 py-3">
+            <Panel
+              title="Last 14 days of submissions"
+              aside="Today ringed"
+              bodyClassName="px-4 py-3"
+            >
               <SubmissionHistoryRow facilityId={f.id} />
             </Panel>
           </div>
@@ -479,7 +500,9 @@ function PatientDaybook({ facilityId, confirmed }: { facilityId: string; confirm
             <tr>
               <th scope="col">Time</th>
               <th scope="col">Patient</th>
-              <th scope="col" className="num">Age</th>
+              <th scope="col" className="num">
+                Age
+              </th>
               <th scope="col">Complaint</th>
               <th scope="col">Diagnosis</th>
               <th scope="col">Medicine</th>
@@ -491,22 +514,48 @@ function PatientDaybook({ facilityId, confirmed }: { facilityId: string; confirm
           <tbody>
             {shown.map((e) => (
               <tr key={e.id}>
-                <td data-label="Time" className="num whitespace-nowrap">{hhmm(e.timeMin)}</td>
+                <td data-label="Time" className="num whitespace-nowrap">
+                  {hhmm(e.timeMin)}
+                </td>
                 <td data-label="Patient">
                   <span className="font-semibold">{e.patientName}</span>
-                  <span className="block text-2xs text-ink-muted">{e.gender === "M" ? "Male" : "Female"} · CNIC {e.cnic}</span>
+                  <span className="block text-2xs text-ink-muted">
+                    {e.gender === "M" ? "Male" : "Female"} · CNIC {e.cnic}
+                  </span>
                 </td>
-                <td data-label="Age" className="num">{e.age}</td>
-                <td data-label="Complaint" className="max-w-[160px] text-xs">{e.complaint}</td>
-                <td data-label="Diagnosis" className="max-w-[160px] text-xs">{e.diagnosis}</td>
-                <td data-label="Medicine" className="max-w-[200px] text-xs">{e.medicine}</td>
-                <td data-label="Doctor" className="whitespace-nowrap text-xs">{e.doctor}</td>
+                <td data-label="Age" className="num">
+                  {e.age}
+                </td>
+                <td data-label="Complaint" className="max-w-[160px] text-xs">
+                  {e.complaint}
+                </td>
+                <td data-label="Diagnosis" className="max-w-[160px] text-xs">
+                  {e.diagnosis}
+                </td>
+                <td data-label="Medicine" className="max-w-[200px] text-xs">
+                  {e.medicine}
+                </td>
+                <td data-label="Doctor" className="whitespace-nowrap text-xs">
+                  {e.doctor}
+                </td>
                 <td data-label="Status">
-                  <Pill tone={e.status === "Treated" ? "verified" : e.status === "Referred" ? "sent" : e.status === "Admitted" ? "pending" : "neutral"}>
+                  <Pill
+                    tone={
+                      e.status === "Treated"
+                        ? "verified"
+                        : e.status === "Referred"
+                          ? "sent"
+                          : e.status === "Admitted"
+                            ? "pending"
+                            : "neutral"
+                    }
+                  >
                     {e.status}
                   </Pill>
                 </td>
-                <td data-label="Follow-up" className="text-xs">{e.followUp ?? "—"}</td>
+                <td data-label="Follow-up" className="text-xs">
+                  {e.followUp ?? "—"}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -515,7 +564,7 @@ function PatientDaybook({ facilityId, confirmed }: { facilityId: string; confirm
       {entries.length > 10 && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full border-t border-line px-4 py-2 text-xs font-semibold text-kurram hover:bg-subtle"
+          className="w-full border-t border-line px-4 py-2 text-xs font-semibold text-dept hover:bg-subtle"
         >
           {expanded ? "Show fewer" : `Show all ${entries.length} entries`}
         </button>
@@ -538,21 +587,35 @@ function DoctorProfiles({ facilityId }: { facilityId: string }) {
               <th scope="col">Qualification</th>
               <th scope="col">Specialisation</th>
               <th scope="col">Department</th>
-              <th scope="col" className="num">Years</th>
-              <th scope="col" className="num">Patients today</th>
-              <th scope="col" className="num">This month</th>
+              <th scope="col" className="num">
+                Years
+              </th>
+              <th scope="col" className="num">
+                Patients today
+              </th>
+              <th scope="col" className="num">
+                This month
+              </th>
             </tr>
           </thead>
           <tbody>
             {doctors.map((d) => (
               <tr key={d.staffId}>
-                <td data-label="Name" className="font-semibold">{d.name}</td>
+                <td data-label="Name" className="font-semibold">
+                  {d.name}
+                </td>
                 <td data-label="Qualification">{d.qualification}</td>
                 <td data-label="Specialisation">{d.specialisation}</td>
                 <td data-label="Department">{d.department}</td>
-                <td data-label="Years" className="num">{d.yearsOfService}</td>
-                <td data-label="Patients today" className="num font-semibold">{d.patientsSeenToday}</td>
-                <td data-label="This month" className="num">{d.patientsThisMonth}</td>
+                <td data-label="Years" className="num">
+                  {d.yearsOfService}
+                </td>
+                <td data-label="Patients today" className="num font-semibold">
+                  {d.patientsSeenToday}
+                </td>
+                <td data-label="This month" className="num">
+                  {d.patientsThisMonth}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -570,10 +633,7 @@ function BiometricAttendance({ facilityId }: { facilityId: string }) {
   const veryLate = logs.filter((l) => l.status === "Very late").length;
 
   return (
-    <Panel
-      title="Biometric attendance — today"
-      aside={`${logs.length} staff checked in`}
-    >
+    <Panel title="Biometric attendance — today" aside={`${logs.length} staff checked in`}>
       <div className="grid grid-cols-3 gap-2 border-b border-line px-4 py-3">
         <MiniStat label="On time" value={onTime} />
         <MiniStat label="Late (10–30 min)" value={late} />
@@ -594,13 +654,29 @@ function BiometricAttendance({ facilityId }: { facilityId: string }) {
           <tbody>
             {logs.map((l) => (
               <tr key={l.staffId}>
-                <td data-label="Name" className="font-semibold">{l.name}</td>
+                <td data-label="Name" className="font-semibold">
+                  {l.name}
+                </td>
                 <td data-label="Designation">{l.designation}</td>
-                <td data-label="Method" className="text-xs">{l.method}</td>
-                <td data-label="Check-in" className="num">{hhmm(l.checkIn)}</td>
-                <td data-label="Check-out" className="num">{l.checkOut ? hhmm(l.checkOut) : "—"}</td>
+                <td data-label="Method" className="text-xs">
+                  {l.method}
+                </td>
+                <td data-label="Check-in" className="num">
+                  {hhmm(l.checkIn)}
+                </td>
+                <td data-label="Check-out" className="num">
+                  {l.checkOut ? hhmm(l.checkOut) : "—"}
+                </td>
                 <td data-label="Status">
-                  <Pill tone={l.status === "On time" ? "verified" : l.status === "Late" ? "pending" : "problem"}>
+                  <Pill
+                    tone={
+                      l.status === "On time"
+                        ? "verified"
+                        : l.status === "Late"
+                          ? "pending"
+                          : "problem"
+                    }
+                  >
                     {l.status}
                   </Pill>
                 </td>
@@ -619,7 +695,8 @@ function DoctorTreatmentLogs({ facilityId }: { facilityId: string }) {
   const [selectedDoc, setSelectedDoc] = useState<string>("all");
   const [expanded, setExpanded] = useState(false);
 
-  const logs = selectedDoc === "all" ? allLogs : allLogs.filter((l) => l.doctorStaffId === selectedDoc);
+  const logs =
+    selectedDoc === "all" ? allLogs : allLogs.filter((l) => l.doctorStaffId === selectedDoc);
   const shown = expanded ? logs : logs.slice(0, 8);
   const totalBilled = logs.reduce((a, l) => a + l.billingPkr, 0);
   const waivedCount = logs.filter((l) => l.waived).length;
@@ -635,7 +712,10 @@ function DoctorTreatmentLogs({ facilityId }: { facilityId: string }) {
         <span className="text-xs font-semibold text-ink-muted">Filter by doctor:</span>
         <select
           value={selectedDoc}
-          onChange={(e) => { setSelectedDoc(e.target.value); setExpanded(false); }}
+          onChange={(e) => {
+            setSelectedDoc(e.target.value);
+            setExpanded(false);
+          }}
           className="rounded-sm border border-line bg-surface px-2 py-1 text-xs"
         >
           <option value="all">All doctors ({allLogs.length})</option>
@@ -655,7 +735,9 @@ function DoctorTreatmentLogs({ facilityId }: { facilityId: string }) {
             <tr>
               <th scope="col">Time</th>
               <th scope="col">Patient</th>
-              <th scope="col" className="num">Age</th>
+              <th scope="col" className="num">
+                Age
+              </th>
               <th scope="col">Complaint</th>
               <th scope="col">Examination</th>
               <th scope="col">Diagnosis</th>
@@ -663,32 +745,57 @@ function DoctorTreatmentLogs({ facilityId }: { facilityId: string }) {
               <th scope="col">Medicine</th>
               <th scope="col">Lab tests</th>
               <th scope="col">Outcome</th>
-              <th scope="col" className="num">Billing</th>
+              <th scope="col" className="num">
+                Billing
+              </th>
               <th scope="col">Follow-up</th>
             </tr>
           </thead>
           <tbody>
             {shown.map((t) => (
               <tr key={t.id}>
-                <td data-label="Time" className="num whitespace-nowrap">{hhmm(t.timeMin)}</td>
+                <td data-label="Time" className="num whitespace-nowrap">
+                  {hhmm(t.timeMin)}
+                </td>
                 <td data-label="Patient">
                   <span className="font-semibold">{t.patientName}</span>
-                  <span className="block text-2xs text-ink-muted">{t.gender === "M" ? "M" : "F"}</span>
+                  <span className="block text-2xs text-ink-muted">
+                    {t.gender === "M" ? "M" : "F"}
+                  </span>
                 </td>
-                <td data-label="Age" className="num">{t.age}</td>
-                <td data-label="Complaint" className="max-w-[130px] text-xs">{t.complaint}</td>
-                <td data-label="Examination" className="max-w-[150px] text-xs">{t.examination}</td>
-                <td data-label="Diagnosis" className="max-w-[130px] text-xs">{t.diagnosis}</td>
-                <td data-label="Treatment" className="max-w-[140px] text-xs">{t.treatment}</td>
-                <td data-label="Medicine" className="max-w-[160px] text-xs">{t.medicine}</td>
-                <td data-label="Lab tests" className="text-xs">{t.labTests ?? "—"}</td>
+                <td data-label="Age" className="num">
+                  {t.age}
+                </td>
+                <td data-label="Complaint" className="max-w-[130px] text-xs">
+                  {t.complaint}
+                </td>
+                <td data-label="Examination" className="max-w-[150px] text-xs">
+                  {t.examination}
+                </td>
+                <td data-label="Diagnosis" className="max-w-[130px] text-xs">
+                  {t.diagnosis}
+                </td>
+                <td data-label="Treatment" className="max-w-[140px] text-xs">
+                  {t.treatment}
+                </td>
+                <td data-label="Medicine" className="max-w-[160px] text-xs">
+                  {t.medicine}
+                </td>
+                <td data-label="Lab tests" className="text-xs">
+                  {t.labTests ?? "—"}
+                </td>
                 <td data-label="Outcome">
-                  <Pill tone={
-                    t.outcome === "Discharged" ? "verified"
-                    : t.outcome === "Follow-up advised" ? "sent"
-                    : t.outcome === "Referred" ? "pending"
-                    : "neutral"
-                  }>
+                  <Pill
+                    tone={
+                      t.outcome === "Discharged"
+                        ? "verified"
+                        : t.outcome === "Follow-up advised"
+                          ? "sent"
+                          : t.outcome === "Referred"
+                            ? "pending"
+                            : "neutral"
+                    }
+                  >
                     {t.outcome}
                   </Pill>
                 </td>
@@ -699,7 +806,9 @@ function DoctorTreatmentLogs({ facilityId }: { facilityId: string }) {
                     <span className="font-semibold">₨{t.billingPkr}</span>
                   )}
                 </td>
-                <td data-label="Follow-up" className="text-xs">{t.followUpDate ?? "—"}</td>
+                <td data-label="Follow-up" className="text-xs">
+                  {t.followUpDate ?? "—"}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -708,7 +817,7 @@ function DoctorTreatmentLogs({ facilityId }: { facilityId: string }) {
       {logs.length > 8 && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full border-t border-line px-4 py-2 text-xs font-semibold text-kurram hover:bg-subtle"
+          className="w-full border-t border-line px-4 py-2 text-xs font-semibold text-dept hover:bg-subtle"
         >
           {expanded ? "Show fewer" : `Show all ${logs.length} treatments`}
         </button>
@@ -727,7 +836,10 @@ function BillingSection({ facilityId }: { facilityId: string }) {
 
   return (
     <div className="grid gap-4 xl:grid-cols-2">
-      <Panel title="Today's billing summary" aside={`${billing.patientsCharged + billing.patientsWaived} patients`}>
+      <Panel
+        title="Today's billing summary"
+        aside={`${billing.patientsCharged + billing.patientsWaived} patients`}
+      >
         <div className="space-y-3 px-4 py-3">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             <BillItem label="OPD fees" amount={billing.opdFees} />
@@ -739,7 +851,9 @@ function BillingSection({ facilityId }: { facilityId: string }) {
           </div>
           <div className="flex items-center justify-between rounded-md border border-line bg-subtle px-3 py-2">
             <span className="text-sm font-semibold text-ink">Total collected</span>
-            <span className="text-lg font-bold tabular-nums text-kurram">₨{billing.totalCollected.toLocaleString("en")}</span>
+            <span className="text-lg font-bold tabular-nums text-dept">
+              ₨{billing.totalCollected.toLocaleString("en")}
+            </span>
           </div>
           <div className="flex gap-4 text-xs text-ink-muted">
             <span>{billing.patientsCharged} patients charged</span>
@@ -748,34 +862,71 @@ function BillingSection({ facilityId }: { facilityId: string }) {
         </div>
       </Panel>
 
-      <Panel title="Weekly billing trend" aside={`Total: ₨${formatPkr(weekTotal)} · Waived: ₨${formatPkr(weekWaived)}`}>
+      <Panel
+        title="Weekly billing trend"
+        aside={`Total: ₨${formatPkr(weekTotal)} · Waived: ₨${formatPkr(weekWaived)}`}
+      >
         <div className="overflow-x-auto">
           <table className="ledger">
             <thead>
               <tr>
                 <th scope="col">Day</th>
-                <th scope="col" className="num">OPD</th>
-                <th scope="col" className="num">Lab</th>
-                <th scope="col" className="num">Bed</th>
-                <th scope="col" className="num">Surgery</th>
-                <th scope="col" className="num">Medicine</th>
-                <th scope="col" className="num">Total</th>
-                <th scope="col" className="num">Waived</th>
-                <th scope="col" className="num">Patients</th>
+                <th scope="col" className="num">
+                  OPD
+                </th>
+                <th scope="col" className="num">
+                  Lab
+                </th>
+                <th scope="col" className="num">
+                  Bed
+                </th>
+                <th scope="col" className="num">
+                  Surgery
+                </th>
+                <th scope="col" className="num">
+                  Medicine
+                </th>
+                <th scope="col" className="num">
+                  Total
+                </th>
+                <th scope="col" className="num">
+                  Waived
+                </th>
+                <th scope="col" className="num">
+                  Patients
+                </th>
               </tr>
             </thead>
             <tbody>
               {weekly.map((row) => (
                 <tr key={row.date}>
-                  <td data-label="Day" className="whitespace-nowrap">{row.day} {formatDate(row.date).split(" ").slice(0, 2).join(" ")}</td>
-                  <td data-label="OPD" className="num">₨{formatPkr(row.opdFees)}</td>
-                  <td data-label="Lab" className="num">₨{formatPkr(row.labCharges)}</td>
-                  <td data-label="Bed" className="num">₨{formatPkr(row.bedCharges)}</td>
-                  <td data-label="Surgery" className="num">₨{formatPkr(row.surgeryFees)}</td>
-                  <td data-label="Medicine" className="num">₨{formatPkr(row.medicineCharges)}</td>
-                  <td data-label="Total" className="num font-semibold">₨{formatPkr(row.total)}</td>
-                  <td data-label="Waived" className="num text-ink-muted">₨{formatPkr(row.waivedAmount)}</td>
-                  <td data-label="Patients" className="num">{row.patientsTotal}</td>
+                  <td data-label="Day" className="whitespace-nowrap">
+                    {row.day} {formatDate(row.date).split(" ").slice(0, 2).join(" ")}
+                  </td>
+                  <td data-label="OPD" className="num">
+                    ₨{formatPkr(row.opdFees)}
+                  </td>
+                  <td data-label="Lab" className="num">
+                    ₨{formatPkr(row.labCharges)}
+                  </td>
+                  <td data-label="Bed" className="num">
+                    ₨{formatPkr(row.bedCharges)}
+                  </td>
+                  <td data-label="Surgery" className="num">
+                    ₨{formatPkr(row.surgeryFees)}
+                  </td>
+                  <td data-label="Medicine" className="num">
+                    ₨{formatPkr(row.medicineCharges)}
+                  </td>
+                  <td data-label="Total" className="num font-semibold">
+                    ₨{formatPkr(row.total)}
+                  </td>
+                  <td data-label="Waived" className="num text-ink-muted">
+                    ₨{formatPkr(row.waivedAmount)}
+                  </td>
+                  <td data-label="Patients" className="num">
+                    {row.patientsTotal}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -790,7 +941,12 @@ function BillItem({ label, amount, muted }: { label: string; amount: number; mut
   return (
     <div className="rounded-md border border-line px-3 py-2">
       <div className="text-2xs text-ink-muted">{label}</div>
-      <div className={cn("mt-0.5 text-sm font-bold tabular-nums", muted ? "text-ink-muted" : "text-ink")}>
+      <div
+        className={cn(
+          "mt-0.5 text-sm font-bold tabular-nums",
+          muted ? "text-ink-muted" : "text-ink",
+        )}
+      >
         ₨{amount.toLocaleString("en")}
       </div>
     </div>

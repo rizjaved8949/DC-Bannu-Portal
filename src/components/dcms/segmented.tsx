@@ -17,7 +17,14 @@ export function Segmented<T extends string>({
   className?: string;
 }) {
   return (
-    <div role="group" aria-label={label} className={cn("inline-flex flex-wrap rounded-sm border border-line bg-surface p-0.5", className)}>
+    <div
+      role="group"
+      aria-label={label}
+      className={cn(
+        "inline-flex flex-wrap rounded-sm border border-line bg-surface p-0.5",
+        className,
+      )}
+    >
       {options.map((o) => {
         const active = o.value === value;
         return (
@@ -29,12 +36,19 @@ export function Segmented<T extends string>({
             className={cn(
               "inline-flex items-center gap-1.5 whitespace-nowrap rounded-[3px] font-semibold transition-colors duration-150",
               size === "sm" ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm",
-              active ? "bg-kurram text-white" : "text-ink-muted hover:bg-subtle hover:text-ink",
+              active ? "bg-dept text-white" : "text-ink-muted hover:bg-subtle hover:text-ink",
             )}
           >
             {o.label}
             {o.count != null && (
-              <span className={cn("rounded-sm px-1 text-2xs tabular-nums", active ? "bg-white/20" : "bg-neutral-tint text-neutral")}>{o.count}</span>
+              <span
+                className={cn(
+                  "rounded-sm px-1 text-2xs tabular-nums",
+                  active ? "bg-white/20" : "bg-neutral-tint text-neutral",
+                )}
+              >
+                {o.count}
+              </span>
             )}
           </button>
         );

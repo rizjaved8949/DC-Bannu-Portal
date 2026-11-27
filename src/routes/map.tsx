@@ -116,13 +116,24 @@ function MapPage() {
             <Skeleton className="h-[520px] w-full rounded-[5px] bg-line/40" />
           )}
           <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+            <span className="inline-flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
+              <span className="font-semibold text-ink">Fill</span>
+              <span className="inline-flex items-center gap-1.5">
+                <span aria-hidden className="inline-block size-3 rounded-full bg-edu" /> School
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span aria-hidden className="inline-block size-3 rounded-full bg-health" /> Health
+                facility
+              </span>
+              <span className="font-semibold text-ink">Ring</span>
+            </span>
             <StatusLegend />
             <span className="inline-flex items-center gap-1.5 text-xs text-ink-muted">
               <span
                 aria-hidden
                 className="inline-block size-3 rounded-full border-2 border-dashed border-ink-muted"
               />{" "}
-              Hollow marker: coordinates not verified
+              Hollow marker: non-functional school or coordinates not verified
             </span>
           </div>
           <p className="border-t border-line px-3 py-2 text-xs text-ink-muted">
@@ -163,7 +174,7 @@ function MapPage() {
                     ref={(el) => {
                       rowRefs.current[f.id] = el;
                     }}
-                    className={cn("flex items-center gap-3 px-4 py-2", active && "bg-kurram-soft")}
+                    className={cn("flex items-center gap-3 px-4 py-2", active && "bg-dept-tint")}
                   >
                     <button
                       type="button"
@@ -189,7 +200,7 @@ function MapPage() {
                     <Link
                       to={f.kind === "school" ? "/schools/$id" : "/health/$id"}
                       params={{ id: f.id }}
-                      className="shrink-0 text-xs text-kurram hover:underline"
+                      className="shrink-0 text-xs text-dept hover:underline"
                     >
                       Open
                     </Link>
@@ -223,12 +234,12 @@ function MapPage() {
               </thead>
               <tbody>
                 {list.map((f) => (
-                  <tr key={f.id} className={cn(f.id === selected && "bg-kurram-soft")}>
+                  <tr key={f.id} className={cn(f.id === selected && "bg-dept-tint")}>
                     <td data-label="Facility">
                       <Link
                         to={f.kind === "school" ? "/schools/$id" : "/health/$id"}
                         params={{ id: f.id }}
-                        className="font-semibold text-ink hover:text-kurram hover:underline"
+                        className="font-semibold text-ink hover:text-dept hover:underline"
                       >
                         {f.name}
                       </Link>

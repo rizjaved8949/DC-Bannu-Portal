@@ -216,7 +216,7 @@ export function BackLink({
   label: string;
 }) {
   return (
-    <Link to={to} className="inline-flex items-center gap-1 text-sm text-kurram hover:underline">
+    <Link to={to} className="inline-flex items-center gap-1 text-sm text-dept hover:underline">
       ← {label}
     </Link>
   );

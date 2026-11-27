@@ -63,7 +63,7 @@ export function HowToUse() {
             /* ignore */
           }
         }}
-        className="no-print inline-flex items-center gap-1.5 text-xs font-semibold text-kurram hover:underline"
+        className="no-print inline-flex items-center gap-1.5 text-xs font-semibold text-dept hover:underline"
       >
         <Compass className="size-3.5" />
         How to use this system
@@ -72,9 +72,9 @@ export function HowToUse() {
   }
 
   return (
-    <section className="no-print panel overflow-hidden border-l-[3px] border-l-kurram">
+    <section className="no-print panel overflow-hidden border-l-[3px] border-l-dept">
       <div className="flex flex-wrap items-center gap-3 px-5 py-3.5">
-        <Compass className="size-[18px] shrink-0 text-kurram" />
+        <Compass className="size-[18px] shrink-0 text-dept" />
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-semibold text-ink">New here? Four things to know</h2>
           <p className="text-xs text-ink-muted">
@@ -104,7 +104,7 @@ export function HowToUse() {
           {STEPS.map((s, i) => (
             <li key={s.title} className="bg-surface px-4 py-3">
               <div className="flex items-center gap-2">
-                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-kurram-soft text-2xs font-bold text-kurram">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-dept-tint text-2xs font-bold text-dept">
                   {i + 1}
                 </span>
                 <span className="text-xs font-semibold text-ink">{s.title}</span>

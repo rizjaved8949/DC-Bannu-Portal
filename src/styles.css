@@ -63,6 +63,12 @@
   --color-ink-muted: var(--ink-muted);
   --color-kurram: var(--kurram);
   --color-kurram-soft: var(--kurram-soft);
+  --color-edu: var(--edu);
+  --color-edu-tint: var(--edu-tint);
+  --color-health: var(--health);
+  --color-health-tint: var(--health-tint);
+  --color-dept: var(--dept);
+  --color-dept-tint: var(--dept-tint);
   --color-topbar: var(--topbar);
   --color-topbar-raised: var(--topbar-raised);
   --color-topbar-muted: var(--topbar-muted);
@@ -85,6 +91,7 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -113,15 +120,24 @@
   --topbar-foreground: oklch(1 0 0);
   --wheat: oklch(0.67 0.132 77.3); /* #C2891C, markers only */
 
+  /* Department accents. Text on tint and on white is at least 5:1. */
+  --edu: oklch(0.47 0.16 268); /* #3550B3, Education / schools */
+  --edu-tint: oklch(0.948 0.03 268);
+  --health: oklch(0.49 0.095 196); /* #007072, Health facilities */
+  --health-tint: oklch(0.948 0.03 196);
+  /* Section accent: follows the page's department (see [data-dept] below). */
+  --dept: var(--kurram);
+  --dept-tint: var(--kurram-soft);
+
   /* Status pairs: text on tint */
-  --status-verified-fg: oklch(0.425 0.086 154.8);
-  --status-verified-bg: oklch(0.943 0.018 155.8);
-  --status-sent-fg: oklch(0.396 0.077 249.3);
-  --status-sent-bg: oklch(0.938 0.016 245.1);
-  --status-pending-fg: oklch(0.48 0.098 72.1);
-  --status-pending-bg: oklch(0.949 0.03 83.6);
-  --status-problem-fg: oklch(0.445 0.126 32.3);
-  --status-problem-bg: oklch(0.928 0.023 34.3);
+  --status-verified-fg: oklch(0.47 0.12 152);
+  --status-verified-bg: oklch(0.946 0.04 152);
+  --status-sent-fg: oklch(0.47 0.13 250);
+  --status-sent-bg: oklch(0.945 0.03 250);
+  --status-pending-fg: oklch(0.5 0.115 68);
+  --status-pending-bg: oklch(0.952 0.05 82);
+  --status-problem-fg: oklch(0.5 0.16 30);
+  --status-problem-bg: oklch(0.94 0.035 30);
   --status-neutral-fg: oklch(0.454 0.015 164.3);
   --status-neutral-bg: oklch(0.947 0.003 145.5);
 
@@ -146,11 +162,13 @@
   --input: var(--line);
   --ring: var(--wheat);
 
-  --chart-1: var(--status-verified-fg);
-  --chart-2: var(--status-sent-fg);
-  --chart-3: var(--status-pending-fg);
-  --chart-4: var(--status-problem-fg);
-  --chart-5: var(--status-neutral-fg);
+  /* Categorical chart palette, kept apart from status colours. Marks are 3:1+ on white. */
+  --chart-1: oklch(0.52 0.15 268);
+  --chart-2: oklch(0.56 0.1 196);
+  --chart-3: oklch(0.64 0.13 75);
+  --chart-4: oklch(0.55 0.15 340);
+  --chart-5: oklch(0.58 0.09 130);
+  --chart-6: oklch(0.6 0.14 40);
 
   --shadow-pop:
     0 8px 24px -8px oklch(0.253 0.017 163.2 / 0.22), 0 2px 6px -2px oklch(0.253 0.017 163.2 / 0.12);
@@ -219,7 +237,7 @@
 
 @utility tab-active {
   color: var(--ink);
-  box-shadow: inset 0 -3px 0 var(--wheat);
+  box-shadow: inset 0 -3px 0 var(--dept);
 }
 
 /* Ledger tables: square rows, right-aligned figures, stacked rows on phones */
@@ -359,9 +377,21 @@
 .skip-link:focus {
   top: 12px;
 }
+[data-dept="edu"] {
+  --dept: var(--edu);
+  --dept-tint: var(--edu-tint);
+}
+[data-dept="health"] {
+  --dept: var(--health);
+  --dept-tint: var(--health-tint);
+}
+.nav-tab[data-dept] svg,
+.nav-tab[aria-current="page"] svg {
+  color: var(--dept);
+}
 .nav-tab[aria-current="page"] {
-  background: var(--kurram-soft);
-  color: var(--kurram);
+  background: var(--dept-tint);
+  color: var(--dept);
 }
 .page-header {
   margin-bottom: 24px;
@@ -433,10 +463,9 @@
   height: 36px;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  color: var(--kurram);
-  background: var(--subtle);
+  border-radius: 50%;
+  color: var(--dept);
+  background: var(--dept-tint);
 }
 .ledger th {
   padding-top: 13px;

@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 export const COMPLAINT_SELECT =
-  "h-10 w-full min-w-0 rounded-md border border-line bg-surface px-3 text-sm text-ink focus:outline-2 focus:outline-kurram";
+  "h-10 w-full min-w-0 rounded-md border border-line bg-surface px-3 text-sm text-ink focus:outline-2 focus:outline-dept";
 export function ComplaintForm({
   facility,
   connection = "online",
@@ -202,7 +202,7 @@ function ComplaintComposer({
           <div className="flex gap-3">
             <button
               type="button"
-              className="font-semibold text-kurram underline"
+              className="font-semibold text-dept underline"
               disabled={!visible.length}
               onClick={() => setSelected([...new Set([...selected, ...visible.map((f) => f.id)])])}
             >
@@ -223,7 +223,7 @@ function ComplaintComposer({
             <label key={f.id} className="flex cursor-pointer items-start gap-3 p-3 hover:bg-subtle">
               <input
                 type="checkbox"
-                className="mt-1 size-4 accent-kurram"
+                className="mt-1 size-4 accent-dept"
                 checked={selected.includes(f.id)}
                 onChange={(e) =>
                   setSelected(

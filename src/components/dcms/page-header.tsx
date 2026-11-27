@@ -17,10 +17,10 @@ export function PageHeader({
 }) {
   const { clockMin } = useApp();
   return (
-    <header className="page-header pb-1">
+    <header className="page-header relative pb-4 after:absolute after:bottom-0 after:left-0 after:h-[3px] after:w-[72px] after:rounded-full after:bg-dept after:content-['']">
       <div className="flex items-baseline justify-between gap-6">
         <h1 className="text-[30px] font-bold leading-tight text-ink sm:text-[34px]">{title}</h1>
-        <p dir="rtl" lang="ur" className="font-urdu shrink-0 text-xl text-kurram">
+        <p dir="rtl" lang="ur" className="font-urdu shrink-0 text-xl text-dept">
           {urdu}
         </p>
       </div>

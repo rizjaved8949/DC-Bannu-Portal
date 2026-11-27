@@ -34,8 +34,8 @@ export function DistrictRegister({ facilities }: { facilities: Facility[] }) {
         </p>
       </div>
       {role.department !== "Health" && (
-        <Link to="/schools" className="register-stat">
-          <GraduationCap className="size-5 text-kurram" />
+        <Link to="/schools" data-dept="edu" className="register-stat">
+          <GraduationCap className="size-5 text-edu" />
           <div>
             <p className="num text-[30px] font-bold leading-tight">{schools.length}</p>
             <p className="font-semibold">Government schools</p>
@@ -46,8 +46,8 @@ export function DistrictRegister({ facilities }: { facilities: Facility[] }) {
         </Link>
       )}
       {role.department !== "Education" && (
-        <Link to="/health" className="register-stat">
-          <HeartPulse className="size-5 text-kurram" />
+        <Link to="/health" data-dept="health" className="register-stat">
+          <HeartPulse className="size-5 text-health" />
           <div>
             <p className="num text-[30px] font-bold leading-tight">{hospitals.length}</p>
             <p className="font-semibold">Public health facilities</p>
@@ -56,7 +56,7 @@ export function DistrictRegister({ facilities }: { facilities: Facility[] }) {
         </Link>
       )}
       <Link to="/staff" className="register-stat">
-        <UsersRound className="size-5 text-kurram" />
+        <UsersRound className="size-5 text-dept" />
         <div>
           <p className="num text-[30px] font-bold leading-tight">{staff.toLocaleString("en")}</p>
           <p className="font-semibold">Staff on the register</p>

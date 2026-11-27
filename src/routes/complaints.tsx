@@ -269,7 +269,7 @@ function ComplaintWorkspace() {
                   <tr key={c.id}>
                     <td data-label="Complaint">
                       <Link
-                        className="font-semibold text-kurram hover:underline"
+                        className="font-semibold text-dept hover:underline"
                         to="/complaints"
                         search={{ ...search, complaint: c.id }}
                       >
@@ -392,7 +392,7 @@ function ComplaintDetail({
               <Link
                 to={f.kind === "school" ? "/schools/$id" : "/health/$id"}
                 params={{ id: f.id }}
-                className="font-semibold text-kurram hover:underline"
+                className="font-semibold text-dept hover:underline"
               >
                 {f.name}
               </Link>
