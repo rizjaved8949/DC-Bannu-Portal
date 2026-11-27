@@ -2,7 +2,9 @@ import { z } from "zod";
 import {
   facilityById,
   TODAY,
+  TEHSILS,
   type Report,
+  type Tehsil,
   type ReviewItem,
   type SchoolDay,
   type Shift,
@@ -13,7 +15,8 @@ import {
   COMPLAINT_STATUSES,
 } from "@/data/mock";
 
-export const WORKSPACE_STORAGE_KEY = "dcms-bannu-workspace-v3";
+// v4: schools switched to the real North Waziristan register (new facility ids).
+export const WORKSPACE_STORAGE_KEY = "dcms-bannu-workspace-v4";
 const facilityId = z.string().refine((id) => !!facilityById[id]);
 const minute = z.number().int().min(0).max(1439);
 const status = z.enum(["draft", "sent", "received", "pending", "verified", "rejected", "none"]);
@@ -124,7 +127,7 @@ export interface StoredWorkspace {
   roleId: "dc" | "deo" | "dho" | "ac-domel";
   filters: {
     department: "All" | "Education" | "Health";
-    tehsil: "All" | "Bannu" | "Domel" | "Kakki" | "Miryan" | "Baka Khel" | "Wazir";
+    tehsil: "All" | Tehsil;
     dateRange: "today" | "yesterday" | "7d" | "month";
     shift: "All" | "Morning" | "Evening" | "Night";
   };
@@ -175,7 +178,7 @@ const workspace = z.object({
   roleId: z.enum(["dc", "deo", "dho", "ac-domel"]),
   filters: z.object({
     department: z.enum(["All", "Education", "Health"]),
-    tehsil: z.enum(["All", "Bannu", "Domel", "Kakki", "Miryan", "Baka Khel", "Wazir"]),
+    tehsil: z.enum(["All", ...TEHSILS]),
     dateRange: z.enum(["today", "yesterday", "7d", "month"]),
     shift: z.enum(["All", "Morning", "Evening", "Night"]),
   }),

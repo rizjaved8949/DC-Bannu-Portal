@@ -1,9 +1,19 @@
 /**
- * All prototype data for DCMS Bannu. Generated deterministically from a seeded
- * mulberry32 RNG (seed 2311) and short name lists. "Now" is Mon 23 Nov 2026, 11:40 PKT.
+ * All prototype data for DCMS Bannu. "Now" is Mon 23 Nov 2026, 11:40 PKT.
  * Times are stored as minutes-since-midnight or "YYYY-MM-DD" strings so server and
  * browser render identically.
+ *
+ * Schools: the register (name, EMIS, level, tehsil, village, functional status, reason,
+ * students, working teachers, principal, coordinates, DEO remarks) is real North
+ * Waziristan data from src/data/schools-source.ts. Everything a school does day to day
+ * (reports, attendance, teacher names other than the principal, class split, checklist)
+ * is a seeded simulation built on those real totals, to show how live data will appear.
+ *
+ * Health facilities are fully simulated (seeded mulberry32, seed 2311).
  */
+
+import type { SchoolSourceRecord, SourceTehsil } from "./school-types";
+import { SCHOOL_SOURCE } from "./schools-source";
 
 // ---------- RNG ----------
 export function mulberry32(seed: number) {
@@ -89,8 +99,24 @@ export function ageLabel(date: string): string {
 }
 
 // ---------- Domain types ----------
-export const TEHSILS = ["Bannu", "Domel", "Kakki", "Miryan", "Baka Khel", "Wazir"] as const;
+/** Health facilities are Bannu's (simulated). Schools are North Waziristan's (real register). */
+export const BANNU_TEHSILS = ["Bannu", "Domel", "Kakki", "Miryan", "Baka Khel", "Wazir"] as const;
+export const NW_TEHSILS = [
+  "Mirali",
+  "Miranshah",
+  "Datta Khel",
+  "Dossali",
+  "Spinwam",
+  "Shewa",
+  "Razmak",
+  "Ghulam Khan",
+  "Garyum",
+] as const satisfies readonly SourceTehsil[];
+/** Female schools whose location column does not name a single tehsil. */
+export const TEHSIL_NOT_STATED = "Tehsil not stated";
+export const TEHSILS = [...BANNU_TEHSILS, ...NW_TEHSILS, TEHSIL_NOT_STATED] as const;
 export type Tehsil = (typeof TEHSILS)[number];
+type BannuTehsil = (typeof BANNU_TEHSILS)[number];
 
 export type ReportStatus =
   "draft" | "sent" | "received" | "pending" | "verified" | "rejected" | "none";
@@ -127,16 +153,22 @@ export interface InfraFlag {
 }
 
 export interface Facility {
-  id: string; // same as code, lowercase-free e.g. SCH114
-  code: string;
+  id: string; // schools: SCH-<EMIS>; health: HF201
+  code: string; // schools: EMIS code; health: HF201
   name: string;
   kind: "school" | "health";
   department: Department;
+  district: "Bannu" | "North Waziristan";
   tehsil: Tehsil;
   village: string;
-  lat: number;
-  lng: number;
+  /** null when the coordinates file has no entry for this school. */
+  lat: number | null;
+  lng: number | null;
   coordsVerified: boolean;
+  /** False for schools the source files list as non-functional or closed. They send no reports. */
+  operational: boolean;
+  /** The school's row from the North Waziristan source files. */
+  source?: SchoolSourceRecord;
   channel: Channel;
   rosterVersion: string; // current roster on the district server
   infra: Record<InfraKey, InfraFlag>;
@@ -397,7 +429,7 @@ const SURNAMES = [
   "Yousafzai",
 ] as const;
 
-const VILLAGES_BY_TEHSIL: Record<Tehsil, string[]> = {
+const VILLAGES_BY_TEHSIL: Record<BannuTehsil, string[]> = {
   Bannu: ["Bannu City", "Township", "Mandan", "Hawaid"],
   Domel: ["Domel", "Sokari"],
   Kakki: ["Kakki", "Mamash Khel"],
@@ -405,7 +437,7 @@ const VILLAGES_BY_TEHSIL: Record<Tehsil, string[]> = {
   "Baka Khel": ["Baka Khel", "Jani Khel"],
   Wazir: ["Ghoriwala", "Jani Khel"],
 };
-const TEHSIL_CENTRE: Record<Tehsil, [number, number]> = {
+const TEHSIL_CENTRE: Record<BannuTehsil, [number, number]> = {
   Bannu: [32.99, 70.6],
   Domel: [33.09, 70.46],
   Kakki: [32.87, 70.56],
@@ -420,16 +452,23 @@ function personName(gender: "M" | "F"): string {
     ? `${pick(MALE_FIRST)} ${pick(MALE_MIDDLE)}`
     : `${pick(MALE_FIRST)} ${pick(MALE_MIDDLE)} ${pick(SURNAMES)}`;
 }
+/** Demo teacher name from a per-school seed (the files name only the principal). */
+function demoName(gender: "M" | "F", r: () => number): string {
+  const p = <T>(arr: readonly T[]) => arr[Math.floor(r() * arr.length)] as T;
+  if (gender === "F") return `${p(FEMALE_FIRST)} ${p(SURNAMES)}`;
+  return r() < 0.5
+    ? `${p(MALE_FIRST)} ${p(MALE_MIDDLE)}`
+    : `${p(MALE_FIRST)} ${p(MALE_MIDDLE)} ${p(SURNAMES)}`;
+}
 function initialsOf(name: string) {
   const parts = name.split(" ");
   return ((parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")).toUpperCase();
 }
-const masked = () => `••••${rand(100, 989)}`;
 
 function clampCoord(v: number, min: number, max: number) {
   return Math.min(max, Math.max(min, v));
 }
-function coordsFor(t: Tehsil): [number, number] {
+function coordsFor(t: BannuTehsil): [number, number] {
   const [la, ln] = TEHSIL_CENTRE[t];
   return [
     +clampCoord(la + (rng() - 0.5) * 0.07, 32.8, 33.15).toFixed(4),
@@ -447,113 +486,86 @@ function infraFlags(problemRate: number): Record<InfraKey, InfraFlag> {
 }
 
 // ---------- Facilities ----------
-const SCHOOL_PLAN: { tehsil: Tehsil; count: number }[] = [
-  { tehsil: "Bannu", count: 11 },
-  { tehsil: "Domel", count: 8 },
-  { tehsil: "Kakki", count: 8 },
-  { tehsil: "Miryan", count: 7 },
-  { tehsil: "Baka Khel", count: 7 },
-  { tehsil: "Wazir", count: 7 },
-];
-const LEVELS: SchoolLevel[] = [
-  "Primary",
-  "Primary",
-  "Primary",
-  "Primary",
-  "Middle",
-  "Middle",
-  "High",
-  "High",
-  "Higher Secondary",
-];
-const PREFIX: Record<SchoolLevel, Record<Gender, string>> = {
-  Primary: { Boys: "GPS", Girls: "GGPS" },
-  Middle: { Boys: "GMS", Girls: "GGMS" },
-  High: { Boys: "GHS", Girls: "GGHS" },
-  "Higher Secondary": { Boys: "GHSS", Girls: "GGHSS" },
-};
 const TYPE_LABEL: Record<SchoolLevel, string> = {
   Primary: "Primary school",
   Middle: "Middle school",
   High: "High school",
   "Higher Secondary": "Higher secondary school",
 };
+/** Not in the source files: per-school demo values come from a seed of the school id. */
+const schoolRng = (id: string, salt: number) => mulberry32(hashString(id) ^ salt);
 
-const schools: Facility[] = [];
+/** Real North Waziristan schools, one per row of the source files. */
+const schools: Facility[] = SCHOOL_SOURCE.map((src) => {
+  const code = src.emis ?? `GF${src.serial}`;
+  const id = `SCH-${code}`;
+  const r = schoolRng(id, 0x5c4);
+  const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
+  const infra = {} as Record<InfraKey, InfraFlag>;
+  for (const k of INFRA_KEYS) {
+    const daysAgo = r() < 0.16 ? int(5, 41) : int(0, 3);
+    infra[k] = { ok: r() >= 0.14, updated: addDays(TODAY, -daysAgo) };
+  }
+  return {
+    id,
+    code,
+    name: src.name,
+    kind: "school",
+    department: "Education",
+    district: "North Waziristan",
+    tehsil: src.tehsil ?? TEHSIL_NOT_STATED,
+    village: src.village ?? "Location not stated",
+    lat: src.lat,
+    lng: src.lng,
+    coordsVerified: src.lat != null,
+    operational: src.status === "Functional",
+    source: src,
+    channel: r() < 0.3 ? "sms" : "app",
+    rosterVersion: `RV0${int(2, 6)}`,
+    infra,
+    equipment: {
+      label: "Furniture and boards",
+      ok: r() >= 0.15,
+      updated: addDays(TODAY, -int(0, 9)),
+    },
+    level: src.level,
+    gender: src.gender,
+    typeLabel: `${TYPE_LABEL[src.level]}, ${src.gender.toLowerCase()}`,
+    headName: src.principal ?? "Not recorded",
+    phoneMasked: `03••-•••${int(1000, 9899)}`,
+  } satisfies Facility;
+});
+
+/**
+ * Fixed functional schools used by the review queue, complaints and tests as stable
+ * examples. Picked by position among functional schools that have students and teachers.
+ */
+const demoPool = schools.filter(
+  (f) => f.operational && (f.source?.students ?? 0) >= 40 && (f.source?.teachers ?? 0) >= 2,
+);
+const demoAt = (i: number) => demoPool[(i * 37) % demoPool.length]!.id;
+export const DEMO_SCHOOLS = {
+  /** Rejected SMS report with a roster mismatch. */
+  rejectedSms: demoAt(1),
+  /** Verified SMS report. */
+  verifiedSms: demoAt(2),
+  /** Present-exceeds-enrolled examples. */
+  implausible: [demoAt(3), demoAt(4), demoAt(5)],
+  /** Used by complaints and the field app examples. */
+  complaintA: demoAt(6),
+  complaintB: demoAt(7),
+  fieldExample: demoAt(8),
+} as const;
 {
-  const usedNames = new Map<string, number>();
-  let n = 101;
-  for (const { tehsil, count } of SCHOOL_PLAN) {
-    for (let i = 0; i < count; i++) {
-      const level = pick(LEVELS);
-      const gender: Gender = chance(0.42) ? "Girls" : "Boys";
-      const village = pick(VILLAGES_BY_TEHSIL[tehsil]);
-      const base = `${PREFIX[level][gender]} ${village}`;
-      const seen = (usedNames.get(base) ?? 0) + 1;
-      usedNames.set(base, seen);
-      const name =
-        village === "Bannu City"
-          ? `${PREFIX[level][gender]} No. ${seen} Bannu City`
-          : seen > 1
-            ? `${base} No. ${seen}`
-            : base;
-      const [lat, lng] = coordsFor(tehsil);
-      const code = `SCH${n++}`;
-      schools.push({
-        id: code,
-        code,
-        name,
-        kind: "school",
-        department: "Education",
-        tehsil,
-        village,
-        lat,
-        lng,
-        coordsVerified: chance(0.72),
-        channel: chance(0.3) ? "sms" : "app",
-        rosterVersion: `RV0${rand(2, 6)}`,
-        infra: infraFlags(0.14),
-        equipment: {
-          label: "Furniture and boards",
-          ok: !chance(0.15),
-          updated: addDays(TODAY, -rand(0, 9)),
-        },
-        level,
-        gender,
-        typeLabel: `${TYPE_LABEL[level]}, ${gender.toLowerCase()}`,
-        headName: personName(gender === "Girls" ? "F" : "M"),
-        phoneMasked: `03••-•••${rand(1000, 9899)}`,
-      });
-    }
-  }
-  // Fix a few well-known names from the brief so they appear exactly.
-  const fixed: [number, string, SchoolLevel, Gender, string][] = [
-    [0, "GHSS No. 1 Bannu City", "Higher Secondary", "Boys", "Bannu City"],
-    [2, "GPS Mandan No. 2", "Primary", "Boys", "Mandan"],
-    [3, "GGHS Hawaid", "High", "Girls", "Hawaid"],
-    [40, "GGMS Jani Khel", "Middle", "Girls", "Jani Khel"],
-    [42, "GHS Ghoriwala", "High", "Boys", "Ghoriwala"],
-  ];
-  for (const [idx, name, level, gender, village] of fixed) {
-    const s = schools[idx];
-    if (!s) continue;
-    s.name = name;
-    s.level = level;
-    s.gender = gender;
-    s.village = village;
-    s.typeLabel = `${TYPE_LABEL[level]}, ${gender.toLowerCase()}`;
-  }
-  // SCH102 and SCH114 are SMS examples referenced in the brief.
-  const s102 = schools[1];
-  if (s102) {
-    s102.channel = "sms";
-    s102.rosterVersion = "RV04";
-  }
-  const s114 = schools[13];
-  if (s114) s114.rosterVersion = "RV04";
+  const rej = schools.find((f) => f.id === DEMO_SCHOOLS.rejectedSms)!;
+  rej.channel = "sms";
+  rej.rosterVersion = "RV04";
+  const ver = schools.find((f) => f.id === DEMO_SCHOOLS.verifiedSms)!;
+  ver.channel = "sms";
+  ver.rosterVersion = "RV04";
 }
 
-const HEALTH_PLAN: { name: string; type: HealthType; tehsil: Tehsil; village: string }[] = [
+const HEALTH_PLAN: { name: string; type: HealthType; tehsil: BannuTehsil; village: string }[] = [
   { name: "DHQ Teaching Hospital Bannu", type: "DHQ", tehsil: "Bannu", village: "Bannu City" },
   { name: "Women & Children Hospital Bannu", type: "WCH", tehsil: "Bannu", village: "Township" },
   { name: "RHC Domel", type: "RHC", tehsil: "Domel", village: "Domel" },
@@ -585,6 +597,8 @@ const healthFacilities: Facility[] = HEALTH_PLAN.map((h, i) => {
     name: h.name,
     kind: "health",
     department: "Health",
+    district: "Bannu",
+    operational: true,
     tehsil: h.tehsil,
     village: h.village,
     lat,
@@ -641,47 +655,6 @@ const BPS: Record<Designation, number> = {
   "Ward Orderly": 3,
 };
 
-function schoolPostPlan(level: SchoolLevel): Partial<Record<SchoolDesignation, number>> {
-  switch (level) {
-    case "Primary":
-      return { PST: rand(3, 5), CT: rand(0, 1), "Naib Qasid": 1, Chowkidar: 1 };
-    case "Middle":
-      return {
-        SST: rand(1, 2),
-        PST: rand(3, 4),
-        CT: rand(1, 2),
-        AT: 1,
-        TT: 1,
-        DM: rand(0, 1),
-        "Naib Qasid": 1,
-        Chowkidar: 1,
-      };
-    case "High":
-      return {
-        SST: rand(3, 4),
-        PST: rand(2, 3),
-        CT: rand(2, 3),
-        AT: 1,
-        TT: 1,
-        DM: 1,
-        PET: 1,
-        "Naib Qasid": rand(1, 2),
-        Chowkidar: 1,
-      };
-    case "Higher Secondary":
-      return {
-        SST: rand(5, 6),
-        PST: rand(2, 3),
-        CT: rand(3, 4),
-        AT: 1,
-        TT: rand(1, 2),
-        DM: 1,
-        PET: 1,
-        "Naib Qasid": 2,
-        Chowkidar: 1,
-      };
-  }
-}
 function healthPostPlan(t: HealthType): Partial<Record<HealthDesignation, number>> {
   switch (t) {
     case "DHQ":
@@ -739,52 +712,80 @@ export interface PostLine {
 
 export const staff: Staff[] = [];
 export const posts: PostLine[] = [];
+
+/** Teaching designations a school's working teachers are spread over (demo; files give only the count). */
+const TEACHING_MIX: Record<SchoolLevel, SchoolDesignation[]> = {
+  Primary: ["PST", "PST", "CT", "PST", "AT"],
+  Middle: ["SST", "PST", "CT", "AT", "TT", "PST", "DM", "SST"],
+  High: ["SST", "SST", "PST", "CT", "AT", "TT", "DM", "PET", "SST", "CT"],
+  "Higher Secondary": ["SST", "SST", "CT", "PST", "AT", "TT", "DM", "PET", "SST", "CT", "SST"],
+};
 {
   let sid = 1;
-  for (const f of facilities) {
+  const pushStaff = (
+    f: Facility,
+    desig: Designation,
+    tcode: number,
+    gender: "M" | "F",
+    name: string,
+    shiftEligibility: Staff["shiftEligibility"],
+    r: () => number,
+  ) => {
+    staff.push({
+      id: `ST${String(sid++).padStart(4, "0")}`,
+      code: `T${tcode}`,
+      name,
+      initials: initialsOf(name),
+      gender,
+      personalNoMasked: `••••${100 + Math.floor(r() * 890)}`,
+      designation: desig,
+      bps: BPS[desig],
+      facilityId: f.id,
+      employment: r() < 0.78 ? "Regular" : "Contract",
+      shiftEligibility,
+      onRosterSince: addDays(TODAY, -(60 + Math.floor(r() * 3341))),
+    });
+  };
+  // Schools: exactly the "No of Working Teachers" from the source file. The principal, when
+  // named in the file, is the head; the other names and designations are demo values.
+  for (const f of schools) {
+    const count = f.source?.teachers ?? 0;
+    const r = schoolRng(f.id, 0x57a);
+    const gender = f.gender === "Girls" ? "F" : "M";
+    const mix = TEACHING_MIX[f.level!];
     let tcode = 101;
-    const plan: Partial<Record<Designation, number>> =
-      f.kind === "school"
-        ? { [f.gender === "Girls" ? "Headmistress" : "Headmaster"]: 1, ...schoolPostPlan(f.level!) }
-        : healthPostPlan(f.healthType!);
-    for (const [desig, sanctionedRaw] of Object.entries(plan) as [Designation, number][]) {
-      if (!sanctionedRaw) continue;
-      const sanctioned = sanctionedRaw;
-      const vacancyRate = f.kind === "health" ? 0.13 : 0.09;
+    for (let i = 0; i < count; i++) {
+      const isHead = i === 0 && f.source?.principal;
+      const desig: Designation = isHead
+        ? gender === "F"
+          ? "Headmistress"
+          : "Headmaster"
+        : mix[(i - 1 + mix.length) % mix.length]!;
+      const name = isHead ? f.source!.principal! : demoName(gender, r);
+      pushStaff(f, desig, tcode++, gender, name, ["Day"], r);
+    }
+  }
+  for (const f of healthFacilities) {
+    let tcode = 101;
+    const plan = healthPostPlan(f.healthType!);
+    for (const [desig, sanctioned] of Object.entries(plan) as [Designation, number][]) {
+      if (!sanctioned) continue;
       let filled = sanctioned;
-      for (let i = 0; i < sanctioned; i++) if (chance(vacancyRate)) filled--;
-      if (desig === "Headmaster" || desig === "Headmistress") filled = chance(0.9) ? 1 : 0;
+      for (let i = 0; i < sanctioned; i++) if (chance(0.13)) filled--;
       posts.push({ facilityId: f.id, designation: desig, sanctioned, filled });
       for (let i = 0; i < filled; i++) {
         let gender: "M" | "F";
-        if (f.kind === "school") gender = f.gender === "Girls" ? "F" : "M";
-        else if (desig === "Women Medical Officer" || desig === "LHV") gender = "F";
+        if (desig === "Women Medical Officer" || desig === "LHV") gender = "F";
         else if (desig === "Charge Nurse") gender = chance(0.7) ? "F" : "M";
         else gender = chance(0.2) ? "F" : "M";
         const name = personName(gender);
-        const shiftEligibility: Staff["shiftEligibility"] =
-          f.kind === "school"
-            ? ["Day"]
-            : (shuffle(["M", "E", "N"] as ShiftKey[]).slice(
-                0,
-                desig === "Medical Officer" || desig === "Charge Nurse" || desig === "Ward Orderly"
-                  ? 3
-                  : rand(1, 2),
-              ) as ShiftKey[]);
-        staff.push({
-          id: `ST${String(sid++).padStart(4, "0")}`,
-          code: `T${tcode++}`,
-          name,
-          initials: initialsOf(name),
-          gender,
-          personalNoMasked: masked(),
-          designation: desig,
-          bps: BPS[desig],
-          facilityId: f.id,
-          employment: chance(0.78) ? "Regular" : "Contract",
-          shiftEligibility,
-          onRosterSince: addDays(TODAY, -rand(60, 3400)),
-        });
+        const shiftEligibility = shuffle(["M", "E", "N"] as ShiftKey[]).slice(
+          0,
+          desig === "Medical Officer" || desig === "Charge Nurse" || desig === "Ward Orderly"
+            ? 3
+            : rand(1, 2),
+        ) as ShiftKey[];
+        pushStaff(f, desig, tcode++, gender, name, shiftEligibility, rng);
       }
     }
   }
@@ -793,34 +794,33 @@ export const staffById: Record<string, Staff> = Object.fromEntries(staff.map((s)
 export const staffByFacility: Record<string, Staff[]> = {};
 for (const s of staff) (staffByFacility[s.facilityId] ??= []).push(s);
 
-// ---------- Today's reports ----------
-const STATUS_POOL: ReportStatus[] = [
-  ...Array<ReportStatus>(25).fill("verified"),
-  ...Array<ReportStatus>(8).fill("pending"),
-  ...Array<ReportStatus>(8).fill("received"),
-  ...Array<ReportStatus>(4).fill("sent"),
-  ...Array<ReportStatus>(3).fill("rejected"),
-  ...Array<ReportStatus>(2).fill("draft"),
-  ...Array<ReportStatus>(12).fill("none"),
+// ---------- Today's reports (demo) ----------
+/** Share of operational facilities in each state at 11:40, matching a typical morning. */
+const STATUS_WEIGHTS: [ReportStatus, number][] = [
+  ["verified", 25],
+  ["pending", 8],
+  ["received", 8],
+  ["sent", 4],
+  ["rejected", 3],
+  ["draft", 2],
+  ["none", 12],
 ];
-const statusAssignment = shuffle(STATUS_POOL);
-// Keep the brief's named examples readable.
-{
-  const idx = (code: string) => facilities.findIndex((f) => f.code === code);
-  const swap = (code: string, st: ReportStatus) => {
-    const i = idx(code);
-    const j = statusAssignment.findIndex((s, k) => s === st && k !== i);
-    if (i < 0 || j < 0) return;
-    [statusAssignment[i], statusAssignment[j]] = [
-      statusAssignment[j] as ReportStatus,
-      statusAssignment[i] as ReportStatus,
-    ];
-  };
-  swap("SCH102", "rejected");
-  swap("SCH114", "verified");
-  swap("HF203", "pending");
-  swap("HF201", "verified");
+const STATUS_WEIGHT_TOTAL = STATUS_WEIGHTS.reduce((a, [, w]) => a + w, 0);
+function demoStatusFor(f: Facility): ReportStatus {
+  // Non-functional and closed schools send no report.
+  if (!f.operational) return "none";
+  let x = mulberry32(hashString(f.id) ^ 0x7e5)() * STATUS_WEIGHT_TOTAL;
+  for (const [st, w] of STATUS_WEIGHTS) {
+    if ((x -= w) < 0) return st;
+  }
+  return "none";
 }
+const STATUS_OVERRIDES: Record<string, ReportStatus> = {
+  [DEMO_SCHOOLS.rejectedSms]: "rejected",
+  [DEMO_SCHOOLS.verifiedSms]: "verified",
+  HF203: "pending",
+  HF201: "verified",
+};
 
 function sessionFor(_f: Facility): ShiftKey {
   return "M";
@@ -895,33 +895,53 @@ const CLASS_SETS: Record<SchoolLevel, string[]> = {
     "Class 9",
     "Class 10",
   ],
-  "Higher Secondary": ["Class 6", "Class 7", "Class 8", "Class 9", "Class 10"],
+  "Higher Secondary": [
+    "Class 6",
+    "Class 7",
+    "Class 8",
+    "Class 9",
+    "Class 10",
+    "Class 11",
+    "Class 12",
+  ],
 };
+/** Relative class sizes used to split the real student total across classes (demo split). */
+const classWeight = (c: string) =>
+  c === "Katchi" || c === "Class 1" ? 1.5 : c === "Class 11" || c === "Class 12" ? 0.7 : 1;
+
+/** Split a total into integer parts proportional to weights; the parts always sum to total. */
+function splitTotal(total: number, weights: number[]): number[] {
+  const sum = weights.reduce((a, b) => a + b, 0);
+  const raw = weights.map((w) => (total * w) / sum);
+  const out = raw.map(Math.floor);
+  let left = total - out.reduce((a, b) => a + b, 0);
+  const order = raw.map((v, i) => [v - Math.floor(v), i] as const).sort((a, b) => b[0] - a[0]);
+  for (const [, i] of order) {
+    if (left <= 0) break;
+    out[i]!++;
+    left--;
+  }
+  return out;
+}
 
 export const schoolDays: Record<string, SchoolDay> = {};
 const IMPLAUSIBLE_SCHOOLS = new Set<string>();
 for (const f of schools) {
+  const r = schoolRng(f.id, 0xd41);
   const st: Record<string, SchoolStaffStatus> = {};
   for (const s of staffByFacility[f.id] ?? []) {
-    const r = rng();
+    const x = r();
     st[s.id] =
-      r < 0.875 ? "Present" : r < 0.925 ? "Absent" : r < 0.98 ? "Approved leave" : "Official duty";
+      x < 0.875 ? "Present" : x < 0.925 ? "Absent" : x < 0.98 ? "Approved leave" : "Official duty";
   }
-  const classes: ClassRow[] = CLASS_SETS[f.level!].map((c) => {
-    const big = c === "Katchi" || c === "Class 1";
-    const eb =
-      f.gender === "Boys"
-        ? rand(big ? 34 : 22, big ? 58 : 46)
-        : c.startsWith("Class") && Number(c.split(" ")[1]) <= 5
-          ? rand(0, 4)
-          : 0;
-    const eg =
-      f.gender === "Girls"
-        ? rand(big ? 30 : 18, big ? 52 : 42)
-        : Number(c.split(" ")[1] ?? 0) <= 3
-          ? rand(0, 6)
-          : 0;
-    const pr = () => 0.78 + rng() * 0.16;
+  // Enrolment is the real "No of Students"; only its split across classes is a demo.
+  const names = CLASS_SETS[f.level!];
+  const split = splitTotal(f.source?.students ?? 0, names.map(classWeight));
+  const classes: ClassRow[] = names.map((c, i) => {
+    const n = split[i]!;
+    const eb = f.gender === "Boys" ? n : 0;
+    const eg = f.gender === "Girls" ? n : 0;
+    const pr = () => 0.78 + r() * 0.16;
     return {
       className: c,
       enrolledBoys: eb,
@@ -933,9 +953,9 @@ for (const f of schools) {
   schoolDays[f.id] = { facilityId: f.id, staffStatus: st, classes };
 }
 // Inject implausible class totals (present exceeds enrolled) for review items.
-for (const code of ["SCH109", "SCH127", "SCH138"]) {
+for (const code of DEMO_SCHOOLS.implausible) {
   const d = schoolDays[code];
-  const row = d?.classes[2];
+  const row = d?.classes.find((c) => c.enrolledBoys + c.enrolledGirls > 0);
   if (d && row) {
     if (row.enrolledBoys >= row.enrolledGirls) row.presentBoys = row.enrolledBoys + rand(3, 9);
     else row.presentGirls = row.enrolledGirls + rand(3, 9);
@@ -945,8 +965,8 @@ for (const code of ["SCH109", "SCH127", "SCH138"]) {
 
 export const reports: Report[] = [];
 export const reportByFacility: Record<string, Report> = {};
-facilities.forEach((f, i) => {
-  let status = statusAssignment[i] ?? "none";
+facilities.forEach((f) => {
+  let status = STATUS_OVERRIDES[f.id] ?? demoStatusFor(f);
   if (
     IMPLAUSIBLE_SCHOOLS.has(f.id) &&
     (status === "verified" || status === "none" || status === "draft")
@@ -980,7 +1000,7 @@ facilities.forEach((f, i) => {
   if (status === "rejected") {
     const rejectedKinds = ["roster", "sender", "multipart"] as const;
     const kind = rejectedKinds[reports.filter((r) => r.status === "rejected").length % 3];
-    if (f.id === "SCH102" || kind === "roster") {
+    if (f.id === DEMO_SCHOOLS.rejectedSms || kind === "roster") {
       f.rosterVersion = "RV04";
       rosterVersion = "RV03";
       rejectionReason = "Roster version mismatch: RV03 received, RV04 is current";
@@ -1559,7 +1579,7 @@ export const reviewItems: ReviewItem[] = (() => {
     items.push({ ...it, id: `RV-${n++}`, owner, status, timeline });
   };
 
-  const noReport = facilities.filter((f) => statusOf(f.id) === "none").slice(0, 8);
+  const noReport = facilities.filter((f) => f.operational && statusOf(f.id) === "none").slice(0, 8);
   for (const f of noReport) {
     add({
       type: "No report by 10:00",
@@ -1719,41 +1739,30 @@ export const reviewItems: ReviewItem[] = (() => {
     status: "Open",
     owner: "DHO office",
   });
-  const inspector: [string, string, string][] = [
-    [
-      "SCH117",
-      "Boundary wall breached on the north side; children leave during break.",
-      "Hamid Khattak",
-    ],
-    [
-      "SCH131",
-      "Register shows 2 teachers present who were not found in class at 10:20.",
-      "Saima Bangash",
-    ],
-    ["HF209", "Vaccine fridge log not filled for 4 days.", "Dr. Nazia Wazir"],
-  ];
-  for (const [code, text, who] of inspector) {
+  // Findings from the DEO's review of non-functional schools (Non Func School.pptx). The text
+  // is the DEO's own; the slides carry no date, so the queue shows them as of today.
+  for (const f of schools.filter((x) => x.source?.deoRemark)) {
     add({
       type: "Inspector finding",
-      severity: "Medium",
-      facilityId: code,
-      createdDate: addDays(TODAY, -1),
-      createdMin: 10 * 60 + 20,
-      detected: text,
-      why: "Recorded during a field visit. A finding is a note for follow-up and is checked against the facility's own report.",
+      severity: f.operational ? "Medium" : "High",
+      facilityId: f.id,
+      createdDate: TODAY,
+      createdMin: 8 * 60,
+      detected: f.source!.deoRemark!,
+      why: "Listed in the District Education Officer's review of non-functional schools. A finding is a note for follow-up and is checked against the school's own report.",
       evidence: [
-        { label: "Visit", value: `${formatShortDate(addDays(TODAY, -1))}, 10:05 to 10:50` },
-        { label: "Recorded by", value: who },
+        { label: "Source", value: "DEO(M) North Waziristan, non-functional schools review" },
+        { label: "Status in school register", value: f.source!.statusText || "Not stated" },
+        { label: "EMIS code", value: f.source!.emis ?? "Not given" },
       ],
-      owner: who,
-      status: "In review",
+      owner: "DEO office",
+      status: "Open",
       timeline: [
         {
-          at: `${formatShortDate(addDays(TODAY, -1))} 10:50`,
-          text: "Finding recorded during visit",
-          by: who,
+          at: "DEO review",
+          text: "Remark recorded in the non-functional schools review",
+          by: "DEO (Male) North Waziristan",
         },
-        { at: `${formatShortDate(TODAY)} 08:30`, text: "Shared with facility head", by: who },
       ],
     });
   }
@@ -1773,7 +1782,7 @@ export const STATUS_LABEL: Record<ReportStatus, string> = {
 
 /** Pool of facilities that can "arrive" in the simulated live feed. */
 export const SIMULATION_POOL: string[] = facilities
-  .filter((f) => ["none", "sent", "draft"].includes(statusOf(f.id)))
+  .filter((f) => f.operational && ["none", "sent", "draft"].includes(statusOf(f.id)))
   .map((f) => f.id);
 
 // ---------- Institutional register ----------
@@ -1784,22 +1793,7 @@ for (const facility of facilities) {
       ? s.designation === "Headmaster" || s.designation === "Headmistress"
       : s.designation === "Medical Officer" || s.designation === "Women Medical Officer",
   );
-  if (head) facility.headName = head.name;
-  if (facility.level === "Higher Secondary") {
-    const r = mulberry32(2311 + Number(facility.code.slice(3)));
-    for (const grade of [11, 12]) {
-      const enrolled = 24 + Math.floor(r() * 19);
-      const boys = facility.gender === "Boys" ? enrolled : 0;
-      const girls = facility.gender === "Girls" ? enrolled : 0;
-      schoolDays[facility.id]!.classes.push({
-        className: `Class ${grade}`,
-        enrolledBoys: boys,
-        enrolledGirls: girls,
-        presentBoys: Math.round(boys * (0.84 + r() * 0.09)),
-        presentGirls: Math.round(girls * (0.84 + r() * 0.09)),
-      });
-    }
-  }
+  if (head && facility.kind === "health") facility.headName = head.name;
 }
 export interface RegisterAsset {
   id: string;
@@ -1931,7 +1925,7 @@ export interface SmsEntry {
 export const complaints: Complaint[] = [
   {
     id: "CMP-1001",
-    facilityIds: ["SCH103", "SCH108", "HF207"],
+    facilityIds: [DEMO_SCHOOLS.complaintA, DEMO_SCHOOLS.complaintB, "HF207"],
     title: "Joint inspection of water and sanitation facilities",
     description:
       "Arrange a coordinated inspection of drinking water and sanitation at the listed institutions. Each institution head should confirm availability, record repair needs and provide an action update to the district coordination cell.",
@@ -1978,7 +1972,7 @@ export const complaints: Complaint[] = [
   },
   {
     id: "CMP-1003",
-    facilityIds: ["SCH112"],
+    facilityIds: [DEMO_SCHOOLS.fieldExample],
     title: "Clear access to the school entrance",
     description:
       "Remove material obstructing the main entrance and confirm safe access with the school head.",
@@ -2040,9 +2034,11 @@ export const institutionProfiles: Record<string, InstitutionProfile> = Object.fr
     return [
       f.id,
       {
-        reference: `REG-BNU-${f.code}`,
+        reference: school ? `EMIS ${f.source?.emis ?? "not given"}` : `REG-BNU-${f.code}`,
         established: integer(1968, 2015),
-        address: `${f.village}, ${f.tehsil} tehsil, District Bannu`,
+        address: school
+          ? `${f.village}, ${f.tehsil}, District North Waziristan`
+          : `${f.village}, ${f.tehsil} tehsil, District Bannu`,
         hours: school
           ? "Monday–Friday · 08:00–14:00"
           : f.healthType === "BHU"
@@ -2145,10 +2141,20 @@ export const patientStats: FacilityPatientStats[] = (() => {
     return {
       facilityId: f.id,
       opdToday: opd,
-      emergencyToday: t === "DHQ" ? int(32, 68) : t === "WCH" ? int(12, 28) : t === "RHC" ? int(4, 12) : int(0, 3),
-      admissionsToday: t === "DHQ" ? int(18, 42) : t === "WCH" ? int(8, 22) : t === "RHC" ? int(2, 8) : int(0, 2),
-      dischargesToday: t === "DHQ" ? int(14, 36) : t === "WCH" ? int(6, 18) : t === "RHC" ? int(1, 6) : int(0, 2),
-      referralsToday: t === "DHQ" ? int(2, 8) : t === "WCH" ? int(1, 5) : t === "RHC" ? int(0, 4) : int(0, 2),
+      emergencyToday:
+        t === "DHQ"
+          ? int(32, 68)
+          : t === "WCH"
+            ? int(12, 28)
+            : t === "RHC"
+              ? int(4, 12)
+              : int(0, 3),
+      admissionsToday:
+        t === "DHQ" ? int(18, 42) : t === "WCH" ? int(8, 22) : t === "RHC" ? int(2, 8) : int(0, 2),
+      dischargesToday:
+        t === "DHQ" ? int(14, 36) : t === "WCH" ? int(6, 18) : t === "RHC" ? int(1, 6) : int(0, 2),
+      referralsToday:
+        t === "DHQ" ? int(2, 8) : t === "WCH" ? int(1, 5) : t === "RHC" ? int(0, 4) : int(0, 2),
       bedsOccupied: Math.min(occ, bedsTotal),
       bedsTotal,
       icuOccupied: icuTotal ? Math.min(int(Math.floor(icuTotal * 0.5), icuTotal), icuTotal) : 0,
@@ -2162,7 +2168,14 @@ export const patientStatsById: Record<string, FacilityPatientStats> = Object.fro
 );
 
 // ---------- Monthly attendance trend (school & health, last 6 months) ----------
-export const monthlyTrend: { month: string; label: string; schoolPct: number; healthPct: number; opdTotal: number; emergencyTotal: number }[] = (() => {
+export const monthlyTrend: {
+  month: string;
+  label: string;
+  schoolPct: number;
+  healthPct: number;
+  opdTotal: number;
+  emergencyTotal: number;
+}[] = (() => {
   const r = mulberry32(2311 * 17);
   const months = ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov"];
   return months.map((label, i) => ({
@@ -2193,49 +2206,159 @@ export interface DaybookEntry {
 }
 
 const COMPLAINTS = [
-  "Fever and body aches", "Chest pain", "Difficulty breathing", "Abdominal pain",
-  "Diarrhea and vomiting", "Road traffic injury", "High blood pressure", "Diabetic crisis",
-  "Skin infection", "Eye infection", "Dental pain", "Pregnancy check-up",
-  "Child vaccination", "Fracture / bone injury", "Allergic reaction", "UTI symptoms",
-  "Severe headache", "Ear pain", "Wound / laceration", "Asthma attack",
+  "Fever and body aches",
+  "Chest pain",
+  "Difficulty breathing",
+  "Abdominal pain",
+  "Diarrhea and vomiting",
+  "Road traffic injury",
+  "High blood pressure",
+  "Diabetic crisis",
+  "Skin infection",
+  "Eye infection",
+  "Dental pain",
+  "Pregnancy check-up",
+  "Child vaccination",
+  "Fracture / bone injury",
+  "Allergic reaction",
+  "UTI symptoms",
+  "Severe headache",
+  "Ear pain",
+  "Wound / laceration",
+  "Asthma attack",
 ];
 const DIAGNOSES = [
-  "Acute febrile illness", "Angina pectoris", "COPD exacerbation", "Acute gastroenteritis",
-  "Gastroenteritis with dehydration", "Polytrauma", "Hypertensive emergency", "DKA",
-  "Cellulitis", "Conjunctivitis", "Dental caries", "Antenatal – normal",
-  "Routine immunisation", "Closed fracture", "Urticaria", "Urinary tract infection",
-  "Migraine", "Otitis media", "Laceration – superficial", "Acute bronchospasm",
+  "Acute febrile illness",
+  "Angina pectoris",
+  "COPD exacerbation",
+  "Acute gastroenteritis",
+  "Gastroenteritis with dehydration",
+  "Polytrauma",
+  "Hypertensive emergency",
+  "DKA",
+  "Cellulitis",
+  "Conjunctivitis",
+  "Dental caries",
+  "Antenatal – normal",
+  "Routine immunisation",
+  "Closed fracture",
+  "Urticaria",
+  "Urinary tract infection",
+  "Migraine",
+  "Otitis media",
+  "Laceration – superficial",
+  "Acute bronchospasm",
 ];
 const MEDICINES = [
-  "Paracetamol 500mg TDS + Azithromycin 500mg OD", "Aspirin 300mg stat + GTN spray",
-  "Nebuliser salbutamol + IV hydrocortisone", "ORS + IV fluid + Metronidazole",
-  "ORS + Zinc + Ciprofloxacin", "IV fluids + wound dressing + tetanus",
-  "Amlodipine 10mg + Captopril 25mg stat", "Insulin infusion + IV NS",
-  "Flucloxacillin 500mg QDS + wound care", "Ciprofloxacin eye drops QID",
-  "Ibuprofen 400mg + referral to dental", "Folic acid + iron supplement",
-  "BCG / OPV / Pentavalent as schedule", "Plaster cast + Diclofenac 50mg TDS",
-  "Cetirizine 10mg + IM adrenaline PRN", "Nitrofurantoin 100mg BD × 5 days",
-  "Sumatriptan 50mg + Domperidone 10mg", "Amoxicillin 500mg TDS + ear drops",
-  "Wound suture + Augmentin 625mg TDS", "Salbutamol inhaler + Prednisolone 40mg",
+  "Paracetamol 500mg TDS + Azithromycin 500mg OD",
+  "Aspirin 300mg stat + GTN spray",
+  "Nebuliser salbutamol + IV hydrocortisone",
+  "ORS + IV fluid + Metronidazole",
+  "ORS + Zinc + Ciprofloxacin",
+  "IV fluids + wound dressing + tetanus",
+  "Amlodipine 10mg + Captopril 25mg stat",
+  "Insulin infusion + IV NS",
+  "Flucloxacillin 500mg QDS + wound care",
+  "Ciprofloxacin eye drops QID",
+  "Ibuprofen 400mg + referral to dental",
+  "Folic acid + iron supplement",
+  "BCG / OPV / Pentavalent as schedule",
+  "Plaster cast + Diclofenac 50mg TDS",
+  "Cetirizine 10mg + IM adrenaline PRN",
+  "Nitrofurantoin 100mg BD × 5 days",
+  "Sumatriptan 50mg + Domperidone 10mg",
+  "Amoxicillin 500mg TDS + ear drops",
+  "Wound suture + Augmentin 625mg TDS",
+  "Salbutamol inhaler + Prednisolone 40mg",
 ];
 
-const DOCTOR_FIRST = ["Dr. Saeed", "Dr. Farooq", "Dr. Hina", "Dr. Asim", "Dr. Nadia", "Dr. Khalid", "Dr. Rabia", "Dr. Tariq", "Dr. Sana", "Dr. Waqas"];
+const DOCTOR_FIRST = [
+  "Dr. Saeed",
+  "Dr. Farooq",
+  "Dr. Hina",
+  "Dr. Asim",
+  "Dr. Nadia",
+  "Dr. Khalid",
+  "Dr. Rabia",
+  "Dr. Tariq",
+  "Dr. Sana",
+  "Dr. Waqas",
+];
 const DOCTOR_LAST = ["Khan", "Ahmad", "Shah", "Afridi", "Khattak", "Marwat", "Wazir", "Bangash"];
-const PATIENT_FIRST_M = ["Muhammad", "Ahmad", "Ali", "Usman", "Bilal", "Hamza", "Tariq", "Shahid", "Imran", "Kamran", "Saeed", "Farhan", "Zubair", "Naveed", "Irfan"];
-const PATIENT_FIRST_F = ["Fatima", "Ayesha", "Zainab", "Maryam", "Hina", "Nadia", "Sana", "Rabia", "Bushra", "Samina", "Nasreen", "Tahira", "Razia", "Parveen", "Kulsoom"];
-const PATIENT_LAST = ["Khan", "Ahmad", "Shah", "Afridi", "Khattak", "Marwat", "Wazir", "Bangash", "Orakzai", "Dawar", "Bhittani", "Niazi"];
+const PATIENT_FIRST_M = [
+  "Muhammad",
+  "Ahmad",
+  "Ali",
+  "Usman",
+  "Bilal",
+  "Hamza",
+  "Tariq",
+  "Shahid",
+  "Imran",
+  "Kamran",
+  "Saeed",
+  "Farhan",
+  "Zubair",
+  "Naveed",
+  "Irfan",
+];
+const PATIENT_FIRST_F = [
+  "Fatima",
+  "Ayesha",
+  "Zainab",
+  "Maryam",
+  "Hina",
+  "Nadia",
+  "Sana",
+  "Rabia",
+  "Bushra",
+  "Samina",
+  "Nasreen",
+  "Tahira",
+  "Razia",
+  "Parveen",
+  "Kulsoom",
+];
+const PATIENT_LAST = [
+  "Khan",
+  "Ahmad",
+  "Shah",
+  "Afridi",
+  "Khattak",
+  "Marwat",
+  "Wazir",
+  "Bangash",
+  "Orakzai",
+  "Dawar",
+  "Bhittani",
+  "Niazi",
+];
 
 export const daybookEntries: DaybookEntry[] = (() => {
   const r = mulberry32(2311 * 19);
   const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
   const entries: DaybookEntry[] = [];
   for (const f of healthFacilities) {
-    const count = f.healthType === "DHQ" ? int(35, 55) : f.healthType === "WCH" ? int(15, 30) : f.healthType === "RHC" ? int(8, 18) : int(3, 8);
+    const count =
+      f.healthType === "DHQ"
+        ? int(35, 55)
+        : f.healthType === "WCH"
+          ? int(15, 30)
+          : f.healthType === "RHC"
+            ? int(8, 18)
+            : int(3, 8);
     for (let i = 0; i < count; i++) {
       const isMale = r() > 0.45;
       const age = int(1, 85);
       const idx = int(0, COMPLAINTS.length - 1);
-      const statuses: DaybookEntry["status"][] = ["Treated", "Treated", "Treated", "Admitted", "Referred", "Under observation"];
+      const statuses: DaybookEntry["status"][] = [
+        "Treated",
+        "Treated",
+        "Treated",
+        "Admitted",
+        "Referred",
+        "Under observation",
+      ];
       entries.push({
         id: `DB-${f.code}-${String(i + 1).padStart(3, "0")}`,
         facilityId: f.id,
@@ -2290,14 +2413,43 @@ const MEDICAL_FIELDS: {
   departments: string[];
   womenOnly?: boolean;
 }[] = [
-  { specialisation: "General Medicine", qualifications: ["MBBS", "MBBS, FCPS Medicine", "MBBS, MCPS"], departments: ["OPD", "Ward A", "Ward B"] },
-  { specialisation: "General Surgery", qualifications: ["MBBS, MS Surgery", "MBBS, FCPS Surgery"], departments: ["Surgery", "Ward B"] },
-  { specialisation: "Gynae & Obstetrics", qualifications: ["MBBS, Diploma Gynae", "MBBS, FCPS Gynae"], departments: ["Labour Room", "Ward A"], womenOnly: true },
-  { specialisation: "Paediatrics", qualifications: ["MBBS, DCH", "MBBS, FCPS Paediatrics"], departments: ["Paediatric Ward", "OPD"] },
-  { specialisation: "Orthopaedics", qualifications: ["MBBS, MS Orthopaedics", "MBBS, D-Ortho"], departments: ["Surgery", "OPD"] },
+  {
+    specialisation: "General Medicine",
+    qualifications: ["MBBS", "MBBS, FCPS Medicine", "MBBS, MCPS"],
+    departments: ["OPD", "Ward A", "Ward B"],
+  },
+  {
+    specialisation: "General Surgery",
+    qualifications: ["MBBS, MS Surgery", "MBBS, FCPS Surgery"],
+    departments: ["Surgery", "Ward B"],
+  },
+  {
+    specialisation: "Gynae & Obstetrics",
+    qualifications: ["MBBS, Diploma Gynae", "MBBS, FCPS Gynae"],
+    departments: ["Labour Room", "Ward A"],
+    womenOnly: true,
+  },
+  {
+    specialisation: "Paediatrics",
+    qualifications: ["MBBS, DCH", "MBBS, FCPS Paediatrics"],
+    departments: ["Paediatric Ward", "OPD"],
+  },
+  {
+    specialisation: "Orthopaedics",
+    qualifications: ["MBBS, MS Orthopaedics", "MBBS, D-Ortho"],
+    departments: ["Surgery", "OPD"],
+  },
   { specialisation: "ENT", qualifications: ["MBBS, DLO", "MBBS, FCPS ENT"], departments: ["OPD"] },
-  { specialisation: "Emergency Medicine", qualifications: ["MBBS", "MBBS, MCPS"], departments: ["Emergency"] },
-  { specialisation: "Anaesthesia", qualifications: ["MBBS, DA", "MBBS, FCPS Anaesthesia"], departments: ["Surgery", "ICU"] },
+  {
+    specialisation: "Emergency Medicine",
+    qualifications: ["MBBS", "MBBS, MCPS"],
+    departments: ["Emergency"],
+  },
+  {
+    specialisation: "Anaesthesia",
+    qualifications: ["MBBS, DA", "MBBS, FCPS Anaesthesia"],
+    departments: ["Surgery", "ICU"],
+  },
   { specialisation: "Dermatology", qualifications: ["MBBS, DDerm"], departments: ["OPD"] },
   { specialisation: "Ophthalmology", qualifications: ["MBBS, DOMS"], departments: ["OPD"] },
   { specialisation: "Dentistry", qualifications: ["BDS", "BDS, FCPS"], departments: ["Dental"] },
@@ -2314,14 +2466,19 @@ export const doctorProfiles: DoctorProfile[] = (() => {
     // Smaller facilities have no theatre or ICU, so only the general fields apply.
     const fields = MEDICAL_FIELDS.filter((x) => {
       if (f.healthType === "DHQ") return true;
-      if (f.healthType === "WCH") return !["Dentistry", "Orthopaedics", "Anaesthesia"].includes(x.specialisation);
-      return ["General Medicine", "Paediatrics", "Emergency Medicine", "Gynae & Obstetrics"].includes(x.specialisation);
+      if (f.healthType === "WCH")
+        return !["Dentistry", "Orthopaedics", "Anaesthesia"].includes(x.specialisation);
+      return [
+        "General Medicine",
+        "Paediatrics",
+        "Emergency Medicine",
+        "Gynae & Obstetrics",
+      ].includes(x.specialisation);
     });
     for (const d of docs) {
       // A Women Medical Officer may hold any field; only she may hold Gynae.
-      const eligible = d.designation === "Women Medical Officer"
-        ? fields
-        : fields.filter((x) => !x.womenOnly);
+      const eligible =
+        d.designation === "Women Medical Officer" ? fields : fields.filter((x) => !x.womenOnly);
       const field = eligible[int(0, eligible.length - 1)] ?? MEDICAL_FIELDS[0]!;
       const years = int(2, 25);
       const seenToday = int(8, 32);
@@ -2364,13 +2521,76 @@ export interface StudentRecord {
   attendanceMethod: "Biometric" | "Manual";
 }
 
-const STUDENT_FIRST_M = ["Muhammad", "Ahmad", "Ali", "Usman", "Bilal", "Hamza", "Hassan", "Zain", "Abdullah", "Saad", "Fahad", "Talha", "Owais", "Rehan", "Arslan"];
-const STUDENT_FIRST_F = ["Fatima", "Ayesha", "Zainab", "Maryam", "Hina", "Sana", "Amna", "Iqra", "Noor", "Laiba", "Mahnoor", "Rimsha", "Aliza", "Sidra", "Arooj"];
-const FATHER_NAMES = ["Gul Zaman", "Shah Nawaz", "Noor Muhammad", "Fazal Rahim", "Sher Muhammad", "Habib Ullah", "Zar Wali", "Noor Khan", "Said Akbar", "Manzoor Ahmad", "Bakht Zada", "Yar Muhammad"];
+const STUDENT_FIRST_M = [
+  "Muhammad",
+  "Ahmad",
+  "Ali",
+  "Usman",
+  "Bilal",
+  "Hamza",
+  "Hassan",
+  "Zain",
+  "Abdullah",
+  "Saad",
+  "Fahad",
+  "Talha",
+  "Owais",
+  "Rehan",
+  "Arslan",
+];
+const STUDENT_FIRST_F = [
+  "Fatima",
+  "Ayesha",
+  "Zainab",
+  "Maryam",
+  "Hina",
+  "Sana",
+  "Amna",
+  "Iqra",
+  "Noor",
+  "Laiba",
+  "Mahnoor",
+  "Rimsha",
+  "Aliza",
+  "Sidra",
+  "Arooj",
+];
+const FATHER_NAMES = [
+  "Gul Zaman",
+  "Shah Nawaz",
+  "Noor Muhammad",
+  "Fazal Rahim",
+  "Sher Muhammad",
+  "Habib Ullah",
+  "Zar Wali",
+  "Noor Khan",
+  "Said Akbar",
+  "Manzoor Ahmad",
+  "Bakht Zada",
+  "Yar Muhammad",
+];
 
 const PRIMARY_SUBJECTS = ["Urdu", "English", "Maths", "Islamiat", "Gen. Science"];
-const MIDDLE_SUBJECTS = ["Urdu", "English", "Maths", "Islamiat", "Gen. Science", "Social Studies", "Computer"];
-const HIGH_SUBJECTS = ["Urdu", "English", "Maths", "Physics", "Chemistry", "Biology", "Islamiat", "Pak Studies", "Computer"];
+const MIDDLE_SUBJECTS = [
+  "Urdu",
+  "English",
+  "Maths",
+  "Islamiat",
+  "Gen. Science",
+  "Social Studies",
+  "Computer",
+];
+const HIGH_SUBJECTS = [
+  "Urdu",
+  "English",
+  "Maths",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "Islamiat",
+  "Pak Studies",
+  "Computer",
+];
 
 export const studentRecords: StudentRecord[] = (() => {
   const r = mulberry32(2311 * 29);
@@ -2381,11 +2601,17 @@ export const studentRecords: StudentRecord[] = (() => {
     if (!day) continue;
     for (const cls of day.classes) {
       const totalInClass = cls.enrolledBoys + cls.enrolledGirls;
-      const sampleSize = Math.min(totalInClass, int(6, 12));
+      // A short demo sample per class; the real enrolment is the class total.
+      const sampleSize = Math.min(totalInClass, int(4, 8));
       const isBoys = f.gender === "Boys";
-      const subjects = cls.className.startsWith("9") || cls.className.startsWith("10") ? HIGH_SUBJECTS
-        : cls.className.startsWith("6") || cls.className.startsWith("7") || cls.className.startsWith("8") ? MIDDLE_SUBJECTS
-        : PRIMARY_SUBJECTS;
+      const subjects =
+        cls.className.startsWith("9") || cls.className.startsWith("10")
+          ? HIGH_SUBJECTS
+          : cls.className.startsWith("6") ||
+              cls.className.startsWith("7") ||
+              cls.className.startsWith("8")
+            ? MIDDLE_SUBJECTS
+            : PRIMARY_SUBJECTS;
       for (let i = 0; i < sampleSize; i++) {
         const isMale = isBoys || (f.gender === "Girls" ? false : r() > 0.45);
         const totalDays = int(100, 120);
@@ -2497,7 +2723,7 @@ export const weeklyAttendance: Record<string, DailyAttendanceRow[]> = (() => {
   const r = mulberry32(2311 * 37);
   const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
   const map: Record<string, DailyAttendanceRow[]> = {};
-  for (const f of facilities.filter((f) => f.kind === "school")) {
+  for (const f of facilities.filter((f) => f.kind === "school" && f.operational)) {
     const day = schoolDays[f.id];
     if (!day) continue;
     const enrolled = day.classes.reduce((a, c) => a + c.enrolledBoys + c.enrolledGirls, 0);
@@ -2507,17 +2733,26 @@ export const weeklyAttendance: Record<string, DailyAttendanceRow[]> = (() => {
       const date = addDays(TODAY, -d);
       const wd = weekday(date);
       if (wd === 0 || wd === 6) continue; // schools are closed Saturday and Sunday
-      const present = int(Math.floor(enrolled * 0.72), Math.min(enrolled, Math.floor(enrolled * 0.95)));
+      const present = enrolled ? int(Math.floor(enrolled * 0.72), Math.floor(enrolled * 0.95)) : 0;
       const staffP = int(Math.floor(staffCount * 0.78), staffCount);
       const lateArr = int(0, Math.floor(staffCount * 0.15));
-      const remarks = d === 0 ? "Today — in progress" : lateArr > 2 ? "Multiple late arrivals noted" : present / enrolled < 0.78 ? "Low attendance — weather/event" : "Normal day";
+      const remarks =
+        d === 0
+          ? "Today — in progress"
+          : enrolled === 0
+            ? "No students enrolled"
+            : lateArr > 2
+              ? "Multiple late arrivals noted"
+              : present / enrolled < 0.78
+                ? "Low attendance — weather/event"
+                : "Normal day";
       rows.push({
         date,
         day: WEEKDAYS[wd]!,
         enrolled,
         present,
         absent: enrolled - present,
-        percentage: +((present / enrolled) * 100).toFixed(1),
+        percentage: enrolled ? +((present / enrolled) * 100).toFixed(1) : 0,
         staffTotal: staffCount,
         staffPresent: staffP,
         staffAbsent: staffCount - staffP,
@@ -2552,29 +2787,56 @@ export interface TreatmentLogEntry {
 }
 
 const EXAMINATIONS = [
-  "BP 130/85, Temp 101°F, Pulse 92", "BP 160/100, Temp 98.6°F, Pulse 78",
-  "BP 110/70, Temp 103°F, Pulse 110", "BP 120/80, Temp 98°F, Pulse 72",
-  "Tenderness RIF, guarding +", "Chest clear, SpO2 94%",
-  "Swelling R ankle, crepitus +", "Throat congested, tonsils enlarged",
-  "BP 90/60, dehydrated, weak pulse", "Wound 4cm, bleeding controlled",
-  "Abdomen soft, mild tenderness", "Rash on arms bilateral, no fever",
-  "Eye redness bilateral, discharge +", "Ear drum intact, fluid behind TM",
-  "Foetal heart sound normal, 140 bpm", "Pupils equal reactive, GCS 15",
+  "BP 130/85, Temp 101°F, Pulse 92",
+  "BP 160/100, Temp 98.6°F, Pulse 78",
+  "BP 110/70, Temp 103°F, Pulse 110",
+  "BP 120/80, Temp 98°F, Pulse 72",
+  "Tenderness RIF, guarding +",
+  "Chest clear, SpO2 94%",
+  "Swelling R ankle, crepitus +",
+  "Throat congested, tonsils enlarged",
+  "BP 90/60, dehydrated, weak pulse",
+  "Wound 4cm, bleeding controlled",
+  "Abdomen soft, mild tenderness",
+  "Rash on arms bilateral, no fever",
+  "Eye redness bilateral, discharge +",
+  "Ear drum intact, fluid behind TM",
+  "Foetal heart sound normal, 140 bpm",
+  "Pupils equal reactive, GCS 15",
 ];
 const LAB_TESTS = [
-  "CBC, ESR", "Blood sugar (R), HbA1c", "Urine R/E", "X-Ray chest PA",
-  "X-Ray limb AP/Lat", "LFTs", "RFTs, Electrolytes", "Ultrasound abdomen",
-  "Blood C/S", "ECG 12-lead", null, null, null, null,
+  "CBC, ESR",
+  "Blood sugar (R), HbA1c",
+  "Urine R/E",
+  "X-Ray chest PA",
+  "X-Ray limb AP/Lat",
+  "LFTs",
+  "RFTs, Electrolytes",
+  "Ultrasound abdomen",
+  "Blood C/S",
+  "ECG 12-lead",
+  null,
+  null,
+  null,
+  null,
 ];
 const TREATMENTS = [
-  "IV fluids + antipyretics", "Oral medication + rest advised",
-  "Wound dressing + tetanus booster", "Nebulisation × 3 + steroids",
-  "Plaster application + analgesics", "IV antibiotics + monitoring",
-  "Blood transfusion arranged", "Surgical referral made",
-  "Observation for 6 hours", "Counselling + medication",
-  "Normal delivery conducted", "Minor surgery under LA",
-  "Incision & drainage", "Catheterisation + fluids",
-  "Eye wash + topical drops", "Oral rehydration + zinc",
+  "IV fluids + antipyretics",
+  "Oral medication + rest advised",
+  "Wound dressing + tetanus booster",
+  "Nebulisation × 3 + steroids",
+  "Plaster application + analgesics",
+  "IV antibiotics + monitoring",
+  "Blood transfusion arranged",
+  "Surgical referral made",
+  "Observation for 6 hours",
+  "Counselling + medication",
+  "Normal delivery conducted",
+  "Minor surgery under LA",
+  "Incision & drainage",
+  "Catheterisation + fluids",
+  "Eye wash + topical drops",
+  "Oral rehydration + zinc",
 ];
 
 export const treatmentLogs: TreatmentLogEntry[] = (() => {
@@ -2587,7 +2849,15 @@ export const treatmentLogs: TreatmentLogEntry[] = (() => {
     for (let i = 0; i < count; i++) {
       const isMale = r() > 0.45;
       const idx = int(0, COMPLAINTS.length - 1);
-      const outcomes: TreatmentLogEntry["outcome"][] = ["Discharged", "Discharged", "Discharged", "Follow-up advised", "Admitted", "Referred", "Under observation"];
+      const outcomes: TreatmentLogEntry["outcome"][] = [
+        "Discharged",
+        "Discharged",
+        "Discharged",
+        "Follow-up advised",
+        "Admitted",
+        "Referred",
+        "Under observation",
+      ];
       const waived = r() < 0.35;
       entries.push({
         id: `TL-${dp.staffId}-${String(i + 1).padStart(3, "0")}`,
@@ -2650,11 +2920,32 @@ export const facilityBillingToday: Record<string, FacilityBilling> = (() => {
     const logs = treatmentLogsByFacility[f.id] ?? [];
     const charged = logs.filter((l) => !l.waived);
     const waived = logs.filter((l) => l.waived);
-    const opd = f.healthType === "DHQ" ? int(15000, 35000) : f.healthType === "WCH" ? int(6000, 15000) : int(1000, 5000);
-    const lab = f.healthType === "DHQ" ? int(8000, 20000) : f.healthType === "WCH" ? int(3000, 10000) : int(500, 3000);
-    const bed = f.healthType === "DHQ" ? int(5000, 15000) : f.healthType === "WCH" ? int(2000, 8000) : int(0, 2000);
-    const surg = f.healthType === "DHQ" ? int(10000, 40000) : f.healthType === "WCH" ? int(2000, 15000) : 0;
-    const med = f.healthType === "DHQ" ? int(12000, 30000) : f.healthType === "WCH" ? int(5000, 15000) : int(1000, 5000);
+    const opd =
+      f.healthType === "DHQ"
+        ? int(15000, 35000)
+        : f.healthType === "WCH"
+          ? int(6000, 15000)
+          : int(1000, 5000);
+    const lab =
+      f.healthType === "DHQ"
+        ? int(8000, 20000)
+        : f.healthType === "WCH"
+          ? int(3000, 10000)
+          : int(500, 3000);
+    const bed =
+      f.healthType === "DHQ"
+        ? int(5000, 15000)
+        : f.healthType === "WCH"
+          ? int(2000, 8000)
+          : int(0, 2000);
+    const surg =
+      f.healthType === "DHQ" ? int(10000, 40000) : f.healthType === "WCH" ? int(2000, 15000) : 0;
+    const med =
+      f.healthType === "DHQ"
+        ? int(12000, 30000)
+        : f.healthType === "WCH"
+          ? int(5000, 15000)
+          : int(1000, 5000);
     map[f.id] = {
       facilityId: f.id,
       date: TODAY,
@@ -2705,11 +2996,17 @@ export const weeklyBilling: Record<string, DailyBillingRow[]> = (() => {
       rows.push({
         date,
         day: WEEKDAYS[wd]!,
-        opdFees: opd, labCharges: lab, bedCharges: bed,
-        surgeryFees: surg, medicineCharges: med,
+        opdFees: opd,
+        labCharges: lab,
+        bedCharges: bed,
+        surgeryFees: surg,
+        medicineCharges: med,
         total: opd + lab + bed + surg + med,
         waivedAmount: Math.round(base.totalWaived * scale),
-        patientsTotal: int(Math.floor(base.patientsCharged * scale * 0.8), Math.ceil(base.patientsCharged * scale * 1.2)),
+        patientsTotal: int(
+          Math.floor(base.patientsCharged * scale * 0.8),
+          Math.ceil(base.patientsCharged * scale * 1.2),
+        ),
       });
     }
     map[f.id] = rows;
@@ -2735,7 +3032,7 @@ export const classDailyAttendance: Record<string, ClassDailyAttendance[]> = (() 
   const r = mulberry32(2311 * 53);
   const int = (a: number, b: number) => a + Math.floor(r() * (b - a + 1));
   const map: Record<string, ClassDailyAttendance[]> = {};
-  for (const f of facilities.filter((f) => f.kind === "school")) {
+  for (const f of facilities.filter((f) => f.kind === "school" && f.operational)) {
     const day = schoolDays[f.id];
     if (!day) continue;
     const rows: ClassDailyAttendance[] = [];
@@ -2757,7 +3054,7 @@ export const classDailyAttendance: Record<string, ClassDailyAttendance[]> = (() 
           presentGirls: pGirls,
           absentBoys: cls.enrolledBoys - pBoys,
           absentGirls: cls.enrolledGirls - pGirls,
-          percentage: total > 0 ? +((pBoys + pGirls) / total * 100).toFixed(1) : 0,
+          percentage: total > 0 ? +(((pBoys + pGirls) / total) * 100).toFixed(1) : 0,
         });
       }
     }

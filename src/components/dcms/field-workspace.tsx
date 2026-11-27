@@ -191,7 +191,7 @@ export function FieldWorkspace({
               <div>
                 <p className="font-bold text-lg">DCMS Field</p>
                 <p className="text-xs text-topbar-muted">
-                  District Bannu ·{" "}
+                  {f.district === "Bannu" ? "District Bannu" : "North Waziristan"} ·{" "}
                   <span lang="ur" dir="rtl" className="font-urdu text-sm">
                     فیلڈ رپورٹنگ
                   </span>
@@ -652,28 +652,43 @@ function FieldInstitution({ facility: f }: { facility: Facility }) {
     (n, c) => n + c.enrolledBoys + c.enrolledGirls,
     0,
   );
-  const fields: [string, ReactNode][] = [
-    ["Institution code", f.code],
-    ["Register reference", profile.reference],
-    ["Institution type", f.typeLabel],
-    ["Department", f.department],
-    ["Tehsil", f.tehsil],
-    ["Address", profile.address],
-    ["Head / in-charge", f.headName],
-    ["Registered reporting number", f.phoneMasked],
-    ["Operating hours", profile.hours],
-    ["Reporting roster", f.rosterVersion],
-    ["Established", profile.established],
-    ["Site area", profile.area],
-    ["Usable rooms", `${profile.usableRooms} of ${profile.rooms}`],
-    [
-      f.kind === "school" ? "Enrolled students" : "Bed capacity",
-      students ?? shiftFor(f.id, "M")?.bedsTotal ?? 0,
-    ],
-    ["Sanctioned / filled posts", `${sanctioned} / ${staff.length}`],
-    ["Last monitoring visit", formatDate(profile.inspectionDate)],
-    ["Next monitoring visit", formatDate(profile.nextInspection)],
-  ];
+  const src = f.source;
+  const fields: [string, ReactNode][] = src
+    ? [
+        ["EMIS code", src.emis ?? "Not given"],
+        ["Institution type", f.typeLabel],
+        ["Department", f.department],
+        ["Tehsil", f.tehsil],
+        ["Address", profile.address],
+        ["Principal", src.principal ?? "Not recorded"],
+        ["Register status", src.statusText || "Not stated"],
+        ["No of students", src.students ?? "Not given"],
+        ["No of working teachers", src.teachers ?? "Not given"],
+        ["Registered reporting number (demo)", f.phoneMasked],
+        ["Reporting roster (demo)", f.rosterVersion],
+      ]
+    : [
+        ["Institution code", f.code],
+        ["Register reference", profile.reference],
+        ["Institution type", f.typeLabel],
+        ["Department", f.department],
+        ["Tehsil", f.tehsil],
+        ["Address", profile.address],
+        ["Head / in-charge", f.headName],
+        ["Registered reporting number", f.phoneMasked],
+        ["Operating hours", profile.hours],
+        ["Reporting roster", f.rosterVersion],
+        ["Established", profile.established],
+        ["Site area", profile.area],
+        ["Usable rooms", `${profile.usableRooms} of ${profile.rooms}`],
+        [
+          f.kind === "school" ? "Enrolled students" : "Bed capacity",
+          students ?? shiftFor(f.id, "M")?.bedsTotal ?? 0,
+        ],
+        ["Sanctioned / filled posts", `${sanctioned} / ${staff.length}`],
+        ["Last monitoring visit", formatDate(profile.inspectionDate)],
+        ["Next monitoring visit", formatDate(profile.nextInspection)],
+      ];
   return (
     <div className="space-y-5">
       <div>

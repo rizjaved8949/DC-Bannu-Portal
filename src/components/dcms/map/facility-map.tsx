@@ -11,7 +11,10 @@ export interface MapProps {
   onSelect: (id: string) => void;
 }
 
-function FlyTo({ facilities, selectedId }: { facilities: Facility[]; selectedId: string | null }) {
+type Placed = Facility & { lat: number; lng: number };
+const isPlaced = (f: Facility): f is Placed => f.lat != null && f.lng != null;
+
+function FlyTo({ facilities, selectedId }: { facilities: Placed[]; selectedId: string | null }) {
   const map = useMap();
   useEffect(() => {
     const f = facilities.find((x) => x.id === selectedId);
@@ -20,20 +23,43 @@ function FlyTo({ facilities, selectedId }: { facilities: Facility[]; selectedId:
   return null;
 }
 
+/** Frame every plotted facility (Bannu health facilities and North Waziristan schools). */
+function FitAll({ facilities }: { facilities: Placed[] }) {
+  const map = useMap();
+  const key = facilities.map((f) => f.id).join(",");
+  useEffect(() => {
+    if (facilities.length === 0) return;
+    map.fitBounds(
+      facilities.map((f) => [f.lat, f.lng] as [number, number]),
+      { padding: [24, 24], maxZoom: 12 },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, map]);
+  return null;
+}
+
 /** Leaflet map: small circles in report-status colour with a white ring; hollow when coordinates are unverified. */
-export default function FacilityMap({ facilities, statusFor, selectedId, onSelect }: MapProps) {
+export default function FacilityMap({
+  facilities: all,
+  statusFor,
+  selectedId,
+  onSelect,
+}: MapProps) {
+  // Schools missing from the IMU coordinates file cannot be plotted.
+  const facilities = all.filter(isPlaced);
   return (
     <MapContainer
       center={[32.99, 70.6]}
       zoom={10}
       scrollWheelZoom={false}
       className="h-[520px] w-full rounded-[5px]"
-      aria-label="Map of facilities in District Bannu"
+      aria-label="Map of health facilities in District Bannu and schools in North Waziristan"
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      <FitAll facilities={facilities} />
       <FlyTo facilities={facilities} selectedId={selectedId} />
       {facilities.map((f) => {
         const status = statusFor(f.id);
@@ -65,10 +91,16 @@ export default function FacilityMap({ facilities, statusFor, selectedId, onSelec
                   <dd>{f.tehsil}</dd>
                   <dt className="text-ink-muted">Status</dt>
                   <dd style={{ color: colour }} className="font-semibold">
-                    {STATUS_LABEL[status]}
+                    {f.operational ? STATUS_LABEL[status] : (f.source?.status ?? "Non-functional")}
                   </dd>
                   <dt className="text-ink-muted">Coordinates</dt>
-                  <dd>{f.coordsVerified ? "Verified" : "Awaiting field verification"}</dd>
+                  <dd>
+                    {f.kind === "school"
+                      ? "IMU coordinates file"
+                      : f.coordsVerified
+                        ? "Verified"
+                        : "Awaiting field verification"}
+                  </dd>
                 </dl>
                 <a
                   href={f.kind === "school" ? `/schools/${f.id}` : `/health/${f.id}`}

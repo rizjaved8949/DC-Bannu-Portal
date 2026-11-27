@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
 import { ChannelLabel } from "@/components/dcms/channel";
+import { DemoNote, SchoolRegisterStatus } from "@/components/dcms/school-source";
 import { FilterBar } from "@/components/dcms/filter-bar";
 import { KpiTile } from "@/components/dcms/kpi-tile";
 import { PageHeader } from "@/components/dcms/page-header";
@@ -36,12 +37,12 @@ export const Route = createFileRoute("/schools/")({
       { title: "Schools · DCMS Bannu" },
       {
         name: "description",
-        content: "Today's school reports, staff and student attendance for District Bannu.",
+        content: "North Waziristan school register (DEO data) with live school-day reporting.",
       },
       { property: "og:title", content: "Schools · DCMS Bannu" },
       {
         property: "og:description",
-        content: "Today's school reports, staff and student attendance for District Bannu.",
+        content: "North Waziristan school register (DEO data) with live school-day reporting.",
       },
     ],
   }),
@@ -49,8 +50,21 @@ export const Route = createFileRoute("/schools/")({
 });
 
 type Col =
-  "name" | "code" | "tehsil" | "level" | "staff" | "students" | "status" | "channel" | "received";
+  | "name"
+  | "code"
+  | "tehsil"
+  | "level"
+  | "register"
+  | "enrolled"
+  | "teachers"
+  | "principal"
+  | "students"
+  | "status"
+  | "channel"
+  | "received";
 const LEVELS: ("All" | SchoolLevel)[] = ["All", "Primary", "Middle", "High", "Higher Secondary"];
+const REGISTER = ["All", "Functional", "Non-functional", "Closed"] as const;
+type Register = (typeof REGISTER)[number];
 
 function SchoolsPage() {
   const { statusFor, reportFor, resetFilters, filters, schoolDayFor } = useApp();
@@ -58,6 +72,7 @@ function SchoolsPage() {
   const [q, setQ] = useState("");
   const [level, setLevel] = useState<"All" | SchoolLevel>("All");
   const [status, setStatus] = useState<"All" | ReportStatus>("All");
+  const [register, setRegister] = useState<Register>("All");
 
   const rows = useMemo(
     () =>
@@ -70,6 +85,7 @@ function SchoolsPage() {
           return { f, st, r, staff, students };
         })
         .filter((x) => (level === "All" ? true : x.f.level === level))
+        .filter((x) => (register === "All" ? true : x.f.source?.status === register))
         .filter((x) => (status === "All" ? true : x.st === status))
         .filter((x) => {
           if (!q) return true;
@@ -77,10 +93,11 @@ function SchoolsPage() {
           return (
             x.f.name.toLowerCase().includes(s) ||
             x.f.code.toLowerCase().includes(s) ||
-            x.f.village.toLowerCase().includes(s)
+            x.f.village.toLowerCase().includes(s) ||
+            (x.f.source?.principal ?? "").toLowerCase().includes(s)
           );
         }),
-    [schools, statusFor, reportFor, schoolDayFor, level, status, q],
+    [schools, statusFor, reportFor, schoolDayFor, level, status, register, q],
   );
 
   const { sorted, key, dir, toggle } = useSort<(typeof rows)[number], Col>(
@@ -90,7 +107,10 @@ function SchoolsPage() {
       code: (x) => x.f.code,
       tehsil: (x) => x.f.tehsil,
       level: (x) => LEVELS.indexOf(x.f.level!),
-      staff: (x) => (x.staff.present == null ? -1 : x.staff.present / Math.max(1, x.staff.total)),
+      register: (x) => REGISTER.indexOf(x.f.source?.status ?? "Functional"),
+      enrolled: (x) => x.f.source?.students ?? -1,
+      teachers: (x) => x.f.source?.teachers ?? -1,
+      principal: (x) => x.f.source?.principal ?? "~",
       students: (x) =>
         x.students.present == null ? -1 : x.students.present / Math.max(1, x.students.enrolled),
       status: (x) => REPORT_STATUS_ORDER.indexOf(x.st),
@@ -100,7 +120,17 @@ function SchoolsPage() {
     "tehsil",
   );
 
-  const reported = rows.filter(
+  // Register figures, straight from the source files.
+  const functional = rows.filter((x) => x.f.operational);
+  const notFunctional = rows.length - functional.length;
+  const closed = rows.filter((x) => x.f.source?.status === "Closed").length;
+  const regStudents = rows.reduce((a, x) => a + (x.f.source?.students ?? 0), 0);
+  const regTeachers = rows.reduce((a, x) => a + (x.f.source?.teachers ?? 0), 0);
+  const withCounts = rows.filter((x) => x.f.source?.students != null);
+  const noTeacher = rows.filter((x) => x.f.operational && x.f.source?.teachers === 0).length;
+  const noPrincipal = withCounts.filter((x) => !x.f.source?.principal).length;
+  // Daily reporting (demo). Only functional schools are expected to report.
+  const reported = functional.filter(
     (x) => x.st === "received" || x.st === "pending" || x.st === "verified",
   ).length;
   const staffP = rows.reduce((a, x) => a + (x.staff.present ?? 0), 0);
@@ -111,13 +141,21 @@ function SchoolsPage() {
 
   const exportCsv = () =>
     downloadCsv(
-      "dcms-bannu-schools-2026-11-23.csv",
+      "north-waziristan-schools.csv",
       sorted.map((x) => ({
         School: x.f.name,
-        Code: x.f.code,
+        "EMIS code": x.f.source?.emis ?? "",
         Tehsil: x.f.tehsil,
+        Village: x.f.source?.village ?? "",
         Level: x.f.level ?? "",
         Gender: x.f.gender ?? "",
+        "Register status": x.f.source?.statusText ?? "",
+        "Reason (NF)": x.f.source?.reason ?? "",
+        "No of students": x.f.source?.students ?? "",
+        "Working teachers": x.f.source?.teachers ?? "",
+        Principal: x.f.source?.principal ?? "",
+        Latitude: x.f.lat ?? "",
+        Longitude: x.f.lng ?? "",
         "Staff present": x.staff.present ?? "",
         "Staff total": x.staff.total,
         "Students present": x.students.present ?? "",
@@ -134,7 +172,7 @@ function SchoolsPage() {
       <PageHeader
         title="Schools"
         urdu="اسکول"
-        description="Today's school day reports: who has reported, staff present and students present, by school."
+        description="North Waziristan school register from the DEO's files, with today's school-day reporting shown as a live demo."
       />
       <div className="mt-4">
         <FilterBar
@@ -158,7 +196,22 @@ function SchoolsPage() {
                 </Select>
               </label>
               <label className="flex items-center gap-2 text-xs text-ink-muted">
-                Status
+                Register
+                <Select value={register} onValueChange={(v) => setRegister(v as Register)}>
+                  <SelectTrigger className="h-8 w-[150px]" aria-label="Register status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {REGISTER.map((l) => (
+                      <SelectItem key={l} value={l}>
+                        {l}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+              <label className="flex items-center gap-2 text-xs text-ink-muted">
+                Report
                 <Select value={status} onValueChange={(v) => setStatus(v as "All" | ReportStatus)}>
                   <SelectTrigger className="h-8 w-[170px]" aria-label="Report status">
                     <SelectValue />
@@ -176,7 +229,7 @@ function SchoolsPage() {
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search name, code or village"
+                placeholder="Search name, EMIS, village or principal"
                 aria-label="Search schools"
                 className="h-8 w-[220px]"
               />
@@ -188,70 +241,113 @@ function SchoolsPage() {
       {(() => {
         const bioLogs = rows.flatMap((x) => biometricByFacility[x.f.id] ?? []);
         const bioOnTime = bioLogs.filter((l) => l.status === "On time").length;
-        const bioLate = bioLogs.filter((l) => l.status === "Late" || l.status === "Very late").length;
+        const bioLate = bioLogs.filter(
+          (l) => l.status === "Late" || l.status === "Very late",
+        ).length;
         const absentStaff = rows.reduce((a, x) => {
           if (x.staff.present == null) return a;
           return a + (x.staff.total - x.staff.present);
         }, 0);
         return (
-          <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-            <KpiTile
-              label="Reported today"
-              value={reported}
-              sub={`of ${rows.length} schools`}
-              tone={reported / Math.max(1, rows.length) > 0.7 ? "verified" : "pending"}
-              freshness="Accepted by the district server"
-            />
-            <KpiTile
-              label="Staff present"
-              value={staffT ? `${pct(staffP, staffT)}%` : "No data"}
-              sub={`${staffP} of ${staffT} in reporting schools`}
-              tone="verified"
-              freshness={`${reported} of ${rows.length} schools counted`}
-            />
-            <KpiTile
-              label="Staff absent"
-              value={absentStaff.toString()}
-              sub="absent without leave or on duty"
-              tone={absentStaff > 10 ? "problem" : "neutral"}
-              freshness="From accepted school reports"
-            />
-            <KpiTile
-              label="Students present"
-              value={stuT ? `${pct(stuP, stuT)}%` : "No data"}
-              sub={`${stuP.toLocaleString("en")} of ${stuT.toLocaleString("en")} enrolled`}
-              tone="verified"
-              freshness={`Enrolment on record: ${stuEnrolledAll.toLocaleString("en")}`}
-            />
-            <KpiTile
-              label="Students absent"
-              value={stuT ? (stuT - stuP).toLocaleString("en") : "—"}
-              sub="across reporting schools"
-              tone={(stuT - stuP) / Math.max(1, stuT) > 0.2 ? "pending" : "neutral"}
-              freshness="Present = enrolled − absent"
-            />
-            <KpiTile
-              label="Biometric on time"
-              value={bioLogs.length ? `${pct(bioOnTime, bioLogs.length, 0)}%` : "—"}
-              sub={`${bioOnTime} on time · ${bioLate} late`}
-              tone={bioLate / Math.max(1, bioLogs.length) > 0.2 ? "pending" : "verified"}
-              freshness="Fingerprint / NFC check-in records"
-            />
-            <KpiTile
-              label="No report yet"
-              value={rows.filter((x) => x.st === "none").length}
-              sub="schools without a report"
-              tone={rows.some((x) => x.st === "none") ? "problem" : "neutral"}
-              freshness="Each creates a review task at 10:00"
-            />
-            <KpiTile
-              label="Total enrolment"
-              value={stuEnrolledAll.toLocaleString("en")}
-              sub={`across ${rows.length} schools`}
-              tone="neutral"
-              freshness="Boys and girls combined"
-            />
-          </div>
+          <>
+            <h2 className="mb-2 text-sm font-semibold text-ink">School register</h2>
+            <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+              <KpiTile
+                label="Schools"
+                value={rows.length}
+                sub={`${functional.length} functional`}
+                tone="neutral"
+                freshness="DEO(M) data, 26 Nov 2026"
+              />
+              <KpiTile
+                label="Non-functional & closed"
+                value={notFunctional}
+                sub={`${closed} closed, ${notFunctional - closed} non-functional`}
+                tone={notFunctional ? "problem" : "neutral"}
+                freshness="Male register + female NF list"
+              />
+              <KpiTile
+                label="Students enrolled"
+                value={regStudents.toLocaleString("en")}
+                sub={`in ${withCounts.length} schools with figures`}
+                tone="neutral"
+                freshness="No of Students column"
+              />
+              <KpiTile
+                label="Working teachers"
+                value={regTeachers.toLocaleString("en")}
+                sub={
+                  regTeachers
+                    ? `${(regStudents / regTeachers).toFixed(1)} students per teacher`
+                    : "No figures in this selection"
+                }
+                tone="neutral"
+                freshness="No of Working Teachers column"
+              />
+              <KpiTile
+                label="Functional, no teacher"
+                value={noTeacher}
+                sub="functional schools with 0 working teachers"
+                tone={noTeacher ? "problem" : "neutral"}
+                freshness="From the school register"
+              />
+              <KpiTile
+                label="Principal not recorded"
+                value={noPrincipal}
+                sub={`of ${withCounts.length} schools with figures`}
+                tone={noPrincipal ? "pending" : "neutral"}
+                freshness="Principal Name column blank"
+              />
+            </div>
+            <h2 className="mb-2 text-sm font-semibold text-ink">
+              Today's reporting{" "}
+              <span className="text-xs font-normal text-ink-muted">· live demo</span>
+            </h2>
+            <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+              <KpiTile
+                label="Reported today"
+                value={reported}
+                sub={`of ${functional.length} functional schools`}
+                tone={reported / Math.max(1, functional.length) > 0.7 ? "verified" : "pending"}
+                freshness="Demo: accepted by the district server"
+              />
+              <KpiTile
+                label="Staff present"
+                value={staffT ? `${pct(staffP, staffT)}%` : "No data"}
+                sub={`${staffP} of ${staffT} in reporting schools`}
+                tone="verified"
+                freshness={`Demo · ${reported} schools counted`}
+              />
+              <KpiTile
+                label="Students present"
+                value={stuT ? `${pct(stuP, stuT)}%` : "No data"}
+                sub={`${stuP.toLocaleString("en")} of ${stuT.toLocaleString("en")} enrolled`}
+                tone="verified"
+                freshness={`Demo · enrolment is real: ${stuEnrolledAll.toLocaleString("en")}`}
+              />
+              <KpiTile
+                label="No report yet"
+                value={functional.filter((x) => x.st === "none").length}
+                sub="functional schools without a report"
+                tone={functional.some((x) => x.st === "none") ? "problem" : "neutral"}
+                freshness="Demo · non-functional schools not expected"
+              />
+              <KpiTile
+                label="Staff absent"
+                value={absentStaff.toString()}
+                sub="absent without leave or on duty"
+                tone={absentStaff > 10 ? "problem" : "neutral"}
+                freshness="Demo · from accepted school reports"
+              />
+              <KpiTile
+                label="Biometric on time"
+                value={bioLogs.length ? `${pct(bioOnTime, bioLogs.length, 0)}%` : "—"}
+                sub={`${bioOnTime} on time · ${bioLate} late`}
+                tone={bioLate / Math.max(1, bioLogs.length) > 0.2 ? "pending" : "verified"}
+                freshness="Demo · fingerprint / NFC check-ins"
+              />
+            </div>
+          </>
         );
       })()}
 
@@ -281,6 +377,10 @@ function SchoolsPage() {
           />
         ) : (
           <div className="overflow-x-auto">
+            <DemoNote>
+              EMIS to Principal are from the source files. Report today, Present today, Channel and
+              Last received are simulated to show how the live feed will look.
+            </DemoNote>
             <table className="ledger">
               <thead>
                 <tr>
@@ -288,7 +388,7 @@ function SchoolsPage() {
                     School
                   </SortTh>
                   <SortTh id="code" active={key} dir={dir} onSort={toggle}>
-                    Code
+                    EMIS
                   </SortTh>
                   <SortTh id="tehsil" active={key} dir={dir} onSort={toggle}>
                     Tehsil
@@ -296,14 +396,23 @@ function SchoolsPage() {
                   <SortTh id="level" active={key} dir={dir} onSort={toggle}>
                     Level
                   </SortTh>
-                  <SortTh id="staff" active={key} dir={dir} onSort={toggle} num>
-                    Staff present
+                  <SortTh id="register" active={key} dir={dir} onSort={toggle}>
+                    Register
                   </SortTh>
-                  <SortTh id="students" active={key} dir={dir} onSort={toggle} num>
-                    Students present
+                  <SortTh id="enrolled" active={key} dir={dir} onSort={toggle} num>
+                    Students
+                  </SortTh>
+                  <SortTh id="teachers" active={key} dir={dir} onSort={toggle} num>
+                    Teachers
+                  </SortTh>
+                  <SortTh id="principal" active={key} dir={dir} onSort={toggle}>
+                    Principal
                   </SortTh>
                   <SortTh id="status" active={key} dir={dir} onSort={toggle}>
-                    Report status
+                    Report today
+                  </SortTh>
+                  <SortTh id="students" active={key} dir={dir} onSort={toggle} num>
+                    Present today
                   </SortTh>
                   <SortTh id="channel" active={key} dir={dir} onSort={toggle}>
                     Channel
@@ -314,7 +423,7 @@ function SchoolsPage() {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map(({ f, st, r, staff, students }) => (
+                {sorted.map(({ f, st, r, students }) => (
                   <tr key={f.id}>
                     <td data-label="School">
                       <Link
@@ -326,20 +435,51 @@ function SchoolsPage() {
                       </Link>
                       <span className="block text-xs text-ink-muted">{f.typeLabel}</span>
                     </td>
-                    <td data-label="Code">
-                      <Code>{f.code}</Code>
-                    </td>
-                    <td data-label="Tehsil">{f.tehsil}</td>
-                    <td data-label="Level">{f.level}</td>
-                    <td data-label="Staff present" className="num">
-                      {staff.present == null ? (
-                        <span className="text-ink-muted">— of {staff.total}</span>
+                    <td data-label="EMIS">
+                      {f.source?.emis ? (
+                        <Code>{f.source.emis}</Code>
                       ) : (
-                        `${staff.present} of ${staff.total}`
+                        <span className="text-xs text-ink-muted">Not given</span>
                       )}
                     </td>
-                    <td data-label="Students present" className="num">
-                      {students.present == null ? (
+                    <td data-label="Tehsil">
+                      {f.tehsil}
+                      <span
+                        className="block max-w-[180px] truncate text-xs text-ink-muted"
+                        title={f.village}
+                      >
+                        {f.village}
+                      </span>
+                    </td>
+                    <td data-label="Level">{f.level}</td>
+                    <td data-label="Register">
+                      <SchoolRegisterStatus f={f} />
+                      {f.source?.reason && (
+                        <span className="mt-0.5 block max-w-[200px] text-xs text-ink-muted">
+                          {f.source.reason}
+                        </span>
+                      )}
+                    </td>
+                    <td data-label="Students" className="num">
+                      {f.source?.students ?? <span className="text-ink-muted">Not given</span>}
+                    </td>
+                    <td data-label="Teachers" className="num">
+                      {f.source?.teachers ?? <span className="text-ink-muted">Not given</span>}
+                    </td>
+                    <td data-label="Principal" className="text-xs">
+                      {f.source?.principal ?? <span className="text-ink-muted">Not recorded</span>}
+                    </td>
+                    <td data-label="Report today">
+                      {f.operational ? (
+                        <StatusBadge status={st} short />
+                      ) : (
+                        <span className="text-xs text-ink-muted">Not expected</span>
+                      )}
+                    </td>
+                    <td data-label="Present today" className="num">
+                      {!f.operational ? (
+                        <span className="text-ink-muted">—</span>
+                      ) : students.present == null ? (
                         <span className="text-ink-muted">— of {students.enrolled}</span>
                       ) : (
                         <>
@@ -349,9 +489,6 @@ function SchoolsPage() {
                           </span>
                         </>
                       )}
-                    </td>
-                    <td data-label="Report status">
-                      <StatusBadge status={st} short />
                     </td>
                     <td data-label="Channel">
                       <ChannelLabel channel={r?.channel ?? f.channel} />

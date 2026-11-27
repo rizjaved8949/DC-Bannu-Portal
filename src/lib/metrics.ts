@@ -76,7 +76,13 @@ export function districtSummary(
   let healthCount = 0;
   let staleRecords = 0;
   let healthStaffTotal = 0;
+  // Non-functional and closed schools are not expected to report.
+  const expected = facilities.filter((f) => f.operational);
   for (const f of facilities) {
+    if (!f.operational) {
+      for (const k of INFRA_KEYS) if (isStale(f.infra[k].updated)) staleRecords++;
+      continue;
+    }
     const st = statusFor(f.id);
     if (st === "received" || st === "pending" || st === "verified" || st === "rejected") reported++;
     if (st === "none") noReport++;
@@ -108,7 +114,7 @@ export function districtSummary(
     for (const k of INFRA_KEYS) if (isStale(f.infra[k].updated)) staleRecords++;
   }
   return {
-    total: facilities.length,
+    total: expected.length,
     reported,
     bySms,
     noReport,
@@ -136,12 +142,7 @@ export function formatPkr(amount: number): string {
   return String(amount);
 }
 
-import {
-  budgetLines,
-  patientStats,
-  type Department,
-  type BudgetLine,
-} from "@/data/mock";
+import { budgetLines, patientStats, type Department, type BudgetLine } from "@/data/mock";
 
 export function budgetSummary(dept?: Department) {
   const lines = dept ? budgetLines.filter((l) => l.department === dept) : budgetLines;

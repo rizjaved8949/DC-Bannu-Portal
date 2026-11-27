@@ -1,3 +1,4 @@
+import { DEMO_SCHOOLS } from "@/data/mock";
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter, rootRouteId } from "@tanstack/react-router";
 import { describe, expect, it } from "vitest";
@@ -9,7 +10,7 @@ import { routeTree } from "@/routeTree.gen";
 describe("App routing", () => {
   it.each([
     "/schools",
-    "/schools/SCH101",
+    `/schools/${DEMO_SCHOOLS.fieldExample}`,
     "/health",
     "/health/HF201",
     "/staff",

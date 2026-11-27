@@ -2,10 +2,17 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppStateProvider, useApp } from "@/lib/app-state";
 import { WORKSPACE_STORAGE_KEY, restoreWorkspace } from "@/lib/workspace-storage";
-import { facilityById, schoolDays, staffByFacility, shiftsByFacility, NOW_MIN } from "@/data/mock";
+import {
+  facilityById,
+  schoolDays,
+  staffByFacility,
+  shiftsByFacility,
+  NOW_MIN,
+  DEMO_SCHOOLS,
+} from "@/data/mock";
 import { schoolStaffCounts, schoolStudentCounts } from "@/lib/metrics";
 
-const school = facilityById["SCH112"]!;
+const school = facilityById[DEMO_SCHOOLS.fieldExample]!;
 const employee = staffByFacility[school.id]![0]!;
 function schoolSubmission() {
   const day = structuredClone(schoolDays[school.id]!);
@@ -171,7 +178,7 @@ describe("Connected reporting workflow", () => {
 
   it("protects role scope and makes resend requests durable without duplicates", () => {
     const { result } = renderHook(useApp, { wrapper: AppStateProvider });
-    const report = result.current.reports.find((r) => r.facilityId === "SCH102")!;
+    const report = result.current.reports.find((r) => r.facilityId === DEMO_SCHOOLS.rejectedSms)!;
     act(() => {
       result.current.requestResend(report.id);
       result.current.requestResend(report.id);

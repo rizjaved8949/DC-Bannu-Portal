@@ -66,29 +66,57 @@ export function InstitutionRecord({ facility: f }: { facility: Facility }) {
     0,
   );
   const beds = shiftFor(f.id, "M")?.bedsTotal;
-  const fields = [
-    ["Register reference", profile.reference],
-    ["Institution type", f.typeLabel],
-    ["Department", f.department],
-    ["Administrative area", `${f.tehsil} tehsil · Bannu district`],
-    ["Site address", profile.address],
-    ["Head / in-charge", f.headName],
-    ["Registered reporting number", f.phoneMasked],
-    ["Established", String(profile.established)],
-    ["Operating hours", profile.hours],
-    ["Land / site area", profile.area],
-    ["Building tenure", profile.ownership],
-    ["Usable rooms", `${profile.usableRooms} of ${profile.rooms}`],
-    [f.kind === "school" ? "Enrolled students" : "Bed capacity", String(enrolled ?? beds ?? 0)],
-    ["Staff on roster", `${staff.length} of ${sanctioned} sanctioned posts`],
-    ["Reporting roster", f.rosterVersion],
-    [
-      "Reporting channel",
-      f.channel === "sms" ? "Registered SMS and offline reporting" : "App with SMS fallback",
-    ],
-    ["Last monitoring visit", formatDate(profile.inspectionDate)],
-    ["Next monitoring visit", formatDate(profile.nextInspection)],
-  ];
+  const src = f.source;
+  // Schools show only what the source files give, plus the (demo) reporting setup.
+  const schoolFields: string[][] = src
+    ? [
+        ["EMIS code", src.emis ?? "Not given"],
+        ["Institution type", f.typeLabel],
+        ["Department", f.department],
+        ["Administrative area", `${f.tehsil} · North Waziristan district`],
+        ["Location (village)", src.village ?? "Not stated"],
+        ["Principal", src.principal ?? "Not recorded"],
+        ["Register status", src.statusText || "Not stated"],
+        ["Reason of non-functionality", src.reason ?? "None recorded"],
+        ["No of students", src.students == null ? "Not given" : String(src.students)],
+        ["No of working teachers", src.teachers == null ? "Not given" : String(src.teachers)],
+        [
+          "Coordinates",
+          src.lat != null && src.lng != null ? `${src.lat}, ${src.lng}` : "Not in coordinates file",
+        ],
+        ["Registered reporting number (demo)", f.phoneMasked],
+        ["Reporting roster (demo)", f.rosterVersion],
+        [
+          "Reporting channel (demo)",
+          f.channel === "sms" ? "Registered SMS and offline reporting" : "App with SMS fallback",
+        ],
+      ]
+    : [];
+  const fields = src
+    ? schoolFields
+    : [
+        ["Register reference", profile.reference],
+        ["Institution type", f.typeLabel],
+        ["Department", f.department],
+        ["Administrative area", `${f.tehsil} tehsil · Bannu district`],
+        ["Site address", profile.address],
+        ["Head / in-charge", f.headName],
+        ["Registered reporting number", f.phoneMasked],
+        ["Established", String(profile.established)],
+        ["Operating hours", profile.hours],
+        ["Land / site area", profile.area],
+        ["Building tenure", profile.ownership],
+        ["Usable rooms", `${profile.usableRooms} of ${profile.rooms}`],
+        [f.kind === "school" ? "Enrolled students" : "Bed capacity", String(enrolled ?? beds ?? 0)],
+        ["Staff on roster", `${staff.length} of ${sanctioned} sanctioned posts`],
+        ["Reporting roster", f.rosterVersion],
+        [
+          "Reporting channel",
+          f.channel === "sms" ? "Registered SMS and offline reporting" : "App with SMS fallback",
+        ],
+        ["Last monitoring visit", formatDate(profile.inspectionDate)],
+        ["Next monitoring visit", formatDate(profile.nextInspection)],
+      ];
   const exportProfile = () =>
     downloadCsv(
       `${profile.reference}.csv`,
@@ -159,7 +187,15 @@ export function InstitutionRecord({ facility: f }: { facility: Facility }) {
             onChange={setTab}
             options={[
               { value: "profile", label: "Institution profile" },
-              { value: "assets", label: "Asset register", count: profile.assets.length },
+              ...(src
+                ? []
+                : [
+                    {
+                      value: "assets" as const,
+                      label: "Asset register",
+                      count: profile.assets.length,
+                    },
+                  ]),
               { value: "followups", label: "Follow-ups", count: openItems.length },
             ]}
           />
@@ -173,8 +209,8 @@ export function InstitutionRecord({ facility: f }: { facility: Facility }) {
               <div>
                 <p className="font-semibold">{profile.address}</p>
                 <p className="mt-1 text-xs text-ink-muted">
-                  <Code>{profile.reference}</Code> · {f.department} · Established{" "}
-                  {profile.established}
+                  <Code>{profile.reference}</Code> · {f.department}
+                  {!src && <> · Established {profile.established}</>}
                 </p>
               </div>
             </div>
@@ -186,33 +222,37 @@ export function InstitutionRecord({ facility: f }: { facility: Facility }) {
                 </div>
               ))}
             </dl>
-            <div className="grid gap-3 border-t border-line bg-subtle p-5 sm:grid-cols-3">
-              <div className="flex items-center gap-3">
-                <UsersRound className="size-5 text-kurram" />
-                <div>
-                  <p className="text-sm font-semibold">{staff.length} staff on record</p>
-                  <p className="text-xs text-ink-muted">
-                    {Math.max(0, sanctioned - staff.length)} sanctioned vacancies
-                  </p>
+            {!src && (
+              <div className="grid gap-3 border-t border-line bg-subtle p-5 sm:grid-cols-3">
+                <div className="flex items-center gap-3">
+                  <UsersRound className="size-5 text-kurram" />
+                  <div>
+                    <p className="text-sm font-semibold">{staff.length} staff on record</p>
+                    <p className="text-xs text-ink-muted">
+                      {Math.max(0, sanctioned - staff.length)} sanctioned vacancies
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <PackageCheck className="size-5 text-kurram" />
+                  <div>
+                    <p className="text-sm font-semibold">
+                      {profile.assets.length} asset categories
+                    </p>
+                    <p className="text-xs text-ink-muted">Custodian: facility in-charge</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <CalendarCheck className="size-5 text-kurram" />
+                  <div>
+                    <p className="text-sm font-semibold">
+                      Next visit {formatDate(profile.nextInspection)}
+                    </p>
+                    <p className="text-xs text-ink-muted">{profile.officer}</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <PackageCheck className="size-5 text-kurram" />
-                <div>
-                  <p className="text-sm font-semibold">{profile.assets.length} asset categories</p>
-                  <p className="text-xs text-ink-muted">Custodian: facility in-charge</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <CalendarCheck className="size-5 text-kurram" />
-                <div>
-                  <p className="text-sm font-semibold">
-                    Next visit {formatDate(profile.nextInspection)}
-                  </p>
-                  <p className="text-xs text-ink-muted">{profile.officer}</p>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         )}
         {tab === "assets" && (

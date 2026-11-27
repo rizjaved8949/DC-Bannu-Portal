@@ -2,9 +2,15 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppStateProvider, useApp, type ComplaintInput } from "@/lib/app-state";
 import { WORKSPACE_STORAGE_KEY } from "@/lib/workspace-storage";
-import { schoolDays, shiftsByFacility, staffByFacility, codedSmsBudget } from "@/data/mock";
+import {
+  schoolDays,
+  shiftsByFacility,
+  staffByFacility,
+  codedSmsBudget,
+  DEMO_SCHOOLS,
+} from "@/data/mock";
 
-const schoolId = "SCH112";
+const schoolId = DEMO_SCHOOLS.fieldExample;
 const employee = staffByFacility[schoolId]![0]!;
 function day() {
   const record = structuredClone(schoolDays[schoolId]!);
@@ -12,7 +18,7 @@ function day() {
   return record;
 }
 const complaint: ComplaintInput = {
-  facilityIds: ["SCH103", "HF207"],
+  facilityIds: [DEMO_SCHOOLS.complaintA, "HF207"],
   title: "پانی کی فراہمی کا مسئلہ",
   description:
     "Inspect the drinking water supply at both institutions and confirm repairs with the school and hospital heads.",
@@ -101,7 +107,7 @@ describe("SMS fallback and automatic admin intake", () => {
     first.unmount();
     const restored = renderHook(useApp, { wrapper: AppStateProvider });
     expect(restored.result.current.smsEntries[0]?.status).toBe("saved");
-    act(() => restored.result.current.sendSavedEntries("SCH103", "sms"));
+    act(() => restored.result.current.sendSavedEntries(DEMO_SCHOOLS.complaintA, "sms"));
     expect(restored.result.current.complaints.some((c) => c.id === id)).toBe(false);
     act(() => vi.advanceTimersByTime(1800));
     expect(restored.result.current.complaints.find((c) => c.id === id)?.title).toBe(

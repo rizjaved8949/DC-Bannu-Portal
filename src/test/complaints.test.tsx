@@ -3,10 +3,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AppStateProvider, useApp, type ComplaintInput } from "@/lib/app-state";
 import { EMPTY_COMPLAINT_FILTERS, filterComplaints } from "@/lib/complaints";
 import { WORKSPACE_STORAGE_KEY, restoreWorkspace } from "@/lib/workspace-storage";
-import { complaints, facilities, facilityById } from "@/data/mock";
+import { complaints, facilities, facilityById, DEMO_SCHOOLS } from "@/data/mock";
 
 const input: ComplaintInput = {
-  facilityIds: ["SCH103", "SCH108", "HF207", "SCH103"],
+  facilityIds: [DEMO_SCHOOLS.complaintA, DEMO_SCHOOLS.complaintB, "HF207", DEMO_SCHOOLS.complaintA],
   title: "Inspect water supply at Bannu institutions",
   description:
     "Inspect the listed institutions, restore drinking water and record confirmation from their heads.",
@@ -24,8 +24,8 @@ describe("Institution complaints", () => {
       id = hook.result.current.createComplaint(input);
     });
     expect(hook.result.current.complaints.find((c) => c.id === id)?.facilityIds).toEqual([
-      "SCH103",
-      "SCH108",
+      DEMO_SCHOOLS.complaintA,
+      DEMO_SCHOOLS.complaintB,
       "HF207",
     ]);
     hook.unmount();
@@ -79,12 +79,21 @@ describe("Institution complaints", () => {
         }),
       ),
     ).toThrow();
-    act(() => result.current.createComplaint({ ...input, facilityIds: ["SCH103", "SCH108"] }));
+    act(() =>
+      result.current.createComplaint({
+        ...input,
+        facilityIds: [DEMO_SCHOOLS.complaintA, DEMO_SCHOOLS.complaintB],
+      }),
+    );
     act(() => result.current.setRole("ac-domel"));
     expect(() =>
-      act(() => result.current.createComplaint({ ...input, facilityIds: ["SCH103"] })),
+      act(() =>
+        result.current.createComplaint({ ...input, facilityIds: [DEMO_SCHOOLS.complaintA] }),
+      ),
     ).toThrow();
-    act(() => result.current.createComplaint({ ...input, facilityIds: ["SCH112"] }));
+    act(() =>
+      result.current.createComplaint({ ...input, facilityIds: [DEMO_SCHOOLS.fieldExample] }),
+    );
   });
   it("combines area, type, institution, status, priority and search filters against the same target", () => {
     const base = {
@@ -99,7 +108,7 @@ describe("Institution complaints", () => {
     };
     expect(filterComplaints(complaints, facilities, base).map((c) => c.id)).toEqual(["CMP-1001"]);
     expect(filterComplaints(complaints, facilities, { ...base, area: "Domel" })).toEqual([]);
-    const crossArea = { ...complaints[0]!, facilityIds: ["SCH112", "HF207"] };
+    const crossArea = { ...complaints[0]!, facilityIds: [DEMO_SCHOOLS.fieldExample, "HF207"] };
     expect(
       filterComplaints([crossArea], facilities, {
         ...EMPTY_COMPLAINT_FILTERS,
